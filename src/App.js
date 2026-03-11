@@ -29,6 +29,13 @@ const TOOLS = [
     desc: '인건비 증빙 생성기',
     src: `${process.env.PUBLIC_URL}/payroll.html`,
   },
+  {
+    id: 'tasks',
+    name: '업무관리',
+    icon: '\u{1F4CB}',
+    desc: '업무관리 대시보드',
+    src: `${process.env.PUBLIC_URL}/tasks.html`,
+  },
 ];
 
 function Home({ onNavigate }) {
