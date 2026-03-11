@@ -142,10 +142,27 @@ td.left{text-align:left}
 
 .footer{text-align:center;color:#999;font-size:11px;padding:20px}
 
+/* Info banner */
+.info-banner{background:#e3f2fd;border:1px solid #90caf9;border-radius:8px;padding:10px 16px;margin-bottom:14px;font-size:12px;color:#1565c0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.info-banner .info-icon{font-size:16px;flex-shrink:0}
+.info-banner .info-text{flex:1}
+.btn-refresh{padding:6px 14px;border:1px solid #1565c0;background:#fff;color:#1565c0;border-radius:5px;cursor:pointer;font-weight:600;font-size:12px;font-family:inherit;transition:.2s;white-space:nowrap}
+.btn-refresh:hover{background:#1565c0;color:#fff}
+.btn-refresh:disabled{opacity:.5;cursor:not-allowed}
+
+/* Loading overlay */
+.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999}
+.loading-spinner{width:48px;height:48px;border:4px solid #e0e0e0;border-top-color:#1a237e;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{margin-top:14px;font-size:14px;font-weight:600;color:#1a237e}
+
+/* Error banner */
+.error-banner{background:#ffebee;border:1px solid #ef9a9a;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:12px;color:#c62828;display:none}
+
 /* Print styles */
 @media print{
   body{background:#fff;font-size:11px}
-  .header,.tabs,.ctrl,.footer{display:none!important}
+  .header,.tabs,.ctrl,.footer,.info-banner,.error-banner{display:none!important}
   .container{max-width:100%;padding:10px;margin:0}
   .panel{display:none!important}
   .panel.print-target{display:block!important}
@@ -156,11 +173,29 @@ td.left{text-align:left}
 </style>
 </head>
 <body>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Google Sheets에서 데이터를 불러오는 중...</div>
+</div>
+
 <div class="header">
 <h1>업무관리 대시보드</h1>
 <p>경영관리팀 업무 현황 및 추적 | (주)타이로스코프</p>
 </div>
 <div class="container">
+
+<!-- Info Banner -->
+<div class="info-banner" id="infoBanner">
+  <span class="info-icon">&#9432;</span>
+  <span class="info-text">Google Sheets에서 실시간 데이터를 불러옵니다. 시트에서 수정하면 새로고침 시 반영됩니다.</span>
+  <button class="btn-refresh" id="btnRefresh" onclick="refreshData()">새로고침</button>
+</div>
+
+<!-- Error Banner -->
+<div class="error-banner" id="errorBanner"></div>
+
 <div class="tabs">
 <button class="tab active" onclick="showTab(0)">대시보드</button>
 <button class="tab" onclick="showTab(1)">월별 업무 목록</button>
@@ -173,9 +208,6 @@ td.left{text-align:left}
 <div class="ctrl">
 <label>월 선택:</label>
 <select id="dashMonth" onchange="renderDashboard()">
-<option value="all">전체</option>
-<option value="1">1월</option>
-<option value="3">3월</option>
 </select>
 </div>
 <div class="cards" id="summaryCards"></div>
@@ -210,16 +242,10 @@ td.left{text-align:left}
 <div class="ctrl">
 <label>월:</label>
 <select id="listMonth" onchange="renderTaskList()">
-<option value="all">전체</option>
-<option value="1">1월</option>
-<option value="3">3월</option>
 </select>
 <label>담당자:</label>
 <select id="filterPerson" onchange="renderTaskList()">
 <option value="all">전체</option>
-<option value="최선아">최선아</option>
-<option value="송은정">송은정</option>
-<option value="이웅해">이웅해</option>
 </select>
 <label>구분:</label>
 <select id="filterDept" onchange="renderTaskList()"></select>
@@ -288,106 +314,215 @@ td.left{text-align:left}
 
 <script>
 // ============================================================
-// DATA: All task data from 1월 and 3월 CSVs (하위 tasks only)
+// GOOGLE SHEETS CONFIG
 // ============================================================
-const taskData = [
-  // ===== 1월 데이터 =====
-  // 인사
-  {month:1, dept:'인사', content:'1월 급여 산출 및 지급', owner:'최선아', priority:'1순위', start:'2026-01-02', deadline:'2026-01-10', progress:100, completionDate:'2026-01-10', statusDesc:'정상 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'인사', content:'4대보험 취득/상실 신고', owner:'최선아', priority:'1순위', start:'2026-01-02', deadline:'2026-01-15', progress:100, completionDate:'2026-01-14', statusDesc:'기한 내 처리 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'인사', content:'연말정산 자료 수집 및 안내', owner:'최선아', priority:'1순위', start:'2026-01-05', deadline:'2026-01-20', progress:100, completionDate:'2026-01-18', statusDesc:'전 직원 제출 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'인사', content:'연말정산 신고서 작성 및 제출', owner:'최선아', priority:'1순위', start:'2026-01-20', deadline:'2026-01-31', progress:100, completionDate:'2026-01-30', statusDesc:'국세청 제출 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'인사', content:'퇴직연금 DC형 부담금 납부', owner:'최선아', priority:'2순위', start:'2026-01-10', deadline:'2026-01-15', progress:100, completionDate:'2026-01-14', statusDesc:'1월분 납부 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'인사', content:'신규 입사자 온보딩 처리', owner:'최선아,송은정', priority:'2순위', start:'2026-01-06', deadline:'2026-01-10', progress:100, completionDate:'2026-01-09', statusDesc:'1명 입사 처리 완료', decision:'', resource:'', meeting:''},
+const SPREADSHEET_ID = '1zgnxIN0dn1i04rBu-GQwcEZFBmqSX9w-z3w2JGlRMnc';
+const SHEET_NAMES = ['1월', '3월'];
 
-  // 총무
-  {month:1, dept:'총무', content:'법인 차량 보험 갱신', owner:'송은정', priority:'2순위', start:'2026-01-05', deadline:'2026-01-20', progress:100, completionDate:'2026-01-18', statusDesc:'갱신 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'총무', content:'사무실 임대차 계약 검토', owner:'송은정', priority:'3순위', start:'2026-01-10', deadline:'2026-01-31', progress:100, completionDate:'2026-01-28', statusDesc:'검토 완료, 연장 결정', decision:'임대료 인상률 협의 필요', resource:'', meeting:''},
-  {month:1, dept:'총무', content:'비품 재고 실사 및 발주', owner:'송은정', priority:'3순위', start:'2026-01-15', deadline:'2026-01-25', progress:100, completionDate:'2026-01-24', statusDesc:'발주 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'총무', content:'안전보건 교육 일정 수립', owner:'송은정', priority:'2순위', start:'2026-01-10', deadline:'2026-01-31', progress:100, completionDate:'2026-01-30', statusDesc:'1분기 교육 일정 확정', decision:'', resource:'', meeting:''},
+function getSheetURL(sheetName) {
+  return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+}
 
-  // 회계/세무
-  {month:1, dept:'회계/세무', content:'12월 결산 마감 (전기)', owner:'이웅해', priority:'1순위', start:'2026-01-02', deadline:'2026-01-15', progress:100, completionDate:'2026-01-14', statusDesc:'전기 결산 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'회계/세무', content:'부가세 확정 신고 (2기)', owner:'이웅해', priority:'1순위', start:'2026-01-05', deadline:'2026-01-25', progress:100, completionDate:'2026-01-23', statusDesc:'신고 및 납부 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'회계/세무', content:'법인세 중간예납 정산', owner:'이웅해', priority:'2순위', start:'2026-01-10', deadline:'2026-01-31', progress:100, completionDate:'2026-01-29', statusDesc:'정산 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'회계/세무', content:'1월 매입매출 전표 입력', owner:'이웅해,송은정', priority:'2순위', start:'2026-01-02', deadline:'2026-01-31', progress:100, completionDate:'2026-01-30', statusDesc:'월말 마감 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'회계/세무', content:'거래처 계정 잔액 확인서 발송', owner:'이웅해', priority:'3순위', start:'2026-01-15', deadline:'2026-01-31', progress:100, completionDate:'2026-01-31', statusDesc:'주요 거래처 발송 완료', decision:'', resource:'', meeting:''},
+// ============================================================
+// CSV PARSER
+// ============================================================
+function parseCSV(text) {
+  const rows = [];
+  let row = []; let field = ''; let inQuote = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuote) {
+      if (c === '"' && text[i+1] === '"') { field += '"'; i++; }
+      else if (c === '"') { inQuote = false; }
+      else { field += c; }
+    } else {
+      if (c === '"') { inQuote = true; }
+      else if (c === ',') { row.push(field.trim()); field = ''; }
+      else if (c === '\n' || (c === '\r' && text[i+1] === '\n')) {
+        row.push(field.trim()); rows.push(row); row = []; field = '';
+        if (c === '\r') i++;
+      } else { field += c; }
+    }
+  }
+  if (field || row.length) { row.push(field.trim()); rows.push(row); }
+  return rows;
+}
 
-  // 과제
-  {month:1, dept:'과제', content:'AI빅테크 1월 참여율 등록', owner:'최선아', priority:'1순위', start:'2026-01-02', deadline:'2026-01-10', progress:100, completionDate:'2026-01-09', statusDesc:'RCMS 등록 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'과제', content:'의료데이터 1월 인건비 청구', owner:'최선아', priority:'1순위', start:'2026-01-05', deadline:'2026-01-15', progress:100, completionDate:'2026-01-14', statusDesc:'청구 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'과제', content:'바이오코어 연차 실적보고서 초안', owner:'최선아,이웅해', priority:'1순위', start:'2026-01-06', deadline:'2026-01-20', progress:100, completionDate:'2026-01-19', statusDesc:'초안 작성 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'과제', content:'인재성장 과제 12월 정산', owner:'최선아', priority:'2순위', start:'2026-01-05', deadline:'2026-01-15', progress:100, completionDate:'2026-01-15', statusDesc:'정산 완료', decision:'', resource:'', meeting:''},
+// ============================================================
+// DATA
+// ============================================================
+let taskData = [];
 
-  // 매출
-  {month:1, dept:'매출', content:'1월 매출 청구서 발행', owner:'송은정', priority:'1순위', start:'2026-01-25', deadline:'2026-01-31', progress:100, completionDate:'2026-01-30', statusDesc:'전 거래처 발행 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'매출', content:'미수금 현황 정리 및 독촉', owner:'송은정', priority:'2순위', start:'2026-01-15', deadline:'2026-01-31', progress:100, completionDate:'2026-01-29', statusDesc:'3건 미수 확인, 독촉 완료', decision:'미수 1건 법적 조치 검토', resource:'', meeting:''},
+// Local priority overrides (persisted in browser session)
+const priorityOverrides = {};
 
-  // 예산
-  {month:1, dept:'예산', content:'2026년 연간 예산안 확정', owner:'이웅해', priority:'1순위', start:'2026-01-02', deadline:'2026-01-15', progress:100, completionDate:'2026-01-14', statusDesc:'CEO 승인 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'예산', content:'1월 예산 집행 모니터링', owner:'이웅해', priority:'2순위', start:'2026-01-06', deadline:'2026-01-31', progress:100, completionDate:'2026-01-31', statusDesc:'예실 대비 보고 완료', decision:'', resource:'', meeting:''},
+function extractMonthNumber(sheetName) {
+  const match = sheetName.match(/(\d+)/);
+  return match ? parseInt(match[1]) : 0;
+}
 
-  // 재무/자금
-  {month:1, dept:'재무/자금', content:'1월 자금 계획 수립', owner:'이웅해', priority:'1순위', start:'2026-01-02', deadline:'2026-01-05', progress:100, completionDate:'2026-01-05', statusDesc:'계획 확정', decision:'', resource:'', meeting:''},
-  {month:1, dept:'재무/자금', content:'단기 차입금 상환 스케줄 관리', owner:'이웅해', priority:'2순위', start:'2026-01-05', deadline:'2026-01-31', progress:100, completionDate:'2026-01-28', statusDesc:'1월 상환 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'재무/자금', content:'법인 통장 잔고 일일 점검', owner:'송은정', priority:'2순위', start:'2026-01-02', deadline:'2026-01-31', progress:100, completionDate:'2026-01-31', statusDesc:'일일 점검 완료', decision:'', resource:'', meeting:''},
+function parseProgress(val) {
+  if (!val) return 0;
+  val = val.replace(/"/g, '').replace(/%/g, '').trim();
+  if (val === '') return 0;
+  const num = parseFloat(val);
+  return isNaN(num) ? 0 : Math.round(num);
+}
 
-  // 타팀 협업
-  {month:1, dept:'타팀 협업', content:'R&D팀 과제비 집행 지원', owner:'최선아,이웅해', priority:'2순위', start:'2026-01-10', deadline:'2026-01-31', progress:100, completionDate:'2026-01-30', statusDesc:'1월 집행 지원 완료', decision:'', resource:'', meeting:''},
-  {month:1, dept:'타팀 협업', content:'영업팀 견적서 검토 협조', owner:'이웅해', priority:'3순위', start:'2026-01-15', deadline:'2026-01-25', progress:100, completionDate:'2026-01-24', statusDesc:'3건 검토 완료', decision:'', resource:'', meeting:''},
+function parseDateStr(val) {
+  if (!val) return '';
+  val = val.replace(/"/g, '').trim();
+  if (val === '') return '';
+  // Handle various date formats: 2026-03-01, 2026-3-13, etc.
+  const match = val.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (match) {
+    const y = match[1];
+    const m = match[2].padStart(2, '0');
+    const d = match[3].padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return val;
+}
 
-  // ===== 3월 데이터 =====
-  // 인사
-  {month:3, dept:'인사', content:'3월 급여 산출 및 지급', owner:'최선아', priority:'1순위', start:'2026-03-02', deadline:'2026-03-10', progress:100, completionDate:'2026-03-10', statusDesc:'정상 지급 완료', decision:'', resource:'', meeting:''},
-  {month:3, dept:'인사', content:'4대보험 정산 (전년도)', owner:'최선아', priority:'1순위', start:'2026-03-02', deadline:'2026-03-15', progress:100, completionDate:'2026-03-13', statusDesc:'보수총액 신고 완료', decision:'', resource:'', meeting:''},
-  {month:3, dept:'인사', content:'퇴직자 정산 처리 (2명)', owner:'최선아', priority:'1순위', start:'2026-03-01', deadline:'2026-03-10', progress:100, completionDate:'2026-03-09', statusDesc:'퇴직금 정산 및 지급 완료', decision:'', resource:'', meeting:''},
-  {month:3, dept:'인사', content:'상반기 채용 계획 수립', owner:'최선아,송은정', priority:'2순위', start:'2026-03-05', deadline:'2026-03-20', progress:80, completionDate:'', statusDesc:'부서별 인원 수요 취합 중', decision:'R&D 2명 추가 채용 여부', resource:'', meeting:'CEO 미팅 필요'},
-  {month:3, dept:'인사', content:'직원 교육 훈련 계획 (1분기)', owner:'송은정', priority:'3순위', start:'2026-03-10', deadline:'2026-03-25', progress:60, completionDate:'', statusDesc:'교육 과정 선정 중', decision:'외부 교육 예산 승인', resource:'교육비 500만원', meeting:''},
-  {month:3, dept:'인사', content:'근태 관리 시스템 점검', owner:'송은정', priority:'3순위', start:'2026-03-15', deadline:'2026-03-31', progress:30, completionDate:'', statusDesc:'시스템 오류 건 확인 중', decision:'', resource:'', meeting:''},
+function parseSheetData(csvText, monthNumber) {
+  const rows = parseCSV(csvText);
+  if (rows.length < 2) return [];
 
-  // 총무
-  {month:3, dept:'총무', content:'사무실 리모델링 견적 비교', owner:'송은정', priority:'2순위', start:'2026-03-01', deadline:'2026-03-15', progress:100, completionDate:'2026-03-14', statusDesc:'3개사 견적 비교 완료', decision:'업체 선정 필요', resource:'리모델링 예산 3,000만원', meeting:''},
-  {month:3, dept:'총무', content:'정보보안 점검 및 보고', owner:'송은정', priority:'1순위', start:'2026-03-05', deadline:'2026-03-12', progress:100, completionDate:'2026-03-11', statusDesc:'점검 완료, 보고서 제출', decision:'', resource:'', meeting:''},
-  {month:3, dept:'총무', content:'1분기 안전보건 교육 실시', owner:'송은정', priority:'2순위', start:'2026-03-10', deadline:'2026-03-20', progress:50, completionDate:'', statusDesc:'교육 자료 준비 완료, 일정 조율 중', decision:'', resource:'', meeting:''},
-  {month:3, dept:'총무', content:'법인 인감 관리 대장 정리', owner:'송은정', priority:'4순위', start:'2026-03-15', deadline:'2026-03-31', progress:20, completionDate:'', statusDesc:'대장 양식 수정 중', decision:'', resource:'', meeting:''},
+  // Skip header row (row 0)
+  // Column mapping by position:
+  // 0: 구분, 1: 계층, 2: 내용, 3: 담당자, 4: 우선순위,
+  // 5: 착수일, 6: 마감일, 7: 진척도, 8: 업무완료일,
+  // 9: 상태 설명, 10: 결정필요 사항, 11: 필요 자원, 12: 미팅 요청, 13: 기타/연장
 
-  // 회계/세무
-  {month:3, dept:'회계/세무', content:'법인세 신고 준비', owner:'이웅해', priority:'1순위', start:'2026-03-01', deadline:'2026-03-31', progress:70, completionDate:'', statusDesc:'세무조정 진행 중', decision:'이연법인세 처리 방법', resource:'외부 세무사 자문', meeting:'세무사 미팅 3/15'},
-  {month:3, dept:'회계/세무', content:'3월 매입매출 전표 입력', owner:'이웅해,송은정', priority:'2순위', start:'2026-03-02', deadline:'2026-03-31', progress:60, completionDate:'', statusDesc:'매입 전표 입력 완료, 매출 진행 중', decision:'', resource:'', meeting:''},
-  {month:3, dept:'회계/세무', content:'외부 감사 대응 자료 준비', owner:'이웅해', priority:'1순위', start:'2026-03-05', deadline:'2026-03-20', progress:90, completionDate:'', statusDesc:'대부분 자료 준비 완료, 최종 검토 중', decision:'', resource:'', meeting:'감사인 미팅 3/18'},
-  {month:3, dept:'회계/세무', content:'1분기 부가세 예정신고', owner:'이웅해', priority:'1순위', start:'2026-03-15', deadline:'2026-03-25', progress:40, completionDate:'', statusDesc:'매출 세금계산서 취합 중', decision:'', resource:'', meeting:''},
-  {month:3, dept:'회계/세무', content:'고정자산 실사 (연간)', owner:'이웅해,송은정', priority:'3순위', start:'2026-03-10', deadline:'2026-03-31', progress:30, completionDate:'', statusDesc:'자산 목록 업데이트 중', decision:'폐기 자산 처리 방법', resource:'', meeting:''},
+  const tasks = [];
+  let currentDept = '';
 
-  // 과제
-  {month:3, dept:'과제', content:'AI빅테크 3월 참여율 등록', owner:'최선아', priority:'1순위', start:'2026-03-02', deadline:'2026-03-10', progress:100, completionDate:'2026-03-09', statusDesc:'RCMS 등록 완료', decision:'', resource:'', meeting:''},
-  {month:3, dept:'과제', content:'의료데이터 3월 인건비 청구', owner:'최선아', priority:'1순위', start:'2026-03-05', deadline:'2026-03-15', progress:100, completionDate:'2026-03-14', statusDesc:'청구 완료', decision:'', resource:'', meeting:''},
-  {month:3, dept:'과제', content:'바이오코어 연차 실적보고서 최종 제출', owner:'최선아,이웅해', priority:'1순위', start:'2026-03-01', deadline:'2026-03-10', progress:100, completionDate:'2026-03-08', statusDesc:'RCMS 최종 제출 완료', decision:'', resource:'', meeting:''},
-  {month:3, dept:'과제', content:'인재성장 과제 2월 정산', owner:'최선아', priority:'2순위', start:'2026-03-05', deadline:'2026-03-15', progress:100, completionDate:'2026-03-12', statusDesc:'정산 완료', decision:'', resource:'', meeting:''},
-  {month:3, dept:'과제', content:'신규 과제 공모 검토', owner:'최선아,이웅해', priority:'2순위', start:'2026-03-10', deadline:'2026-03-25', progress:50, completionDate:'', statusDesc:'3건 공모 검토 중, 1건 지원 예정', decision:'지원 과제 최종 선정', resource:'', meeting:'CEO 보고 필요'},
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.length < 3) continue;
 
-  // 매출
-  {month:3, dept:'매출', content:'3월 매출 청구서 발행', owner:'송은정', priority:'1순위', start:'2026-03-25', deadline:'2026-03-31', progress:50, completionDate:'', statusDesc:'일부 거래처 발행 완료', decision:'', resource:'', meeting:''},
-  {month:3, dept:'매출', content:'1분기 매출 실적 분석', owner:'이웅해', priority:'2순위', start:'2026-03-20', deadline:'2026-03-31', progress:30, completionDate:'', statusDesc:'데이터 취합 중', decision:'', resource:'', meeting:''},
-  {month:3, dept:'매출', content:'미수금 현황 정리 및 회수', owner:'송은정', priority:'2순위', start:'2026-03-10', deadline:'2026-03-31', progress:60, completionDate:'', statusDesc:'2건 회수 완료, 1건 잔여', decision:'장기 미수 법적 조치 여부', resource:'', meeting:''},
+    const gyeChung = (row[1] || '').trim();
+    const content = (row[2] || '').trim();
+    const dept = (row[0] || '').trim();
 
-  // 예산
-  {month:3, dept:'예산', content:'1분기 예산 집행 현황 보고', owner:'이웅해', priority:'1순위', start:'2026-03-20', deadline:'2026-03-31', progress:40, completionDate:'', statusDesc:'부서별 집행 데이터 수집 중', decision:'', resource:'', meeting:''},
-  {month:3, dept:'예산', content:'하반기 예산 조정안 초안', owner:'이웅해', priority:'3순위', start:'2026-03-15', deadline:'2026-03-31', progress:20, completionDate:'', statusDesc:'초안 작성 착수', decision:'', resource:'', meeting:''},
-  {month:3, dept:'예산', content:'예산 관리 SOP 문서 작성', owner:'이웅해', priority:'2순위', start:'2026-03-01', deadline:'2026-03-20', progress:70, completionDate:'', statusDesc:'초안 작성 완료, 리뷰 중', decision:'', resource:'', meeting:''},
+    // Track the current department from 상위 rows
+    if (dept) {
+      currentDept = dept;
+    }
 
-  // 재무/자금
-  {month:3, dept:'재무/자금', content:'3월 자금 계획 수립', owner:'이웅해', priority:'1순위', start:'2026-03-02', deadline:'2026-03-05', progress:100, completionDate:'2026-03-04', statusDesc:'계획 확정', decision:'', resource:'', meeting:''},
-  {month:3, dept:'재무/자금', content:'단기 차입금 상환 (3월)', owner:'이웅해', priority:'1순위', start:'2026-03-05', deadline:'2026-03-15', progress:100, completionDate:'2026-03-13', statusDesc:'상환 완료', decision:'', resource:'', meeting:''},
-  {month:3, dept:'재무/자금', content:'법인 통장 잔고 일일 점검', owner:'송은정', priority:'2순위', start:'2026-03-02', deadline:'2026-03-31', progress:80, completionDate:'', statusDesc:'일일 점검 진행 중', decision:'', resource:'', meeting:''},
-  {month:3, dept:'재무/자금', content:'자금 수지 분석 보고서', owner:'이웅해', priority:'2순위', start:'2026-03-15', deadline:'2026-03-31', progress:30, completionDate:'', statusDesc:'분석 데이터 수집 중', decision:'', resource:'', meeting:''},
+    // Skip rows where 계층 is not "하위"
+    if (gyeChung !== '하위') continue;
 
-  // 타팀 협업
-  {month:3, dept:'타팀 협업', content:'R&D팀 과제비 집행 지원 (3월)', owner:'최선아,이웅해', priority:'2순위', start:'2026-03-10', deadline:'2026-03-31', progress:50, completionDate:'', statusDesc:'장비 구매 건 진행 중', decision:'장비 구매 견적 승인', resource:'', meeting:''},
-  {month:3, dept:'타팀 협업', content:'마케팅팀 광고비 정산 지원', owner:'송은정', priority:'3순위', start:'2026-03-15', deadline:'2026-03-25', progress:100, completionDate:'2026-03-24', statusDesc:'정산 완료', decision:'', resource:'', meeting:''},
-  {month:3, dept:'타팀 협업', content:'경영진 보고 자료 작성', owner:'이웅해,최선아', priority:'1순위', start:'2026-03-20', deadline:'2026-03-28', progress:60, completionDate:'', statusDesc:'초안 작성 중', decision:'보고 일정 확정', resource:'', meeting:'CEO 미팅 3/28'},
-];
+    // Skip rows where 내용 is empty
+    if (!content) continue;
 
-// KPI Data
+    const owner = (row[3] || '').trim();
+    const priority = (row[4] || '').trim();
+    const start = parseDateStr(row[5] || '');
+    const deadline = parseDateStr(row[6] || '');
+    const progress = parseProgress(row[7] || '');
+    const completionDate = parseDateStr(row[8] || '');
+    const statusDesc = (row[9] || '').trim();
+    const decision = (row[10] || '').trim();
+    const resource = (row[11] || '').trim();
+    const meeting = (row[12] || '').trim();
+
+    const taskDept = dept || currentDept;
+
+    tasks.push({
+      month: monthNumber,
+      dept: taskDept,
+      content: content,
+      owner: owner,
+      priority: priority || '4순위',
+      start: start,
+      deadline: deadline,
+      progress: progress,
+      completionDate: completionDate,
+      statusDesc: statusDesc,
+      decision: decision,
+      resource: resource,
+      meeting: meeting
+    });
+  }
+
+  return tasks;
+}
+
+async function fetchSheetData(sheetName) {
+  const url = getSheetURL(sheetName);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`시트 "${sheetName}" 로드 실패: HTTP ${response.status}`);
+  }
+  const text = await response.text();
+  const monthNumber = extractMonthNumber(sheetName);
+  return parseSheetData(text, monthNumber);
+}
+
+async function loadAllData() {
+  const loadingEl = document.getElementById('loadingOverlay');
+  const errorEl = document.getElementById('errorBanner');
+  const refreshBtn = document.getElementById('btnRefresh');
+
+  loadingEl.style.display = 'flex';
+  errorEl.style.display = 'none';
+  refreshBtn.disabled = true;
+  refreshBtn.textContent = '불러오는 중...';
+
+  try {
+    const results = await Promise.all(
+      SHEET_NAMES.map(name => fetchSheetData(name))
+    );
+
+    taskData = [];
+    results.forEach(tasks => {
+      taskData.push(...tasks);
+    });
+
+    // Re-apply local priority overrides
+    Object.keys(priorityOverrides).forEach(key => {
+      const idx = parseInt(key);
+      if (idx >= 0 && idx < taskData.length) {
+        // Match by content to be safe
+        const override = priorityOverrides[key];
+        const matchIdx = taskData.findIndex(t =>
+          t.month === override.month && t.content === override.content
+        );
+        if (matchIdx >= 0) {
+          taskData[matchIdx].priority = override.priority;
+        }
+      }
+    });
+
+    populateFilters();
+    renderCurrentTab();
+
+    errorEl.style.display = 'none';
+  } catch (err) {
+    console.error('데이터 로드 오류:', err);
+    errorEl.textContent = '데이터 로드 실패: ' + err.message + ' (페이지를 새로고침하거나 잠시 후 다시 시도해주세요)';
+    errorEl.style.display = 'block';
+
+    // If we have no data at all, show empty state
+    if (taskData.length === 0) {
+      populateFilters();
+      renderCurrentTab();
+    }
+  } finally {
+    loadingEl.style.display = 'none';
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = '새로고침';
+  }
+}
+
+function refreshData() {
+  loadAllData();
+}
+
+// ============================================================
+// KPI Data (hardcoded - complex structure, rarely changes)
+// ============================================================
 const kpiData = [
   {name:'내부통제 준수', weight:25, plan:'내부통제 프로세스 구축', measure:'통제 기술서, 통제 미비 개선 방안 보고서', deadline:'5.31',
    steps:['1단계: 표준 통제 기술서 작성(Draft)','2단계: 내부 진단 및 GAP 분석','3단계: 최종 표준 통제 기술서 도출'],
@@ -424,6 +559,7 @@ function parseDate(str) {
 function formatDate(str) {
   if (!str) return '-';
   const d = new Date(str);
+  if (isNaN(d.getTime())) return '-';
   return (d.getMonth()+1) + '/' + d.getDate();
 }
 
@@ -475,18 +611,70 @@ function filterTasks(month) {
 }
 
 // ============================================================
+// POPULATE FILTERS (dynamic based on loaded data)
+// ============================================================
+function populateFilters() {
+  // Get available months
+  const months = [...new Set(taskData.map(t => t.month))].sort((a, b) => a - b);
+
+  // Populate month selectors
+  const dashMonthSel = document.getElementById('dashMonth');
+  const listMonthSel = document.getElementById('listMonth');
+
+  const dashVal = dashMonthSel.value;
+  const listVal = listMonthSel.value;
+
+  let monthOptions = '<option value="all">전체</option>';
+  months.forEach(m => {
+    monthOptions += `<option value="${m}">${m}월</option>`;
+  });
+
+  dashMonthSel.innerHTML = monthOptions;
+  listMonthSel.innerHTML = monthOptions;
+
+  // Restore previous selection if still valid
+  if (dashVal) dashMonthSel.value = dashVal;
+  if (listVal) listMonthSel.value = listVal;
+
+  // Populate person filter
+  const allOwners = new Set();
+  taskData.forEach(t => {
+    getOwners(t.owner).forEach(o => { if (o) allOwners.add(o); });
+  });
+  const personSel = document.getElementById('filterPerson');
+  const personVal = personSel.value;
+  personSel.innerHTML = '<option value="all">전체</option>' +
+    [...allOwners].sort().map(p => `<option value="${p}">${p}</option>`).join('');
+  if (personVal) personSel.value = personVal;
+
+  // Populate dept filter
+  const depts = [...new Set(taskData.map(t => t.dept))];
+  const deptSel = document.getElementById('filterDept');
+  const deptVal = deptSel.value;
+  deptSel.innerHTML = '<option value="all">전체</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+  if (deptVal) deptSel.value = deptVal;
+}
+
+// ============================================================
 // TAB SWITCHING
 // ============================================================
+let currentTab = 0;
+
 function showTab(idx) {
+  currentTab = idx;
   document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===idx));
   document.querySelectorAll('.panel').forEach((p,i) => {
     p.classList.toggle('active', i===idx);
     p.classList.remove('print-target');
   });
-  if (idx === 0) renderDashboard();
-  if (idx === 1) renderTaskList();
-  if (idx === 2) renderKPI();
-  if (idx === 3) renderWeeklyReport();
+  renderCurrentTab();
+}
+
+function renderCurrentTab() {
+  if (currentTab === 0) renderDashboard();
+  if (currentTab === 1) renderTaskList();
+  if (currentTab === 2) renderKPI();
+  if (currentTab === 3) renderWeeklyReport();
 }
 
 // ============================================================
@@ -513,7 +701,10 @@ function renderDashboard() {
   `;
 
   // Person workload chart
-  const persons = ['최선아','송은정','이웅해'];
+  const allOwners = new Set();
+  tasks.forEach(t => { getOwners(t.owner).forEach(o => { if (o) allOwners.add(o); }); });
+  const persons = [...allOwners].sort();
+
   let personHtml = '';
   persons.forEach(person => {
     const pTasks = tasks.filter(t => getOwners(t.owner).includes(person));
@@ -550,13 +741,18 @@ function renderDashboard() {
   let conicParts = [];
   let cumPct = 0;
   depts.forEach((d, i) => {
-    const pct = (deptCounts[i] / deptTotal) * 100;
+    const pct = deptTotal > 0 ? (deptCounts[i] / deptTotal) * 100 : 0;
     conicParts.push(`${deptColors[i % deptColors.length]} ${cumPct}% ${cumPct + pct}%`);
     cumPct += pct;
   });
 
-  document.getElementById('deptPie').style.background = `conic-gradient(${conicParts.join(',')})`;
-  document.getElementById('deptPie').innerHTML = '<div class="pie-center">구분별</div>';
+  const pieEl = document.getElementById('deptPie');
+  if (conicParts.length > 0) {
+    pieEl.style.background = `conic-gradient(${conicParts.join(',')})`;
+  } else {
+    pieEl.style.background = '#eee';
+  }
+  pieEl.innerHTML = '<div class="pie-center">구분별</div>';
 
   let legendHtml = '';
   depts.forEach((d, i) => {
@@ -661,6 +857,12 @@ function togglePriDropdown(e, idx) {
     d.onclick = function(ev) {
       ev.stopPropagation();
       taskData[idx].priority = pri;
+      // Save override locally
+      priorityOverrides[idx] = {
+        month: taskData[idx].month,
+        content: taskData[idx].content,
+        priority: pri
+      };
       closePriDropdown();
       renderTaskList();
     };
@@ -802,7 +1004,7 @@ function renderWeeklyReport() {
       deptIssue.forEach(t => {
         const st = t.status;
         html += `<div class="report-item"><span class="badge-status ${statusBadgeClass(st)}">${st}</span> ${t.content} <span style="color:#888;font-size:11px">(${t.owner}, 진척: ${t.progress}%, 마감: ${formatDate(t.deadline)})</span>
-        ${t.statusDesc ? `<br><span style="color:#e65100;font-size:11px">→ ${t.statusDesc}</span>` : ''}
+        ${t.statusDesc ? `<br><span style="color:#e65100;font-size:11px">${t.statusDesc}</span>` : ''}
         </div>`;
       });
     });
@@ -852,16 +1054,7 @@ function printReport() {
 // ============================================================
 // INIT
 // ============================================================
-function init() {
-  // Populate dept filter
-  const depts = [...new Set(taskData.map(t => t.dept))];
-  const sel = document.getElementById('filterDept');
-  sel.innerHTML = '<option value="all">전체</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
-
-  renderDashboard();
-}
-
-init();
+loadAllData();
 </script>
 </body>
 </html>
