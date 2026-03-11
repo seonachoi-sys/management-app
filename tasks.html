@@ -20,7 +20,8 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f7
 
 /* Cards */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px}
-.card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);border-left:4px solid #b0b7e8}
+.card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);border-left:4px solid #b0b7e8;cursor:pointer;position:relative;transition:transform .15s,box-shadow .15s}
+.card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.12)}
 .card.green{border-left-color:#a5d6b0}
 .card.blue{border-left-color:#a0c4f0}
 .card.red{border-left-color:#f0a0a0}
@@ -31,6 +32,14 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f7
 .card.blue .vl{color:#6ba3d6}
 .card.red .vl{color:#d97070}
 .card.orange .vl{color:#e0935a}
+
+/* Card tooltip */
+.card-tooltip{display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:#fff;border:1px solid #e0e0e0;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.15);padding:12px;margin-top:6px;font-size:11px;max-height:250px;overflow-y:auto;min-width:220px;width:max-content;max-width:350px}
+.card:hover .card-tooltip{display:block}
+.card-tooltip .tt-title{font-weight:700;font-size:12px;color:#555;margin-bottom:6px;border-bottom:1px solid #eee;padding-bottom:4px}
+.card-tooltip .tt-item{padding:3px 0;color:#444;line-height:1.5;border-bottom:1px solid #f8f8f8}
+.card-tooltip .tt-item:last-child{border-bottom:none}
+.card-tooltip .tt-empty{color:#bbb;font-style:italic}
 
 /* Section */
 .section-title{font-size:15px;font-weight:700;margin:18px 0 10px;display:flex;align-items:center;gap:8px}
@@ -138,6 +147,15 @@ td.left{text-align:left}
 .btn{padding:8px 18px;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px;font-family:inherit;transition:.2s}
 .btn-primary{background:#8b93d1;color:#fff}.btn-primary:hover{background:#7c83c9}
 .btn-print{background:#e0935a;color:#fff;margin-left:10px}.btn-print:hover{background:#c97d48}
+
+/* Task list collapsible completed section */
+.task-section-header{display:flex;align-items:center;gap:8px;padding:12px 16px;background:#f9f7fc;border-radius:8px;margin-bottom:10px;cursor:pointer;user-select:none;font-weight:700;font-size:14px;color:#6a72b0;transition:background .2s}
+.task-section-header:hover{background:#ede7f6}
+.task-section-header .tsh-arrow{font-size:12px;color:#aaa;transition:transform .2s}
+.task-section-header.collapsed .tsh-arrow{transform:rotate(-90deg)}
+.task-section-header .tsh-count{font-size:12px;font-weight:400;color:#999;margin-left:4px}
+.task-section-body{overflow:hidden;transition:max-height .3s ease}
+.task-section-body.collapsed{max-height:0!important}
 
 .legend{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0;font-size:11px;color:#666}
 .legend-item{display:flex;align-items:center;gap:3px}
@@ -264,30 +282,6 @@ td.left{text-align:left}
 </select>
 </div>
 <div class="cards" id="summaryCards"></div>
-<div class="chart-grid">
-<div class="chart-section">
-<h3>담당자별 업무 현황</h3>
-<div id="personChart" class="bar-chart"></div>
-<div class="legend" style="margin-top:10px">
-<div class="legend-item"><div class="legend-dot" style="background:#8fd4a4"></div>완료</div>
-<div class="legend-item"><div class="legend-dot" style="background:#8ec5f0"></div>진행중</div>
-<div class="legend-item"><div class="legend-dot" style="background:#f0a0a0"></div>지연</div>
-<div class="legend-item"><div class="legend-dot" style="background:#f5c89a"></div>주의</div>
-<div class="legend-item"><div class="legend-dot" style="background:#d5d5d5"></div>미착수</div>
-</div>
-</div>
-<div class="chart-section">
-<h3>부서(구분)별 업무 분포</h3>
-<div class="pie-container">
-<div class="pie" id="deptPie"></div>
-<div class="pie-legend" id="deptPieLegend"></div>
-</div>
-</div>
-</div>
-<div class="chart-section">
-<h3>우선순위별 분포</h3>
-<div id="priorityChart" class="bar-chart"></div>
-</div>
 <div class="chart-section">
 <h3>개인별 업무 부하량</h3>
 <div id="workloadDetail" class="workload-grid"></div>
@@ -306,15 +300,6 @@ td.left{text-align:left}
 </select>
 <label>구분:</label>
 <select id="filterDept" onchange="renderTaskList()"></select>
-<label>상태:</label>
-<select id="filterStatus" onchange="renderTaskList()">
-<option value="all">전체</option>
-<option value="완료">완료</option>
-<option value="진행중">진행중</option>
-<option value="지연">지연</option>
-<option value="주의">주의</option>
-<option value="미착수">미착수</option>
-</select>
 <label>우선순위:</label>
 <select id="filterPriority" onchange="renderTaskList()">
 <option value="all">전체</option>
@@ -324,6 +309,12 @@ td.left{text-align:left}
 <option value="4순위">4순위</option>
 </select>
 </div>
+
+<!-- In-progress tasks -->
+<div class="task-section-header" onclick="toggleTaskSection('activeSection', this)">
+  <span class="tsh-arrow">▼</span> 진행 업무 <span class="tsh-count" id="activeCount"></span>
+</div>
+<div class="task-section-body" id="activeSection">
 <div class="tbl-wrap">
 <table>
 <thead>
@@ -340,8 +331,35 @@ td.left{text-align:left}
 <th style="min-width:200px;text-align:left">상태 설명</th>
 </tr>
 </thead>
-<tbody id="taskBody"></tbody>
+<tbody id="activeTaskBody"></tbody>
 </table>
+</div>
+</div>
+
+<!-- Completed tasks (collapsed by default) -->
+<div class="task-section-header collapsed" onclick="toggleTaskSection('doneSection', this)" id="doneSectionHeader">
+  <span class="tsh-arrow">▼</span> 완료 업무 <span class="tsh-count" id="doneCount"></span>
+</div>
+<div class="task-section-body collapsed" id="doneSection" style="max-height:0">
+<div class="tbl-wrap">
+<table>
+<thead>
+<tr>
+<th style="width:30px">No</th>
+<th>구분</th>
+<th style="min-width:250px;text-align:left">내용</th>
+<th>담당자</th>
+<th>우선순위</th>
+<th>착수일</th>
+<th>마감일</th>
+<th>진척도</th>
+<th>상태</th>
+<th style="min-width:200px;text-align:left">상태 설명</th>
+</tr>
+</thead>
+<tbody id="doneTaskBody"></tbody>
+</table>
+</div>
 </div>
 </div>
 
@@ -528,12 +546,13 @@ async function loadAllData() {
   refreshBtn.textContent = '불러오는 중...';
 
   try {
-    const results = await Promise.all(
-      SHEET_NAMES.map(name => fetchSheetData(name))
-    );
+    const [taskResults] = await Promise.all([
+      Promise.all(SHEET_NAMES.map(name => fetchSheetData(name))),
+      fetchKPIData().catch(err => console.warn('KPI 로드 실패:', err))
+    ]);
 
     taskData = [];
-    results.forEach(tasks => {
+    taskResults.forEach(tasks => {
       taskData.push(...tasks);
     });
 
@@ -582,28 +601,76 @@ function refreshData() {
 // ============================================================
 // KPI Data (hardcoded - complex structure, rarely changes)
 // ============================================================
-const kpiData = [
-  {name:'내부통제 준수', weight:25, plan:'내부통제 프로세스 구축', measure:'통제 기술서, 통제 미비 개선 방안 보고서', deadline:'5.31',
-   steps:['1단계: 표준 통제 기술서 작성(Draft)','2단계: 내부 진단 및 GAP 분석','3단계: 최종 표준 통제 기술서 도출'],
-   grades:{S:'회사 최적화 통제 기술서 완성 + 즉시 실행',A:'3단계 완수 + 보고서 승인',B:'3단계 완수, 보고서 미승인',C:'완성도 떨어지거나 기한 넘김',D:'측정 결과물 미도출'},
-   currentProgress:0},
-  {name:'예산 관리', weight:25, plan:'실무 부서 예산 관리 내재화', measure:'발표 평가',
-   steps:['가. 예산 관리 프로세스 수립(SOP)','나. 월간 예실 대비 리포팅','다. 분기 예산 조정 / 하반기 예산 도출'],
-   grades:{S:'3가지 산출물 + 발표 S',A:'3가지 산출물 + 발표 A',B:'3가지 산출물 + 발표 B',C:'2가지 산출물 + 발표 C',D:'1가지 산출물 + 발표 D'},
-   currentProgress:0},
-  {name:'비즈니스 의사결정 지원', weight:20, plan:'동적 재무 모델 + B2H 수익성 분석', measure:'동적 재무 모델 파일',
-   steps:['고정비/변동비 재정의','표준원가 재정의','인원-매출 연동 자동 수식 구축','5개년 데이터 입력 및 검증'],
-   grades:{S:'2건 완료 + 만족도 9-10',A:'2건 완료 + 만족도 7-8',B:'1건 완료 + 만족도 5-6',C:'완성도 모호 + 만족도 3-4',D:'미완성 + 만족도 1-2'},
-   currentProgress:0},
-  {name:'업무 시스템화', weight:10, plan:'업무 매뉴얼 작성', measure:'발표 평가',
-   steps:['가. 결산 매뉴얼','나. 매출처별 청구 매뉴얼','다. 급여 및 4대보험 실무 매뉴얼'],
-   grades:{S:'3종 작성 + 팀 내 교육',A:'3종 작성',B:'2종 작성',C:'1종 작성',D:'작성 완성도 미흡'},
-   currentProgress:0},
-  {name:'B2H 수익성 분석', weight:20, plan:'B2H 사업 수익성 분석 리포트', measure:'수익성 분석 보고서',
-   steps:['매출 구조 분석','원가 구조 분석','손익 시나리오 도출','최종 보고서 작성'],
-   grades:{S:'보고서 완성 + CEO 만족도 9-10',A:'보고서 완성 + CEO 만족도 7-8',B:'보고서 완성 + CEO 만족도 5-6',C:'보고서 미완성 또는 만족도 3-4',D:'보고서 미도출'},
-   currentProgress:0}
-];
+// KPI data - loaded dynamically from spreadsheet
+let kpiData = [];
+const KPI_SHEET_NAME = 'KPI';
+
+async function fetchKPIData() {
+  const url = getSheetURL(KPI_SHEET_NAME);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`KPI 시트 로드 실패: HTTP ${response.status}`);
+  const text = await response.text();
+  const rows = parseCSV(text);
+  if (rows.length < 3) return;
+
+  const newKpiData = [];
+  let currentKpi = null;
+
+  for (let i = 2; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.length < 2) continue;
+
+    const name = (row[0] || '').trim();
+    const desc = (row[1] || '').trim();
+    const startDate = parseDateStr(row[2] || '');
+    const endDate = parseDateStr(row[3] || '');
+    const progress = parseProgress(row[4] || '');
+    const deliverable = (row[5] || '').trim();
+    const weight = parseInt((row[6] || '0').replace(/[^0-9]/g, '')) || 0;
+
+    if (name === '합계' || !desc) continue;
+
+    if (name) {
+      // Main KPI row
+      currentKpi = {
+        name: name,
+        weight: weight,
+        plan: desc,
+        measure: deliverable,
+        grades: {
+          S: (row[7] || '').trim(),
+          A: (row[8] || '').trim(),
+          B: (row[9] || '').trim(),
+          C: (row[10] || '').trim(),
+          D: (row[11] || '').trim()
+        },
+        note: (row[12] || '').trim(),
+        currentProgress: 0,
+        steps: [],
+        subSteps: []
+      };
+      // If main row itself has progress data
+      if (startDate || progress) {
+        currentKpi.subSteps.push({ desc: desc, start: startDate, end: endDate, progress: progress });
+      }
+      newKpiData.push(currentKpi);
+    } else if (currentKpi && desc) {
+      // Sub-step row
+      currentKpi.steps.push(desc);
+      currentKpi.subSteps.push({ desc: desc, start: startDate, end: endDate, progress: progress });
+    }
+  }
+
+  // Calculate overall progress per KPI (average of sub-steps)
+  newKpiData.forEach(kpi => {
+    if (kpi.subSteps.length > 0) {
+      const total = kpi.subSteps.reduce((sum, s) => sum + s.progress, 0);
+      kpi.currentProgress = Math.round(total / kpi.subSteps.length);
+    }
+  });
+
+  kpiData = newKpiData;
+}
 
 // ============================================================
 // UTILITY FUNCTIONS
@@ -751,94 +818,37 @@ function renderDashboard() {
   const warn = statuses.filter(s => s==='주의').length;
   const todo = statuses.filter(s => s==='미착수').length;
 
+  // Build tooltip content for each status
+  function buildTooltip(taskList, label) {
+    if (taskList.length === 0) return `<div class="card-tooltip"><div class="tt-empty">해당 업무 없음</div></div>`;
+    let html = `<div class="card-tooltip"><div class="tt-title">${label} (${taskList.length}건)</div>`;
+    taskList.slice(0, 10).forEach(t => {
+      html += `<div class="tt-item">${t.content} <span style="color:#999">(${t.owner}, ${formatDate(t.deadline)})</span></div>`;
+    });
+    if (taskList.length > 10) html += `<div class="tt-item" style="color:#aaa">외 ${taskList.length - 10}건...</div>`;
+    html += '</div>';
+    return html;
+  }
+
+  const doneTasks = tasks.filter((t,i) => statuses[i]==='완료');
+  const progTasks = tasks.filter((t,i) => statuses[i]==='진행중');
+  const lateTasks = tasks.filter((t,i) => statuses[i]==='지연');
+  const warnTasks = tasks.filter((t,i) => statuses[i]==='주의');
+
   document.getElementById('summaryCards').innerHTML = `
-    <div class="card"><div class="lb">총 업무</div><div class="vl">${total}</div></div>
-    <div class="card green"><div class="lb">완료</div><div class="vl">${done}</div></div>
-    <div class="card blue"><div class="lb">진행 중</div><div class="vl">${prog}</div></div>
-    <div class="card red"><div class="lb">지연</div><div class="vl">${late}</div></div>
-    <div class="card orange"><div class="lb">주의</div><div class="vl">${warn}</div></div>
+    <div class="card"><div class="lb">총 업무</div><div class="vl">${total}</div>${buildTooltip(tasks, '전체 업무')}</div>
+    <div class="card green"><div class="lb">완료</div><div class="vl">${done}</div>${buildTooltip(doneTasks, '완료 업무')}</div>
+    <div class="card blue"><div class="lb">진행 중</div><div class="vl">${prog}</div>${buildTooltip(progTasks, '진행중 업무')}</div>
+    <div class="card red"><div class="lb">지연</div><div class="vl">${late}</div>${buildTooltip(lateTasks, '지연 업무')}</div>
+    <div class="card orange"><div class="lb">주의</div><div class="vl">${warn}</div>${buildTooltip(warnTasks, '주의 업무')}</div>
   `;
 
-  // Person workload chart
+  // Personal workload detail (fixed order: 송은정, 이웅해, 최선아, then others)
   const allOwners = new Set();
   tasks.forEach(t => { getOwners(t.owner).forEach(o => { if (o) allOwners.add(o); }); });
-  const persons = [...allOwners].sort();
-
-  let personHtml = '';
-  persons.forEach(person => {
-    const pTasks = tasks.filter(t => getOwners(t.owner).includes(person));
-    const pStatuses = pTasks.map(t => getTaskStatus(t));
-    const pDone = pStatuses.filter(s => s==='완료').length;
-    const pProg = pStatuses.filter(s => s==='진행중').length;
-    const pLate = pStatuses.filter(s => s==='지연').length;
-    const pWarn = pStatuses.filter(s => s==='주의').length;
-    const pTodo = pStatuses.filter(s => s==='미착수').length;
-    const pTotal = pTasks.length;
-    if (pTotal === 0) return;
-    const maxBar = Math.max(...persons.map(p => tasks.filter(t => getOwners(t.owner).includes(p)).length), 1);
-    const scale = 100 / maxBar;
-    personHtml += `<div class="bar-row">
-      <div class="bar-label">${person}</div>
-      <div class="bar-track">
-        ${pDone ? `<div class="bar-seg s-done" style="width:${pDone*scale}%">${pDone}</div>` : ''}
-        ${pProg ? `<div class="bar-seg s-prog" style="width:${pProg*scale}%">${pProg}</div>` : ''}
-        ${pLate ? `<div class="bar-seg s-late" style="width:${pLate*scale}%">${pLate}</div>` : ''}
-        ${pWarn ? `<div class="bar-seg s-warn" style="width:${pWarn*scale}%">${pWarn}</div>` : ''}
-        ${pTodo ? `<div class="bar-seg s-todo" style="width:${pTodo*scale}%">${pTodo}</div>` : ''}
-      </div>
-      <div class="bar-value">${pTotal}건</div>
-    </div>`;
-  });
-  document.getElementById('personChart').innerHTML = personHtml;
-
-  // Department pie chart
-  const depts = [...new Set(tasks.map(t => t.dept))];
-  const deptColors = ['#8b93d1','#f0a0a0','#8fd4a4','#f5c89a','#c4a8e0','#8ecec0','#f0c080','#a0b4f0'];
-  const deptCounts = depts.map(d => tasks.filter(t => t.dept === d).length);
-  const deptTotal = deptCounts.reduce((a,b) => a+b, 0);
-
-  let conicParts = [];
-  let cumPct = 0;
-  depts.forEach((d, i) => {
-    const pct = deptTotal > 0 ? (deptCounts[i] / deptTotal) * 100 : 0;
-    conicParts.push(`${deptColors[i % deptColors.length]} ${cumPct}% ${cumPct + pct}%`);
-    cumPct += pct;
-  });
-
-  const pieEl = document.getElementById('deptPie');
-  if (conicParts.length > 0) {
-    pieEl.style.background = `conic-gradient(${conicParts.join(',')})`;
-  } else {
-    pieEl.style.background = '#eee';
-  }
-  pieEl.innerHTML = '<div class="pie-center">구분별</div>';
-
-  let legendHtml = '';
-  depts.forEach((d, i) => {
-    legendHtml += `<div class="pie-legend-item">
-      <div class="pie-legend-dot" style="background:${deptColors[i % deptColors.length]}"></div>
-      ${d} (${deptCounts[i]}건)
-    </div>`;
-  });
-  document.getElementById('deptPieLegend').innerHTML = legendHtml;
-
-  // Priority chart
-  const priorities = ['1순위','2순위','3순위','4순위'];
-  const priColors = ['#f0a0a0','#f5c89a','#8ec5f0','#ccc'];
-  let priHtml = '';
-  const maxPri = Math.max(...priorities.map(p => tasks.filter(t => t.priority === p).length), 1);
-  priorities.forEach((pri, i) => {
-    const cnt = tasks.filter(t => t.priority === pri).length;
-    if (cnt === 0) return;
-    priHtml += `<div class="bar-row">
-      <div class="bar-label">${pri}</div>
-      <div class="bar-track">
-        <div class="bar-seg" style="width:${(cnt/maxPri)*100}%;background:${priColors[i]}">${cnt}</div>
-      </div>
-      <div class="bar-value">${cnt}건</div>
-    </div>`;
-  });
-  document.getElementById('priorityChart').innerHTML = priHtml;
+  const preferredOrder = ['송은정', '이웅해', '최선아'];
+  const otherPersons = [...allOwners].filter(p => !preferredOrder.includes(p)).sort();
+  const persons = [...preferredOrder.filter(p => allOwners.has(p)), ...otherPersons];
 
   // Personal workload detail
   let wlHtml = '';
@@ -895,6 +905,53 @@ function renderDashboard() {
       <div class="wl-tasks">${taskListHtml || '<span style="color:#ccc">진행 업무 없음</span>'}</div>
     </div>`;
   });
+
+  // "전원" (team total) summary card
+  {
+    const allStatuses = tasks.map(t => getTaskStatus(t));
+    const tTotal = tasks.length;
+    const tDone = allStatuses.filter(s => s==='완료').length;
+    const tActive = allStatuses.filter(s => s==='진행중').length;
+    const tLate = allStatuses.filter(s => s==='지연').length;
+    const tWarn = allStatuses.filter(s => s==='주의').length;
+    const tTodo = allStatuses.filter(s => s==='미착수').length;
+    const tNotDone = tTotal - tDone;
+    const tCompletionRate = tTotal > 0 ? Math.round((tDone / tTotal) * 100) : 0;
+
+    let tLevel, tLevelText, tLevelClass;
+    if (tNotDone <= 8) { tLevel = 'low'; tLevelText = '여유'; tLevelClass = 'wl-level-low'; }
+    else if (tNotDone <= 16) { tLevel = 'mid'; tLevelText = '보통'; tLevelClass = 'wl-level-mid'; }
+    else if (tNotDone <= 24) { tLevel = 'high'; tLevelText = '바쁨'; tLevelClass = 'wl-level-high'; }
+    else { tLevel = 'over'; tLevelText = '과부하'; tLevelClass = 'wl-level-over'; }
+    const tGaugeWidth = Math.min((tNotDone / 30) * 100, 100);
+
+    const tUrgent = tasks
+      .filter(t => getTaskStatus(t) !== '완료')
+      .sort((a,b) => (parseDate(a.deadline)||Infinity) - (parseDate(b.deadline)||Infinity))
+      .slice(0, 5);
+    let tTaskListHtml = '';
+    tUrgent.forEach(t => {
+      const st = getTaskStatus(t);
+      tTaskListHtml += `<div class="wl-task-item"><span class="badge-status ${statusBadgeClass(st)}" style="font-size:10px;padding:1px 5px">${st}</span> ${t.content} <span style="color:#bbb">(${formatDate(t.deadline)})</span></div>`;
+    });
+
+    wlHtml += `<div class="workload-card" style="border-top-color:#8b93d1">
+      <h4>전원 (팀 전체) <span style="font-size:11px;color:#aaa;font-weight:400">완료율 ${tCompletionRate}%</span></h4>
+      <div class="workload-stat">
+        <span class="workload-stat-item wl-total">전체 ${tTotal}건</span>
+        <span class="workload-stat-item wl-active">진행 ${tActive}건</span>
+        ${tLate > 0 ? `<span class="workload-stat-item wl-late">지연 ${tLate}건</span>` : ''}
+        ${tWarn > 0 ? `<span class="workload-stat-item" style="background:#fdecd5;color:#c08050">주의 ${tWarn}건</span>` : ''}
+        <span class="workload-stat-item" style="background:#f0f0f0;color:#888">미착수 ${tTodo}건</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <div class="wl-gauge" style="flex:1"><div class="wl-gauge-fill ${tLevelClass}" style="width:${tGaugeWidth}%"></div></div>
+        <span style="font-size:11px;font-weight:700;color:${tLevel==='over'?'#c06060':tLevel==='high'?'#c08050':'#6a72b0'}">${tLevelText}</span>
+      </div>
+      <div class="wl-tasks">${tTaskListHtml || '<span style="color:#ccc">진행 업무 없음</span>'}</div>
+    </div>`;
+  }
+
   document.getElementById('workloadDetail').innerHTML = wlHtml;
 }
 
@@ -907,18 +964,20 @@ function renderTaskList() {
   const month = document.getElementById('listMonth').value;
   const person = document.getElementById('filterPerson').value;
   const dept = document.getElementById('filterDept').value;
-  const status = document.getElementById('filterStatus').value;
   const priority = document.getElementById('filterPriority').value;
 
   let tasks = filterTasks(month);
   if (person !== 'all') tasks = tasks.filter(t => getOwners(t.owner).includes(person));
   if (dept !== 'all') tasks = tasks.filter(t => t.dept === dept);
-  if (status !== 'all') tasks = tasks.filter(t => getTaskStatus(t) === status);
   if (priority !== 'all') tasks = tasks.filter(t => t.priority === priority);
+
+  // Split into active and completed
+  const activeTasks = tasks.filter(t => getTaskStatus(t) !== '완료');
+  const doneTasks = tasks.filter(t => getTaskStatus(t) === '완료');
 
   // Sort by priority level then deadline proximity
   const priOrder = {'1순위':1,'2순위':2,'3순위':3,'4순위':4};
-  tasks.sort((a,b) => {
+  const sortFn = (a,b) => {
     const pa = priOrder[a.priority] || 9;
     const pb = priOrder[b.priority] || 9;
     if (pa !== pb) return pa - pb;
@@ -926,46 +985,66 @@ function renderTaskList() {
     const db = parseDate(b.deadline);
     if (da && db) return da - db;
     return 0;
-  });
+  };
+  activeTasks.sort(sortFn);
+  doneTasks.sort(sortFn);
 
-  // Group by 구분
-  const groups = {};
-  const groupOrder = [];
-  tasks.forEach(t => {
-    const key = t.dept || '기타';
-    if (!groups[key]) { groups[key] = []; groupOrder.push(key); }
-    groups[key].push(t);
-  });
-
-  let html = '';
-  let rowNum = 1;
-  groupOrder.forEach(grp => {
-    html += `<tr class="group-header-row"><td colspan="10">${grp}</td></tr>`;
-    groups[grp].forEach(t => {
-      const st = getTaskStatus(t);
-      const idx = taskData.indexOf(t);
-      html += `<tr>
-        <td>${rowNum++}</td>
-        <td>${t.dept}</td>
-        <td class="left">${t.content}</td>
-        <td>${t.owner}</td>
-        <td>
-          <span class="badge-pri ${priBadgeClass(t.priority)}" onclick="togglePriDropdown(event, ${idx})" id="pri-${idx}">
-            ${t.priority}
-          </span>
-        </td>
-        <td>${formatDate(t.start)}</td>
-        <td>${formatDate(t.deadline)}</td>
-        <td>
-          <div class="prog-bar"><div class="prog-fill ${progFillClass(t.progress)}" style="width:${t.progress}%"></div></div>
-          ${t.progress}%
-        </td>
-        <td><span class="badge-status ${statusBadgeClass(st)}">${st}</span></td>
-        <td class="left">${t.statusDesc || '-'}</td>
-      </tr>`;
+  function buildGroupedRows(taskList, startNum) {
+    const groups = {};
+    const groupOrder = [];
+    taskList.forEach(t => {
+      const key = t.dept || '기타';
+      if (!groups[key]) { groups[key] = []; groupOrder.push(key); }
+      groups[key].push(t);
     });
-  });
-  document.getElementById('taskBody').innerHTML = html;
+
+    let html = '';
+    let rowNum = startNum;
+    groupOrder.forEach(grp => {
+      html += `<tr class="group-header-row"><td colspan="10">${grp}</td></tr>`;
+      groups[grp].forEach(t => {
+        const st = getTaskStatus(t);
+        const idx = taskData.indexOf(t);
+        html += `<tr>
+          <td>${rowNum++}</td>
+          <td>${t.dept}</td>
+          <td class="left">${t.content}</td>
+          <td>${t.owner}</td>
+          <td>
+            <span class="badge-pri ${priBadgeClass(t.priority)}" onclick="togglePriDropdown(event, ${idx})" id="pri-${idx}">
+              ${t.priority}
+            </span>
+          </td>
+          <td>${formatDate(t.start)}</td>
+          <td>${formatDate(t.deadline)}</td>
+          <td>
+            <div class="prog-bar"><div class="prog-fill ${progFillClass(t.progress)}" style="width:${t.progress}%"></div></div>
+            ${t.progress}%
+          </td>
+          <td><span class="badge-status ${statusBadgeClass(st)}">${st}</span></td>
+          <td class="left">${t.statusDesc || '-'}</td>
+        </tr>`;
+      });
+    });
+    return html;
+  }
+
+  document.getElementById('activeTaskBody').innerHTML = buildGroupedRows(activeTasks, 1);
+  document.getElementById('doneTaskBody').innerHTML = buildGroupedRows(doneTasks, 1);
+  document.getElementById('activeCount').textContent = `(${activeTasks.length}건)`;
+  document.getElementById('doneCount').textContent = `(${doneTasks.length}건)`;
+}
+
+function toggleTaskSection(sectionId, headerEl) {
+  const body = document.getElementById(sectionId);
+  headerEl.classList.toggle('collapsed');
+  if (body.classList.contains('collapsed')) {
+    body.classList.remove('collapsed');
+    body.style.maxHeight = body.scrollHeight + 'px';
+  } else {
+    body.style.maxHeight = '0';
+    body.classList.add('collapsed');
+  }
 }
 
 function togglePriDropdown(e, idx) {
@@ -1014,17 +1093,44 @@ document.addEventListener('click', closePriDropdown);
 // TAB 2: KPI
 // ============================================================
 function renderKPI() {
+  if (kpiData.length === 0) {
+    document.getElementById('kpiContainer').innerHTML = '<div style="text-align:center;color:#aaa;padding:40px">KPI 데이터를 불러오는 중...</div>';
+    return;
+  }
+
   let html = '';
   kpiData.forEach(kpi => {
+    // Sub-step progress rows
+    let stepsHtml = '';
+    if (kpi.subSteps && kpi.subSteps.length > 0) {
+      stepsHtml = '<div class="kpi-steps"><h4>실행 단계별 진척도</h4><table class="grade-table" style="margin-top:6px"><thead><tr><th style="text-align:left;min-width:200px">단계</th><th style="width:90px">착수일</th><th style="width:90px">종료(예정)일</th><th style="width:100px">진행률</th></tr></thead><tbody>';
+      kpi.subSteps.forEach(s => {
+        const progColor = s.progress >= 100 ? '#8fd4a4' : s.progress >= 50 ? '#8ec5f0' : s.progress > 0 ? '#f5c89a' : '#eee';
+        const shortDesc = s.desc.length > 60 ? s.desc.substring(0, 60) + '...' : s.desc;
+        stepsHtml += `<tr>
+          <td style="text-align:left;white-space:normal;word-break:break-word">${shortDesc}</td>
+          <td>${formatDate(s.start)}</td>
+          <td>${formatDate(s.end)}</td>
+          <td><div style="display:flex;align-items:center;gap:6px">
+            <div style="flex:1;height:8px;background:#eee;border-radius:4px;overflow:hidden">
+              <div style="height:100%;width:${s.progress}%;background:${progColor};border-radius:4px"></div>
+            </div>
+            <span style="font-weight:600;font-size:11px;min-width:30px">${s.progress}%</span>
+          </div></td>
+        </tr>`;
+      });
+      stepsHtml += '</tbody></table></div>';
+    }
+
     html += `<div class="kpi-card">
       <h3>${kpi.name}</h3>
-      <div class="kpi-weight">가중치: ${kpi.weight}% | 마감: ${kpi.deadline || '-'}</div>
+      <div class="kpi-weight">가중치: ${kpi.weight}%</div>
       <div class="kpi-meta">
         <div><dt>실행계획</dt><dd>${kpi.plan}</dd></div>
-        <div><dt>측정 결과물</dt><dd>${kpi.measure}</dd></div>
+        <div><dt>측정 결과물</dt><dd>${kpi.measure || '-'}</dd></div>
       </div>
       <div style="margin-bottom:14px">
-        <div style="font-size:12px;font-weight:700;margin-bottom:4px;color:#555">현재 진척도</div>
+        <div style="font-size:12px;font-weight:700;margin-bottom:4px;color:#555">종합 진척도</div>
         <div style="display:flex;align-items:center;gap:10px">
           <div style="flex:1;height:14px;background:#eee;border-radius:7px;overflow:hidden">
             <div style="height:100%;width:${kpi.currentProgress}%;background:linear-gradient(90deg,#8b93d1,#a0c4f0);border-radius:7px;transition:width .5s"></div>
@@ -1032,11 +1138,9 @@ function renderKPI() {
           <span style="font-weight:700;font-size:13px;color:#6a72b0;min-width:40px">${kpi.currentProgress}%</span>
         </div>
       </div>
-      <div class="kpi-steps">
-        <h4>실행 단계</h4>
-        <ul>${kpi.steps.map(s => `<li>${s}</li>`).join('')}</ul>
-      </div>
-      <table class="grade-table">
+      ${stepsHtml}
+      ${kpi.note ? `<div style="font-size:11px;color:#888;margin:10px 0;padding:8px;background:#f9f7fc;border-radius:6px">${kpi.note}</div>` : ''}
+      <table class="grade-table" style="margin-top:10px">
         <thead><tr><th>등급</th><th>점수</th><th>기준</th></tr></thead>
         <tbody>
           <tr><td class="grade-s">S</td><td>100</td><td style="text-align:left">${kpi.grades.S}</td></tr>
@@ -1058,120 +1162,99 @@ function renderWeeklyReport() {
   const now = new Date();
   const weekStart = new Date(now);
   weekStart.setDate(now.getDate() - now.getDay() + 1); // Monday
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 4); // Friday
-  const nextWeekStart = new Date(weekStart);
-  nextWeekStart.setDate(weekStart.getDate() + 7);
-  const nextWeekEnd = new Date(nextWeekStart);
-  nextWeekEnd.setDate(nextWeekStart.getDate() + 4);
+  const nextWeekEnd = new Date(weekStart);
+  nextWeekEnd.setDate(weekStart.getDate() + 11); // Next week Friday
 
   function fmtD(d) { return (d.getMonth()+1) + '/' + d.getDate(); }
+  function fmtFull(d) { return d.getFullYear() + '년 ' + (d.getMonth()+1) + '월 ' + d.getDate() + '일'; }
+  const dayNames = ['일','월','화','수','목','금','토'];
 
   // Get all tasks and determine status
   const allTasks = taskData.map(t => ({...t, status: getTaskStatus(t)}));
 
-  // Completed this week or recently
-  const doneTasks = allTasks.filter(t => t.status === '완료');
-  const inProgress = allTasks.filter(t => t.status === '진행중');
-  const lateTasks = allTasks.filter(t => t.status === '지연');
-  const warnTasks = allTasks.filter(t => t.status === '주의');
-  const issuesTasks = [...lateTasks, ...warnTasks];
+  // Active tasks (not completed)
+  const activeTasks = allTasks.filter(t => t.status !== '완료');
 
-  // Next week plan: tasks with deadlines in the next 2 weeks
-  const twoWeeksOut = new Date(now);
-  twoWeeksOut.setDate(now.getDate() + 14);
-  const upcomingTasks = allTasks.filter(t => {
-    const dl = parseDate(t.deadline);
-    return dl && dl >= now && dl <= twoWeeksOut && t.status !== '완료';
-  });
+  // Group active tasks by owner, sorted by priority
+  const memberOrder = ['송은정', '이웅해', '최선아'];
+  const priOrder = {'1순위':1,'2순위':2,'3순위':3,'4순위':4};
+
+  function getTasksByOwner(ownerName) {
+    return activeTasks
+      .filter(t => getOwners(t.owner).includes(ownerName))
+      .sort((a,b) => (priOrder[a.priority]||9) - (priOrder[b.priority]||9));
+  }
 
   // Decisions needed
   const decisions = allTasks.filter(t => t.decision && t.status !== '완료');
+  // Meetings
   const meetings = allTasks.filter(t => t.meeting && t.status !== '완료');
 
-  // Group by department
-  const depts = [...new Set(taskData.map(t => t.dept))];
+  // Build report HTML (회의록 형식)
+  let html = '';
 
-  let html = `
-    <div class="report-section">
-      <h3>CEO 주간 보고 - 경영관리팀</h3>
-      <div class="report-date">보고 기간: ${fmtD(weekStart)} (월) ~ ${fmtD(nextWeekEnd)} (금) | 작성일: ${fmtD(now)}</div>
-    </div>
-  `;
-
-  // Section 1: Completed tasks (collapsible, collapsed by default)
+  // Header
   html += `<div class="report-section">
-    <h3 class="report-toggle collapsed" onclick="toggleReportSection(this)">완료 업무 (${doneTasks.length}건) <span class="toggle-arrow">▼</span></h3>
-    <div class="report-body collapsed">`;
-  depts.forEach(dept => {
-    const deptDone = doneTasks.filter(t => t.dept === dept);
-    if (deptDone.length === 0) return;
-    html += `<h4>${dept}</h4>`;
-    deptDone.forEach(t => {
-      html += `<div class="report-item"><span class="month-badge">${t.month}월</span><span class="badge-status badge-done">완료</span> ${t.content} <span style="color:#888;font-size:11px">(${t.owner})</span></div>`;
-    });
-  });
-  html += '</div></div>';
+    <h3 style="font-size:18px;border-bottom:3px solid #8b93d1;padding-bottom:8px">경영관리팀 주간 회의 <span style="font-size:13px;font-weight:400;color:#888">(참석자: 최선아, 이웅해, 송은정)</span></h3>
+    <div class="report-date" style="margin-top:8px;font-size:13px">${fmtFull(now)} / 소회의실</div>
+  </div>`;
 
-  // Section 2: In progress
-  html += `<div class="report-section"><h3>진행 중 업무 (${inProgress.length}건)</h3>`;
-  depts.forEach(dept => {
-    const deptProg = inProgress.filter(t => t.dept === dept);
-    if (deptProg.length === 0) return;
-    html += `<h4>${dept}</h4>`;
-    deptProg.forEach(t => {
-      html += `<div class="report-item"><span class="month-badge">${t.month}월</span><span class="badge-status badge-prog">진행중</span> ${t.content} <span style="color:#888;font-size:11px">(${t.owner}, 진척: ${t.progress}%, 마감: ${formatDate(t.deadline)})</span></div>`;
+  // 안내 사항
+  const warnAndLateTasks = allTasks.filter(t => t.status === '지연' || t.status === '주의');
+  html += `<div class="report-section">
+    <h3 style="color:#e05070">안내 사항</h3>`;
+  // Auto-generate notices from task data
+  const completedCount = allTasks.filter(t => t.status === '완료').length;
+  const totalCount = allTasks.length;
+  html += `<div class="report-item">전체 업무 ${totalCount}건 중 ${completedCount}건 완료 (완료율 ${totalCount > 0 ? Math.round(completedCount/totalCount*100) : 0}%)</div>`;
+  if (warnAndLateTasks.length > 0) {
+    html += `<div class="report-item" style="color:#c06060">지연/주의 업무 ${warnAndLateTasks.length}건 - 우선 확인 필요</div>`;
+    warnAndLateTasks.forEach(t => {
+      html += `<div class="report-item" style="padding-left:28px;color:#c08050">- ${t.content} <span style="color:#999">(${t.owner}, 마감: ${formatDate(t.deadline)})</span></div>`;
     });
-  });
+  }
   html += '</div>';
 
-  // Section 3: Issues (late + warn)
-  if (issuesTasks.length > 0) {
-    html += `<div class="report-section"><h3>지연 / 이슈 업무 (${issuesTasks.length}건)</h3>`;
-    depts.forEach(dept => {
-      const deptIssue = issuesTasks.filter(t => t.dept === dept);
-      if (deptIssue.length === 0) return;
-      html += `<h4>${dept}</h4>`;
-      deptIssue.forEach(t => {
-        const st = t.status;
-        html += `<div class="report-item"><span class="month-badge">${t.month}월</span><span class="badge-status ${statusBadgeClass(st)}">${st}</span> ${t.content} <span style="color:#888;font-size:11px">(${t.owner}, 진척: ${t.progress}%, 마감: ${formatDate(t.deadline)})</span>
-        ${t.statusDesc ? `<br><span style="color:#c08050;font-size:11px">${t.statusDesc}</span>` : ''}
+  // 금주, 차주 주요 업무
+  html += `<div class="report-section">
+    <h3 style="color:#e05070">금주, 차주 주요 업무 (${fmtD(weekStart)} ${dayNames[weekStart.getDay()]} ~ ${fmtD(nextWeekEnd)} ${dayNames[nextWeekEnd.getDay()]}까지)</h3>`;
+
+  memberOrder.forEach(member => {
+    const tasks = getTasksByOwner(member);
+    html += `<h4 style="margin-top:14px;font-size:13px;font-weight:700;color:#333;border-left:3px solid #8b93d1;padding-left:8px">[${member}]</h4>`;
+    if (tasks.length === 0) {
+      html += '<div class="report-item" style="color:#aaa">배정된 업무 없음</div>';
+    } else {
+      tasks.forEach(t => {
+        const dlStr = t.deadline ? formatDate(t.deadline) : '';
+        const dlDisplay = dlStr && dlStr !== '-' ? ` (${dlStr})` : '';
+        const statusIcon = t.status === '지연' ? '⚠ ' : t.status === '주의' ? '⚡ ' : '';
+        html += `<div class="report-item" style="display:flex;align-items:flex-start;gap:6px">
+          <span style="min-width:14px">☐</span>
+          <span><span class="badge-pri ${priBadgeClass(t.priority)}" style="font-size:10px;padding:1px 6px;cursor:default">${t.priority}</span> ${statusIcon}${t.content}${dlDisplay}${t.statusDesc ? ' - ' + t.statusDesc : ''}</span>
         </div>`;
       });
-    });
-    html += '</div>';
-  }
-
-  // Section 4: Decisions needed
-  if (decisions.length > 0) {
-    html += `<div class="report-section"><h3>결정 필요 사항 (${decisions.length}건)</h3>`;
-    decisions.forEach(t => {
-      html += `<div class="report-highlight"><strong>${t.dept}</strong> - ${t.content}<br><span style="color:#c06060">결정사항: ${t.decision}</span> <span style="color:#888;font-size:11px">(담당: ${t.owner})</span></div>`;
-    });
-    html += '</div>';
-  }
-
-  // Section 5: Meetings
-  if (meetings.length > 0) {
-    html += `<div class="report-section"><h3>미팅 요청 (${meetings.length}건)</h3>`;
-    meetings.forEach(t => {
-      html += `<div class="report-item"><strong>${t.dept}</strong> - ${t.content}: <span style="color:#6a72b0;font-weight:600">${t.meeting}</span></div>`;
-    });
-    html += '</div>';
-  }
-
-  // Section 6: Next 2 weeks plan
-  html += `<div class="report-section"><h3>향후 2주 계획 (${upcomingTasks.length}건)</h3>`;
-  depts.forEach(dept => {
-    const deptUp = upcomingTasks.filter(t => t.dept === dept);
-    if (deptUp.length === 0) return;
-    html += `<h4>${dept}</h4>`;
-    deptUp.forEach(t => {
-      const st = getTaskStatus(t);
-      html += `<div class="report-item"><span class="month-badge">${t.month}월</span><span class="badge-status ${statusBadgeClass(st)}">${st}</span> ${t.content} <span style="color:#888;font-size:11px">(${t.owner}, 마감: ${formatDate(t.deadline)}, 진척: ${t.progress}%)</span></div>`;
-    });
+    }
   });
   html += '</div>';
+
+  // 기타 논의사항
+  if (meetings.length > 0) {
+    html += `<div class="report-section"><h3>기타 논의사항</h3>`;
+    meetings.forEach(t => {
+      html += `<div class="report-item">• ${t.content}: <span style="color:#6a72b0;font-weight:600">${t.meeting}</span> <span style="color:#888;font-size:11px">(${t.owner})</span></div>`;
+    });
+    html += '</div>';
+  }
+
+  // 대표이사 확인 필요 사항
+  if (decisions.length > 0) {
+    html += `<div class="report-section"><h3>대표이사 확인 필요 사항</h3>`;
+    decisions.forEach(t => {
+      html += `<div class="report-item">• ${t.decision} <span style="color:#888;font-size:11px">(${t.dept} - ${t.content}, 담당: ${t.owner})</span></div>`;
+    });
+    html += '</div>';
+  }
 
   document.getElementById('weeklyReport').innerHTML = html;
 }
