@@ -81,6 +81,9 @@ td.left{text-align:left}
 .badge-warn{background:#fff3e0;color:#e65100}
 .badge-todo{background:#f5f5f5;color:#999}
 
+/* Group header row */
+.group-header-row td{background:#e8eaf6;color:#1a237e;font-weight:700;font-size:13px;padding:10px 12px!important;border-bottom:2px solid #c5cae9;letter-spacing:0.5px}
+
 /* Priority badges */
 .badge-pri{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;cursor:pointer;position:relative}
 .badge-p1{background:#ffebee;color:#c62828}
@@ -317,7 +320,7 @@ td.left{text-align:left}
 // GOOGLE SHEETS CONFIG
 // ============================================================
 const SPREADSHEET_ID = '1zgnxIN0dn1i04rBu-GQwcEZFBmqSX9w-z3w2JGlRMnc';
-const SHEET_NAMES = ['1월', '3월'];
+const SHEET_NAMES = ['1월', '2월', '3월'];
 
 function getSheetURL(sheetName) {
   return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
@@ -812,29 +815,42 @@ function renderTaskList() {
     return 0;
   });
 
+  // Group by 구분
+  const groups = {};
+  const groupOrder = [];
+  tasks.forEach(t => {
+    const key = t.dept || '기타';
+    if (!groups[key]) { groups[key] = []; groupOrder.push(key); }
+    groups[key].push(t);
+  });
+
   let html = '';
-  tasks.forEach((t, i) => {
-    const st = getTaskStatus(t);
-    const idx = taskData.indexOf(t);
-    html += `<tr>
-      <td>${i+1}</td>
-      <td>${t.dept}</td>
-      <td class="left">${t.content}</td>
-      <td>${t.owner}</td>
-      <td>
-        <span class="badge-pri ${priBadgeClass(t.priority)}" onclick="togglePriDropdown(event, ${idx})" id="pri-${idx}">
-          ${t.priority}
-        </span>
-      </td>
-      <td>${formatDate(t.start)}</td>
-      <td>${formatDate(t.deadline)}</td>
-      <td>
-        <div class="prog-bar"><div class="prog-fill ${progFillClass(t.progress)}" style="width:${t.progress}%"></div></div>
-        ${t.progress}%
-      </td>
-      <td><span class="badge-status ${statusBadgeClass(st)}">${st}</span></td>
-      <td class="left">${t.statusDesc || '-'}</td>
-    </tr>`;
+  let rowNum = 1;
+  groupOrder.forEach(grp => {
+    html += `<tr class="group-header-row"><td colspan="10">${grp}</td></tr>`;
+    groups[grp].forEach(t => {
+      const st = getTaskStatus(t);
+      const idx = taskData.indexOf(t);
+      html += `<tr>
+        <td>${rowNum++}</td>
+        <td>${t.dept}</td>
+        <td class="left">${t.content}</td>
+        <td>${t.owner}</td>
+        <td>
+          <span class="badge-pri ${priBadgeClass(t.priority)}" onclick="togglePriDropdown(event, ${idx})" id="pri-${idx}">
+            ${t.priority}
+          </span>
+        </td>
+        <td>${formatDate(t.start)}</td>
+        <td>${formatDate(t.deadline)}</td>
+        <td>
+          <div class="prog-bar"><div class="prog-fill ${progFillClass(t.progress)}" style="width:${t.progress}%"></div></div>
+          ${t.progress}%
+        </td>
+        <td><span class="badge-status ${statusBadgeClass(st)}">${st}</span></td>
+        <td class="left">${t.statusDesc || '-'}</td>
+      </tr>`;
+    });
   });
   document.getElementById('taskBody').innerHTML = html;
 }
