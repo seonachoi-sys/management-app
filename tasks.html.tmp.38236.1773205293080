@@ -94,7 +94,7 @@ td.left{text-align:left}
 /* Priority dropdown */
 .pri-dropdown{position:absolute;top:100%;left:0;background:#fff;border:1px solid #ddd;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:100;min-width:80px;overflow:hidden}
 .pri-dropdown div{padding:6px 12px;font-size:11px;cursor:pointer;font-weight:600}
-.pri-dropdown div:hover{background:#ede7f6}
+.pri-dropdown div:hover{background:#e8eaf6}
 
 /* Progress bar */
 .prog-bar{width:80px;height:8px;background:#eee;border-radius:4px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:4px}
@@ -114,16 +114,16 @@ td.left{text-align:left}
 .kpi-steps{margin-bottom:14px}
 .kpi-steps h4{font-size:12px;font-weight:700;margin-bottom:6px;color:#555}
 .kpi-steps li{font-size:12px;margin-bottom:3px;padding-left:4px;list-style:none}
-.kpi-steps li:before{content:'';display:inline-block;width:6px;height:6px;background:#b0b7e8;border-radius:50%;margin-right:6px;vertical-align:middle}
+.kpi-steps li:before{content:'';display:inline-block;width:6px;height:6px;background:#1a237e;border-radius:50%;margin-right:6px;vertical-align:middle}
 .grade-table{width:100%;border-collapse:collapse;font-size:11px}
 .grade-table th,.grade-table td{border:1px solid #ddd;padding:6px 8px;text-align:center}
 .grade-table th{background:#f5f5f5;font-weight:700}
 .grade-table td:first-child{font-weight:700;width:40px}
-.grade-s{background:#ddf3e4;color:#5cb878}
-.grade-a{background:#ddeaf7;color:#6ba3d6}
+.grade-s{background:#e8f5e9;color:#2e7d32}
+.grade-a{background:#e3f2fd;color:#1565c0}
 .grade-b{background:#fff8e1;color:#f57f17}
-.grade-c{background:#fdecd5;color:#c08050}
-.grade-d{background:#fce0e0;color:#c06060}
+.grade-c{background:#fff3e0;color:#e65100}
+.grade-d{background:#ffebee;color:#c62828}
 .grade-scale{display:flex;gap:0;margin-bottom:18px;border-radius:8px;overflow:hidden}
 .grade-scale div{flex:1;text-align:center;padding:8px 4px;font-weight:700;font-size:13px;color:#fff}
 
@@ -136,8 +136,8 @@ td.left{text-align:left}
 .report-highlight{background:#fef3e8;padding:8px 12px;border-radius:6px;margin:8px 0;font-size:12px;border-left:3px solid #f5c89a}
 .report-date{font-size:12px;color:#666;margin-bottom:12px}
 .btn{padding:8px 18px;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px;font-family:inherit;transition:.2s}
-.btn-primary{background:#8b93d1;color:#fff}.btn-primary:hover{background:#7c83c9}
-.btn-print{background:#e0935a;color:#fff;margin-left:10px}.btn-print:hover{background:#c97d48}
+.btn-primary{background:#1a237e;color:#fff}.btn-primary:hover{background:#283593}
+.btn-print{background:#e65100;color:#fff;margin-left:10px}.btn-print:hover{background:#bf360c}
 
 .legend{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0;font-size:11px;color:#666}
 .legend-item{display:flex;align-items:center;gap:3px}
@@ -146,71 +146,21 @@ td.left{text-align:left}
 .footer{text-align:center;color:#999;font-size:11px;padding:20px}
 
 /* Info banner */
-.info-banner{background:#eee8f7;border:1px solid #d1c4e9;border-radius:8px;padding:10px 16px;margin-bottom:14px;font-size:12px;color:#7c6bbd;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.info-banner{background:#e3f2fd;border:1px solid #90caf9;border-radius:8px;padding:10px 16px;margin-bottom:14px;font-size:12px;color:#1565c0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .info-banner .info-icon{font-size:16px;flex-shrink:0}
 .info-banner .info-text{flex:1}
-.btn-refresh{padding:6px 14px;border:1px solid #b0b7e8;background:#fff;color:#6a72b0;border-radius:5px;cursor:pointer;font-weight:600;font-size:12px;font-family:inherit;transition:.2s;white-space:nowrap}
-.btn-refresh:hover{background:#8b93d1;color:#fff}
+.btn-refresh{padding:6px 14px;border:1px solid #1565c0;background:#fff;color:#1565c0;border-radius:5px;cursor:pointer;font-weight:600;font-size:12px;font-family:inherit;transition:.2s;white-space:nowrap}
+.btn-refresh:hover{background:#1565c0;color:#fff}
 .btn-refresh:disabled{opacity:.5;cursor:not-allowed}
 
 /* Loading overlay */
 .loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999}
-.loading-spinner{width:48px;height:48px;border:4px solid #e0e0e0;border-top-color:#8b93d1;border-radius:50%;animation:spin 1s linear infinite}
+.loading-spinner{width:48px;height:48px;border:4px solid #e0e0e0;border-top-color:#1a237e;border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.loading-text{margin-top:14px;font-size:14px;font-weight:600;color:#6a72b0}
+.loading-text{margin-top:14px;font-size:14px;font-weight:600;color:#1a237e}
 
 /* Error banner */
-.error-banner{background:#fce0e0;border:1px solid #f0b0b0;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:12px;color:#c06060;display:none}
-
-/* Collapsible report section */
-.report-toggle{cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between}
-.report-toggle .toggle-arrow{font-size:14px;color:#aaa;transition:transform .2s;margin-left:8px}
-.report-toggle.collapsed .toggle-arrow{transform:rotate(-90deg)}
-.report-body{transition:max-height .3s ease;overflow:hidden}
-.report-body.collapsed{max-height:0!important;padding:0}
-.month-badge{display:inline-block;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;background:#ede7f6;color:#7c6bbd;margin-right:6px}
-
-/* Workload detail cards */
-.workload-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:14px}
-.workload-card{background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.06);border-top:3px solid #b0b7e8}
-.workload-card h4{font-size:14px;color:#6a72b0;margin-bottom:10px;display:flex;align-items:center;gap:8px}
-.workload-stat{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-.workload-stat-item{font-size:11px;padding:3px 8px;border-radius:6px;font-weight:600}
-.wl-total{background:#f0edf5;color:#6a72b0}
-.wl-active{background:#ddeaf7;color:#5a8fbe}
-.wl-late{background:#fce0e0;color:#c06060}
-.wl-gauge{height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;margin-bottom:6px}
-.wl-gauge-fill{height:100%;border-radius:4px;transition:width .4s}
-.wl-level-low{background:#8fd4a4}
-.wl-level-mid{background:#f5d89a}
-.wl-level-high{background:#f5c89a}
-.wl-level-over{background:#f0a0a0}
-.wl-tasks{font-size:11px;color:#888;line-height:1.8}
-.wl-task-item{padding:2px 0;border-bottom:1px solid #f8f6fc}
-.wl-task-item:last-child{border-bottom:none}
-
-/* Today notification toast */
-.notif-toast{position:fixed;top:20px;right:20px;width:380px;max-height:80vh;background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.15);z-index:10000;overflow:hidden;animation:slideIn .4s ease;border:1px solid #e8e4f0}
-@keyframes slideIn{from{transform:translateX(420px);opacity:0}to{transform:translateX(0);opacity:1}}
-.notif-header{background:linear-gradient(135deg,#7c83c9,#a0b4f0);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
-.notif-header h3{font-size:14px;margin:0}
-.notif-close{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0 4px;opacity:.8}
-.notif-close:hover{opacity:1}
-.notif-body{max-height:60vh;overflow-y:auto;padding:14px 18px}
-.notif-item{padding:10px 0;border-bottom:1px solid #f0edf5;font-size:12px;display:flex;gap:10px;align-items:flex-start}
-.notif-item:last-child{border-bottom:none}
-.notif-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
-.notif-dot.urgent{background:#f0a0a0}
-.notif-dot.warn{background:#f5c89a}
-.notif-dot.normal{background:#8ec5f0}
-.notif-info{flex:1}
-.notif-task-name{font-weight:600;color:#3a3a4a;margin-bottom:2px}
-.notif-task-meta{color:#999;font-size:11px}
-.notif-empty{padding:20px;text-align:center;color:#aaa;font-size:13px}
-.notif-footer{padding:10px 18px;background:#f9f7fc;border-top:1px solid #f0edf5;font-size:11px;color:#999;text-align:center}
-.notif-badge{position:absolute;top:-4px;right:-4px;background:#f0a0a0;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px}
-.notif-bell{position:fixed;bottom:24px;right:24px;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#8b93d1,#a0b4f0);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 16px rgba(139,147,209,.4);z-index:9999;display:flex;align-items:center;justify-content:center;transition:.2s}
-.notif-bell:hover{transform:scale(1.1);box-shadow:0 6px 20px rgba(139,147,209,.5)}
+.error-banner{background:#ffebee;border:1px solid #ef9a9a;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:12px;color:#c62828;display:none}
 
 /* Print styles */
 @media print{
@@ -269,11 +219,11 @@ td.left{text-align:left}
 <h3>담당자별 업무 현황</h3>
 <div id="personChart" class="bar-chart"></div>
 <div class="legend" style="margin-top:10px">
-<div class="legend-item"><div class="legend-dot" style="background:#8fd4a4"></div>완료</div>
-<div class="legend-item"><div class="legend-dot" style="background:#8ec5f0"></div>진행중</div>
-<div class="legend-item"><div class="legend-dot" style="background:#f0a0a0"></div>지연</div>
-<div class="legend-item"><div class="legend-dot" style="background:#f5c89a"></div>주의</div>
-<div class="legend-item"><div class="legend-dot" style="background:#d5d5d5"></div>미착수</div>
+<div class="legend-item"><div class="legend-dot" style="background:#4caf50"></div>완료</div>
+<div class="legend-item"><div class="legend-dot" style="background:#42a5f5"></div>진행중</div>
+<div class="legend-item"><div class="legend-dot" style="background:#ef5350"></div>지연</div>
+<div class="legend-item"><div class="legend-dot" style="background:#ff9800"></div>주의</div>
+<div class="legend-item"><div class="legend-dot" style="background:#bdbdbd"></div>미착수</div>
 </div>
 </div>
 <div class="chart-section">
@@ -287,10 +237,6 @@ td.left{text-align:left}
 <div class="chart-section">
 <h3>우선순위별 분포</h3>
 <div id="priorityChart" class="bar-chart"></div>
-</div>
-<div class="chart-section">
-<h3>개인별 업무 부하량</h3>
-<div id="workloadDetail" class="workload-grid"></div>
 </div>
 </div>
 
@@ -348,11 +294,11 @@ td.left{text-align:left}
 <!-- TAB 2: KPI -->
 <div class="panel" id="panel2">
 <div class="grade-scale">
-<div style="background:#8fd4a4">S (100)</div>
-<div style="background:#8ec5f0">A (90)</div>
-<div style="background:#f5d89a">B (80)</div>
-<div style="background:#f5c89a">C (70)</div>
-<div style="background:#f0a0a0">D (60)</div>
+<div style="background:#2e7d32">S (100)</div>
+<div style="background:#1565c0">A (90)</div>
+<div style="background:#f57f17">B (80)</div>
+<div style="background:#e65100">C (70)</div>
+<div style="background:#c62828">D (60)</div>
 </div>
 <div id="kpiContainer"></div>
 </div>
@@ -554,8 +500,6 @@ async function loadAllData() {
 
     populateFilters();
     renderCurrentTab();
-    if (typeof updateBellBadge === 'function') updateBellBadge();
-    if (typeof checkAutoNotification === 'function') checkAutoNotification();
 
     errorEl.style.display = 'none';
   } catch (err) {
@@ -586,23 +530,23 @@ const kpiData = [
   {name:'내부통제 준수', weight:25, plan:'내부통제 프로세스 구축', measure:'통제 기술서, 통제 미비 개선 방안 보고서', deadline:'5.31',
    steps:['1단계: 표준 통제 기술서 작성(Draft)','2단계: 내부 진단 및 GAP 분석','3단계: 최종 표준 통제 기술서 도출'],
    grades:{S:'회사 최적화 통제 기술서 완성 + 즉시 실행',A:'3단계 완수 + 보고서 승인',B:'3단계 완수, 보고서 미승인',C:'완성도 떨어지거나 기한 넘김',D:'측정 결과물 미도출'},
-   currentProgress:0},
+   currentProgress:15},
   {name:'예산 관리', weight:25, plan:'실무 부서 예산 관리 내재화', measure:'발표 평가',
    steps:['가. 예산 관리 프로세스 수립(SOP)','나. 월간 예실 대비 리포팅','다. 분기 예산 조정 / 하반기 예산 도출'],
    grades:{S:'3가지 산출물 + 발표 S',A:'3가지 산출물 + 발표 A',B:'3가지 산출물 + 발표 B',C:'2가지 산출물 + 발표 C',D:'1가지 산출물 + 발표 D'},
-   currentProgress:0},
+   currentProgress:30},
   {name:'비즈니스 의사결정 지원', weight:20, plan:'동적 재무 모델 + B2H 수익성 분석', measure:'동적 재무 모델 파일',
    steps:['고정비/변동비 재정의','표준원가 재정의','인원-매출 연동 자동 수식 구축','5개년 데이터 입력 및 검증'],
    grades:{S:'2건 완료 + 만족도 9-10',A:'2건 완료 + 만족도 7-8',B:'1건 완료 + 만족도 5-6',C:'완성도 모호 + 만족도 3-4',D:'미완성 + 만족도 1-2'},
-   currentProgress:0},
+   currentProgress:10},
   {name:'업무 시스템화', weight:10, plan:'업무 매뉴얼 작성', measure:'발표 평가',
    steps:['가. 결산 매뉴얼','나. 매출처별 청구 매뉴얼','다. 급여 및 4대보험 실무 매뉴얼'],
    grades:{S:'3종 작성 + 팀 내 교육',A:'3종 작성',B:'2종 작성',C:'1종 작성',D:'작성 완성도 미흡'},
-   currentProgress:0},
+   currentProgress:20},
   {name:'B2H 수익성 분석', weight:20, plan:'B2H 사업 수익성 분석 리포트', measure:'수익성 분석 보고서',
    steps:['매출 구조 분석','원가 구조 분석','손익 시나리오 도출','최종 보고서 작성'],
    grades:{S:'보고서 완성 + CEO 만족도 9-10',A:'보고서 완성 + CEO 만족도 7-8',B:'보고서 완성 + CEO 만족도 5-6',C:'보고서 미완성 또는 만족도 3-4',D:'보고서 미도출'},
-   currentProgress:0}
+   currentProgress:5}
 ];
 
 // ============================================================
@@ -793,7 +737,7 @@ function renderDashboard() {
 
   // Department pie chart
   const depts = [...new Set(tasks.map(t => t.dept))];
-  const deptColors = ['#8b93d1','#f0a0a0','#8fd4a4','#f5c89a','#c4a8e0','#8ecec0','#f0c080','#a0b4f0'];
+  const deptColors = ['#1a237e','#c62828','#2e7d32','#e65100','#6a1b9a','#00695c','#ef6c00','#283593'];
   const deptCounts = depts.map(d => tasks.filter(t => t.dept === d).length);
   const deptTotal = deptCounts.reduce((a,b) => a+b, 0);
 
@@ -824,7 +768,7 @@ function renderDashboard() {
 
   // Priority chart
   const priorities = ['1순위','2순위','3순위','4순위'];
-  const priColors = ['#f0a0a0','#f5c89a','#8ec5f0','#ccc'];
+  const priColors = ['#c62828','#e65100','#1565c0','#666'];
   let priHtml = '';
   const maxPri = Math.max(...priorities.map(p => tasks.filter(t => t.priority === p).length), 1);
   priorities.forEach((pri, i) => {
@@ -839,63 +783,6 @@ function renderDashboard() {
     </div>`;
   });
   document.getElementById('priorityChart').innerHTML = priHtml;
-
-  // Personal workload detail
-  let wlHtml = '';
-  persons.forEach(person => {
-    const pTasks = tasks.filter(t => getOwners(t.owner).includes(person));
-    const pTotal = pTasks.length;
-    if (pTotal === 0) return;
-    const pStatuses = pTasks.map(t => getTaskStatus(t));
-    const pDone = pStatuses.filter(s => s==='완료').length;
-    const pActive = pStatuses.filter(s => s==='진행중').length;
-    const pLate = pStatuses.filter(s => s==='지연').length;
-    const pWarn = pStatuses.filter(s => s==='주의').length;
-    const pTodo = pStatuses.filter(s => s==='미착수').length;
-    const pNotDone = pTotal - pDone;
-
-    // Workload level: based on active (not done) tasks
-    let level, levelText, levelClass;
-    if (pNotDone <= 3) { level = 'low'; levelText = '여유'; levelClass = 'wl-level-low'; }
-    else if (pNotDone <= 6) { level = 'mid'; levelText = '보통'; levelClass = 'wl-level-mid'; }
-    else if (pNotDone <= 9) { level = 'high'; levelText = '바쁨'; levelClass = 'wl-level-high'; }
-    else { level = 'over'; levelText = '과부하'; levelClass = 'wl-level-over'; }
-
-    const gaugeWidth = Math.min((pNotDone / 12) * 100, 100);
-    const completionRate = pTotal > 0 ? Math.round((pDone / pTotal) * 100) : 0;
-
-    // Top urgent tasks (non-complete, sorted by deadline)
-    const urgentTasks = pTasks
-      .filter(t => getTaskStatus(t) !== '완료')
-      .sort((a,b) => {
-        const da = parseDate(a.deadline);
-        const db = parseDate(b.deadline);
-        return (da||Infinity) - (db||Infinity);
-      })
-      .slice(0, 5);
-
-    let taskListHtml = '';
-    urgentTasks.forEach(t => {
-      const st = getTaskStatus(t);
-      taskListHtml += `<div class="wl-task-item"><span class="badge-status ${statusBadgeClass(st)}" style="font-size:10px;padding:1px 5px">${st}</span> ${t.content} <span style="color:#bbb">(${formatDate(t.deadline)})</span></div>`;
-    });
-
-    wlHtml += `<div class="workload-card">
-      <h4>${person} <span style="font-size:11px;color:#aaa;font-weight:400">완료율 ${completionRate}%</span></h4>
-      <div class="workload-stat">
-        <span class="workload-stat-item wl-total">전체 ${pTotal}건</span>
-        <span class="workload-stat-item wl-active">진행 ${pActive}건</span>
-        ${pLate > 0 ? `<span class="workload-stat-item wl-late">지연 ${pLate}건</span>` : ''}
-        ${pWarn > 0 ? `<span class="workload-stat-item" style="background:#fdecd5;color:#c08050">주의 ${pWarn}건</span>` : ''}
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <div class="wl-gauge" style="flex:1"><div class="wl-gauge-fill ${levelClass}" style="width:${gaugeWidth}%"></div></div>
-        <span style="font-size:11px;font-weight:700;color:${level==='over'?'#c06060':level==='high'?'#c08050':'#6a72b0'}">${levelText}</span>
-      </div>
-      <div class="wl-tasks">${taskListHtml || '<span style="color:#ccc">진행 업무 없음</span>'}</div>
-    </div>`;
-  });
-  document.getElementById('workloadDetail').innerHTML = wlHtml;
 }
 
 // ============================================================
@@ -1027,9 +914,9 @@ function renderKPI() {
         <div style="font-size:12px;font-weight:700;margin-bottom:4px;color:#555">현재 진척도</div>
         <div style="display:flex;align-items:center;gap:10px">
           <div style="flex:1;height:14px;background:#eee;border-radius:7px;overflow:hidden">
-            <div style="height:100%;width:${kpi.currentProgress}%;background:linear-gradient(90deg,#8b93d1,#a0c4f0);border-radius:7px;transition:width .5s"></div>
+            <div style="height:100%;width:${kpi.currentProgress}%;background:linear-gradient(90deg,#1a237e,#42a5f5);border-radius:7px;transition:width .5s"></div>
           </div>
-          <span style="font-weight:700;font-size:13px;color:#6a72b0;min-width:40px">${kpi.currentProgress}%</span>
+          <span style="font-weight:700;font-size:13px;color:#1a237e;min-width:40px">${kpi.currentProgress}%</span>
         </div>
       </div>
       <div class="kpi-steps">
@@ -1099,19 +986,17 @@ function renderWeeklyReport() {
     </div>
   `;
 
-  // Section 1: Completed tasks (collapsible, collapsed by default)
-  html += `<div class="report-section">
-    <h3 class="report-toggle collapsed" onclick="toggleReportSection(this)">완료 업무 (${doneTasks.length}건) <span class="toggle-arrow">▼</span></h3>
-    <div class="report-body collapsed">`;
+  // Section 1: Completed tasks
+  html += `<div class="report-section"><h3>완료 업무 (${doneTasks.length}건)</h3>`;
   depts.forEach(dept => {
     const deptDone = doneTasks.filter(t => t.dept === dept);
     if (deptDone.length === 0) return;
     html += `<h4>${dept}</h4>`;
     deptDone.forEach(t => {
-      html += `<div class="report-item"><span class="month-badge">${t.month}월</span><span class="badge-status badge-done">완료</span> ${t.content} <span style="color:#888;font-size:11px">(${t.owner})</span></div>`;
+      html += `<div class="report-item"><span class="badge-status badge-done">완료</span> ${t.content} <span style="color:#888;font-size:11px">(${t.owner}, 완료: ${formatDate(t.completionDate)})</span></div>`;
     });
   });
-  html += '</div></div>';
+  html += '</div>';
 
   // Section 2: In progress
   html += `<div class="report-section"><h3>진행 중 업무 (${inProgress.length}건)</h3>`;
@@ -1120,7 +1005,7 @@ function renderWeeklyReport() {
     if (deptProg.length === 0) return;
     html += `<h4>${dept}</h4>`;
     deptProg.forEach(t => {
-      html += `<div class="report-item"><span class="month-badge">${t.month}월</span><span class="badge-status badge-prog">진행중</span> ${t.content} <span style="color:#888;font-size:11px">(${t.owner}, 진척: ${t.progress}%, 마감: ${formatDate(t.deadline)})</span></div>`;
+      html += `<div class="report-item"><span class="badge-status badge-prog">진행중</span> ${t.content} <span style="color:#888;font-size:11px">(${t.owner}, 진척: ${t.progress}%, 마감: ${formatDate(t.deadline)})</span></div>`;
     });
   });
   html += '</div>';
@@ -1134,8 +1019,8 @@ function renderWeeklyReport() {
       html += `<h4>${dept}</h4>`;
       deptIssue.forEach(t => {
         const st = t.status;
-        html += `<div class="report-item"><span class="month-badge">${t.month}월</span><span class="badge-status ${statusBadgeClass(st)}">${st}</span> ${t.content} <span style="color:#888;font-size:11px">(${t.owner}, 진척: ${t.progress}%, 마감: ${formatDate(t.deadline)})</span>
-        ${t.statusDesc ? `<br><span style="color:#c08050;font-size:11px">${t.statusDesc}</span>` : ''}
+        html += `<div class="report-item"><span class="badge-status ${statusBadgeClass(st)}">${st}</span> ${t.content} <span style="color:#888;font-size:11px">(${t.owner}, 진척: ${t.progress}%, 마감: ${formatDate(t.deadline)})</span>
+        ${t.statusDesc ? `<br><span style="color:#e65100;font-size:11px">${t.statusDesc}</span>` : ''}
         </div>`;
       });
     });
@@ -1146,7 +1031,7 @@ function renderWeeklyReport() {
   if (decisions.length > 0) {
     html += `<div class="report-section"><h3>결정 필요 사항 (${decisions.length}건)</h3>`;
     decisions.forEach(t => {
-      html += `<div class="report-highlight"><strong>${t.dept}</strong> - ${t.content}<br><span style="color:#c06060">결정사항: ${t.decision}</span> <span style="color:#888;font-size:11px">(담당: ${t.owner})</span></div>`;
+      html += `<div class="report-highlight"><strong>${t.dept}</strong> - ${t.content}<br><span style="color:#c62828">결정사항: ${t.decision}</span> <span style="color:#888;font-size:11px">(담당: ${t.owner})</span></div>`;
     });
     html += '</div>';
   }
@@ -1155,7 +1040,7 @@ function renderWeeklyReport() {
   if (meetings.length > 0) {
     html += `<div class="report-section"><h3>미팅 요청 (${meetings.length}건)</h3>`;
     meetings.forEach(t => {
-      html += `<div class="report-item"><strong>${t.dept}</strong> - ${t.content}: <span style="color:#6a72b0;font-weight:600">${t.meeting}</span></div>`;
+      html += `<div class="report-item"><strong>${t.dept}</strong> - ${t.content}: <span style="color:#1a237e;font-weight:600">${t.meeting}</span></div>`;
     });
     html += '</div>';
   }
@@ -1168,7 +1053,7 @@ function renderWeeklyReport() {
     html += `<h4>${dept}</h4>`;
     deptUp.forEach(t => {
       const st = getTaskStatus(t);
-      html += `<div class="report-item"><span class="month-badge">${t.month}월</span><span class="badge-status ${statusBadgeClass(st)}">${st}</span> ${t.content} <span style="color:#888;font-size:11px">(${t.owner}, 마감: ${formatDate(t.deadline)}, 진척: ${t.progress}%)</span></div>`;
+      html += `<div class="report-item"><span class="badge-status ${statusBadgeClass(st)}">${st}</span> ${t.content} <span style="color:#888;font-size:11px">(${t.owner}, 마감: ${formatDate(t.deadline)}, 진척: ${t.progress}%)</span></div>`;
     });
   });
   html += '</div>';
@@ -1183,149 +1068,9 @@ function printReport() {
 }
 
 // ============================================================
-// REPORT COLLAPSIBLE TOGGLE
-// ============================================================
-function toggleReportSection(el) {
-  el.classList.toggle('collapsed');
-  const body = el.nextElementSibling;
-  if (body.classList.contains('collapsed')) {
-    body.classList.remove('collapsed');
-    body.style.maxHeight = body.scrollHeight + 'px';
-  } else {
-    body.style.maxHeight = '0';
-    body.classList.add('collapsed');
-  }
-}
-
-// ============================================================
-// DAILY NOTIFICATION
-// ============================================================
-function getTodayTasks() {
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const soon = new Date(today);
-  soon.setDate(soon.getDate() + 3); // 3일 이내 마감
-
-  return taskData.filter(t => {
-    const st = getTaskStatus(t);
-    if (st === '완료') return false;
-    const dl = parseDate(t.deadline);
-    if (!dl) return false;
-    return dl <= soon;
-  }).sort((a,b) => {
-    const da = parseDate(a.deadline);
-    const db = parseDate(b.deadline);
-    return (da||0) - (db||0);
-  });
-}
-
-function getUrgencyClass(t) {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const dl = parseDate(t.deadline);
-  if (!dl) return 'normal';
-  if (dl < today) return 'urgent';
-  const diff = (dl - today) / 86400000;
-  return diff <= 1 ? 'urgent' : diff <= 3 ? 'warn' : 'normal';
-}
-
-function showNotification() {
-  const existing = document.getElementById('notifToast');
-  if (existing) { existing.remove(); return; }
-
-  const tasks = getTodayTasks();
-  const toast = document.createElement('div');
-  toast.className = 'notif-toast';
-  toast.id = 'notifToast';
-
-  let bodyHtml = '';
-  if (tasks.length === 0) {
-    bodyHtml = '<div class="notif-empty">오늘 긴급한 업무가 없습니다</div>';
-  } else {
-    tasks.forEach(t => {
-      const urg = getUrgencyClass(t);
-      const dl = parseDate(t.deadline);
-      const today = new Date(); today.setHours(0,0,0,0);
-      const diff = dl ? Math.round((dl - today) / 86400000) : '?';
-      const diffText = diff < 0 ? `${Math.abs(diff)}일 지연` : diff === 0 ? '오늘 마감' : `${diff}일 남음`;
-      bodyHtml += `<div class="notif-item">
-        <div class="notif-dot ${urg}"></div>
-        <div class="notif-info">
-          <div class="notif-task-name">${t.content}</div>
-          <div class="notif-task-meta">${t.owner} | ${formatDate(t.deadline)} (${diffText}) | ${t.progress}%</div>
-        </div>
-      </div>`;
-    });
-  }
-
-  toast.innerHTML = `
-    <div class="notif-header">
-      <h3>오늘의 업무 알림 (${tasks.length}건)</h3>
-      <button class="notif-close" onclick="document.getElementById('notifToast').remove()">&times;</button>
-    </div>
-    <div class="notif-body">${bodyHtml}</div>
-    <div class="notif-footer">마감 3일 이내 / 지연 업무 표시 | 매일 오전 10시 자동 알림</div>
-  `;
-  document.body.appendChild(toast);
-}
-
-function updateBellBadge() {
-  const tasks = getTodayTasks();
-  const badge = document.getElementById('notifBadge');
-  if (tasks.length > 0) {
-    badge.textContent = tasks.length;
-    badge.style.display = 'flex';
-  } else {
-    badge.style.display = 'none';
-  }
-}
-
-// Auto-notification at 10 AM
-function checkAutoNotification() {
-  const now = new Date();
-  const todayKey = now.toISOString().slice(0,10);
-  const shown = localStorage.getItem('notif_shown_' + todayKey);
-
-  if (now.getHours() >= 10 && !shown) {
-    // Request browser notification permission
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-
-    const tasks = getTodayTasks();
-    if (tasks.length > 0) {
-      // Show in-app toast
-      showNotification();
-
-      // Browser push notification
-      if ('Notification' in window && Notification.permission === 'granted') {
-        const urgent = tasks.filter(t => getUrgencyClass(t) === 'urgent').length;
-        const body = urgent > 0
-          ? `긴급 ${urgent}건 포함 총 ${tasks.length}건의 업무가 있습니다.`
-          : `마감 임박 ${tasks.length}건의 업무가 있습니다.`;
-        new Notification('업무관리 - 오늘의 알림', {
-          body: body,
-          icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>'
-        });
-      }
-      localStorage.setItem('notif_shown_' + todayKey, '1');
-    }
-  }
-}
-
-// Check every minute for 10 AM trigger
-setInterval(checkAutoNotification, 60000);
-
-// ============================================================
 // INIT
 // ============================================================
 loadAllData();
 </script>
-
-<!-- Notification Bell -->
-<button class="notif-bell" onclick="showNotification()" title="오늘의 업무 알림" style="position:fixed">
-  🔔
-  <span class="notif-badge" id="notifBadge" style="display:none">0</span>
-</button>
-
 </body>
 </html>
