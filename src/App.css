@@ -291,3 +291,92 @@
     padding: 16px;
   }
 }
+
+/* ═══ FOLDER NAVIGATION ═══ */
+.nav-folder {
+  margin-top: 4px;
+}
+
+.nav-folder-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: 100%;
+  text-align: left;
+  transition: 0.15s;
+  border-radius: 6px;
+}
+
+.nav-folder-header:hover {
+  color: rgba(255,255,255,0.8);
+  background: rgba(255,255,255,0.05);
+}
+
+.nav-folder-arrow {
+  font-size: 10px;
+  width: 14px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.nav-folder-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-folder-items {
+  padding-left: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-sub-item {
+  padding-left: 20px !important;
+  font-size: 12.5px !important;
+}
+
+/* sidebar collapsed 상태에서 폴더 헤더 숨김 */
+.sidebar-collapsed .nav-folder-header {
+  justify-content: center;
+  padding: 6px;
+}
+
+.sidebar-collapsed .nav-folder-arrow,
+.sidebar-collapsed .nav-folder-name {
+  display: none;
+}
+
+.sidebar-collapsed .nav-folder-items {
+  padding-left: 0;
+}
+
+.sidebar-collapsed .nav-sub-item {
+  padding-left: 0 !important;
+  justify-content: center;
+}
+
+/* ═══ HOME CATEGORY SECTIONS ═══ */
+.home-category {
+  margin-bottom: 28px;
+}
+
+.home-category-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a237e;
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e8eaf6;
+}
