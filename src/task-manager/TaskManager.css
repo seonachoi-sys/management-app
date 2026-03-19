@@ -1401,3 +1401,24 @@
 .sidebar-member-tag.tag-progress { background: var(--c-accent-light); color: var(--c-accent); }
 .sidebar-member-tag.tag-done { background: var(--c-green-bg); color: var(--c-green); }
 .sidebar-member-tag.tag-delayed { background: var(--c-red-bg); color: var(--c-red); }
+
+/* 개인별 진도율 */
+.sidebar-progress-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 0;
+}
+.sidebar-progress-name {
+  font-size: 12px; font-weight: 500; color: var(--c-text);
+  width: 48px; flex-shrink: 0;
+}
+.sidebar-progress-bar-wrap {
+  flex: 1; display: flex; align-items: center; gap: 6px;
+}
+.sidebar-progress-pct {
+  font-size: 11px; font-weight: 700; font-family: var(--mono);
+  min-width: 32px; text-align: right;
+}
+.sidebar-progress-detail {
+  font-size: 10px; color: var(--c-text-3); font-family: var(--mono);
+  min-width: 30px; text-align: right;
+}

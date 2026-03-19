@@ -407,8 +407,107 @@ export default function TaskDashboard() {
       return dd ? (dd >= now && dd <= todayEnd) : false;
     }).slice(0, 10);
 
-    return { weekDone, weekTotal, weekPct, delayed, todayDue };
+    // 개인별 진도율
+    const assigneeMap: Record<string, { total: number; done: number }> = {};
+    for (const t of tasks) {
+      const name = t.assigneeName || '미배정';
+      if (!assigneeMap[name]) assigneeMap[name] = { total: 0, done: 0 };
+      assigneeMap[name].total++;
+      if (t.status === '완료') assigneeMap[name].done++;
+    }
+    const assigneeProgress = Object.entries(assigneeMap)
+      .map(([name, d]) => ({ name, ...d, pct: d.total > 0 ? Math.round((d.done / d.total) * 100) : 0 }))
+      .sort((a, b) => b.pct - a.pct);
+
+    return { weekDone, weekTotal, weekPct, delayed, todayDue, assigneeProgress };
   }, [tasks]);
+
+  const ASSIGNEE_COLORS: Record<string, string> = { '최선아': 'var(--c-accent)', '송은정': 'var(--c-green)', '이웅해': 'var(--c-orange)' };
+
+  const renderTaskSidebar = () => (
+    <div className="tm-side-col">
+      {/* 이번 주 완료율 */}
+      <div className="sidebar-card">
+        <div className="sidebar-title">이번 주 완료율</div>
+        <div className="sidebar-stat-row">
+          <span className="sidebar-big">{sidebarData.weekDone} <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--c-text-3)' }}>/ {sidebarData.weekTotal} 완료</span></span>
+          <span className="sidebar-pct" style={{ color: 'var(--c-green)' }}>{sidebarData.weekPct}%</span>
+        </div>
+        <div className="sidebar-bar">
+          <div className="sidebar-bar-fill" style={{ width: `${sidebarData.weekPct}%`, background: 'var(--c-green)' }} />
+        </div>
+      </div>
+
+      {/* 지연 경보 */}
+      {sidebarData.delayed.length > 0 && (
+        <div className="sidebar-card">
+          <div className="sidebar-title" style={{ color: 'var(--c-red)' }}>지연 경보 ({sidebarData.delayed.length})</div>
+          <div className="sidebar-list">
+            {sidebarData.delayed.map((t) => (
+              <div key={t.taskId} className="sidebar-list-item">
+                <span className="sidebar-dot" style={{ background: 'var(--c-red)' }} />
+                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
+                <span className="sidebar-meta">{t.assigneeName}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 오늘 마감 */}
+      {sidebarData.todayDue.length > 0 && (
+        <div className="sidebar-card">
+          <div className="sidebar-title" style={{ color: 'var(--c-orange)' }}>오늘 마감 ({sidebarData.todayDue.length})</div>
+          <div className="sidebar-list">
+            {sidebarData.todayDue.map((t) => (
+              <div key={t.taskId} className="sidebar-list-item">
+                <span className="sidebar-dot" style={{ background: 'var(--c-orange)' }} />
+                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
+                <span className="sidebar-meta">{t.assigneeName}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 개인별 진도율 */}
+      <div className="sidebar-card">
+        <div className="sidebar-title">개인별 진도율</div>
+        {sidebarData.assigneeProgress.map((a) => {
+          const barColor = ASSIGNEE_COLORS[a.name] || 'var(--c-text-4)';
+          return (
+            <div key={a.name} className="sidebar-progress-row">
+              <span className="sidebar-progress-name">{a.name}</span>
+              <div className="sidebar-progress-bar-wrap">
+                <div className="sidebar-bar" style={{ margin: 0, flex: 1 }}>
+                  <div className="sidebar-bar-fill" style={{ width: `${a.pct}%`, background: barColor }} />
+                </div>
+                <span className="sidebar-progress-pct" style={{ color: barColor }}>{a.pct}%</span>
+              </div>
+              <span className="sidebar-progress-detail">{a.done}/{a.total}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 팀원별 업무량 */}
+      <div className="sidebar-card">
+        <div className="sidebar-title">팀원별 업무량</div>
+        {workload.length === 0 ? (
+          <div style={{ fontSize: 12, color: 'var(--c-text-3)', padding: '8px 0' }}>데이터 없음</div>
+        ) : workload.map((w) => (
+          <div key={w.name} className="sidebar-member-row">
+            <span className="sidebar-member-name">{w.name}</span>
+            <div className="sidebar-member-counts">
+              <span className="sidebar-member-tag tag-progress">{w.progress}</span>
+              <span className="sidebar-member-tag tag-done">{w.done}</span>
+              {w.delayed > 0 && <span className="sidebar-member-tag tag-delayed">{w.delayed}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   const handleSave = useCallback(
     async (data: Partial<Task>, keepFormOpen?: boolean) => {
@@ -693,6 +792,8 @@ export default function TaskDashboard() {
             </div>
           </div>
 
+          <div className="tm-dashboard-layout">
+          <div className="tm-main-col">
           {/* 날짜별 그룹 */}
           <div className="tm-weekly-view">
             {weeklyGroups.length === 0 && (
@@ -737,6 +838,9 @@ export default function TaskDashboard() {
                 </div>
               </div>
             ))}
+          </div>
+          </div>
+          {renderTaskSidebar()}
           </div>
         </>
       )}
@@ -832,68 +936,7 @@ export default function TaskDashboard() {
               )}
             </div>
 
-            <div className="tm-side-col">
-              {/* 이번 주 완료율 */}
-              <div className="sidebar-card">
-                <div className="sidebar-title">이번 주 완료율</div>
-                <div className="sidebar-stat-row">
-                  <span className="sidebar-big">{sidebarData.weekDone} <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--c-text-3)' }}>/ {sidebarData.weekTotal} 완료</span></span>
-                  <span className="sidebar-pct" style={{ color: 'var(--c-green)' }}>{sidebarData.weekPct}%</span>
-                </div>
-                <div className="sidebar-bar">
-                  <div className="sidebar-bar-fill" style={{ width: `${sidebarData.weekPct}%`, background: 'var(--c-green)' }} />
-                </div>
-              </div>
-
-              {/* 지연 경보 */}
-              {sidebarData.delayed.length > 0 && (
-                <div className="sidebar-card">
-                  <div className="sidebar-title" style={{ color: 'var(--c-red)' }}>지연 경보 ({sidebarData.delayed.length})</div>
-                  <div className="sidebar-list">
-                    {sidebarData.delayed.map((t) => (
-                      <div key={t.taskId} className="sidebar-list-item">
-                        <span className="sidebar-dot" style={{ background: 'var(--c-red)' }} />
-                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
-                        <span className="sidebar-meta">{t.assigneeName}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 오늘 마감 */}
-              {sidebarData.todayDue.length > 0 && (
-                <div className="sidebar-card">
-                  <div className="sidebar-title" style={{ color: 'var(--c-orange)' }}>오늘 마감 ({sidebarData.todayDue.length})</div>
-                  <div className="sidebar-list">
-                    {sidebarData.todayDue.map((t) => (
-                      <div key={t.taskId} className="sidebar-list-item">
-                        <span className="sidebar-dot" style={{ background: 'var(--c-orange)' }} />
-                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
-                        <span className="sidebar-meta">{t.assigneeName}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 팀원별 업무량 */}
-              <div className="sidebar-card">
-                <div className="sidebar-title">팀원별 업무량</div>
-                {workload.length === 0 ? (
-                  <div style={{ fontSize: 12, color: 'var(--c-text-3)', padding: '8px 0' }}>데이터 없음</div>
-                ) : workload.map((w) => (
-                  <div key={w.name} className="sidebar-member-row">
-                    <span className="sidebar-member-name">{w.name}</span>
-                    <div className="sidebar-member-counts">
-                      <span className="sidebar-member-tag tag-progress">{w.progress}</span>
-                      <span className="sidebar-member-tag tag-done">{w.done}</span>
-                      {w.delayed > 0 && <span className="sidebar-member-tag tag-delayed">{w.delayed}</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            {renderTaskSidebar()}
           </div>
         </>
       )}

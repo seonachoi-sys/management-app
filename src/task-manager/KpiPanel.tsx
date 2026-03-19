@@ -155,7 +155,19 @@ export default function KpiPanel() {
     });
     const memberStats = Object.entries(memberMap).sort((a, b) => b[1].progress - a[1].progress);
 
-    return { total, achieved, pct, riskKpis, memberStats };
+    // 담당자별 평균 달성률
+    const rateMap: Record<string, { sum: number; count: number }> = {};
+    kpis.forEach((k) => {
+      const name = k.assigneeName || '미배정';
+      if (!rateMap[name]) rateMap[name] = { sum: 0, count: 0 };
+      rateMap[name].sum += k.achievementRate;
+      rateMap[name].count++;
+    });
+    const memberRates = Object.entries(rateMap)
+      .map(([name, d]) => ({ name, pct: d.count > 0 ? Math.round(d.sum / d.count) : 0, done: memberMap[name]?.done || 0, total: (memberMap[name]?.done || 0) + (memberMap[name]?.progress || 0) }))
+      .sort((a, b) => b.pct - a.pct);
+
+    return { total, achieved, pct, riskKpis, memberStats, memberRates };
   }, [kpis]);
 
   const toggleExpand = (id: string) => {
@@ -262,20 +274,27 @@ export default function KpiPanel() {
             </div>
           )}
 
-          {/* 담당자별 KPI 현황 */}
+          {/* 담당자별 KPI 달성률 */}
           <div className="sidebar-card">
-            <div className="sidebar-title">담당자별 KPI 현황</div>
-            {kpiSidebar.memberStats.length === 0 ? (
+            <div className="sidebar-title">담당자별 KPI 달성률</div>
+            {kpiSidebar.memberRates.length === 0 ? (
               <div style={{ fontSize: 12, color: 'var(--c-text-3)', padding: '8px 0' }}>데이터 없음</div>
-            ) : kpiSidebar.memberStats.map(([name, counts]) => (
-              <div key={name} className="sidebar-member-row">
-                <span className="sidebar-member-name">{name}</span>
-                <div className="sidebar-member-counts">
-                  <span className="sidebar-member-tag tag-done">{counts.done}</span>
-                  <span className="sidebar-member-tag tag-progress">{counts.progress}</span>
+            ) : kpiSidebar.memberRates.map((a) => {
+              const COLORS: Record<string, string> = { '최선아': 'var(--c-accent)', '송은정': 'var(--c-green)', '이웅해': 'var(--c-orange)' };
+              const barColor = COLORS[a.name] || 'var(--c-text-4)';
+              return (
+                <div key={a.name} className="sidebar-progress-row">
+                  <span className="sidebar-progress-name">{a.name}</span>
+                  <div className="sidebar-progress-bar-wrap">
+                    <div className="sidebar-bar" style={{ margin: 0, flex: 1 }}>
+                      <div className="sidebar-bar-fill" style={{ width: `${Math.min(a.pct, 100)}%`, background: barColor }} />
+                    </div>
+                    <span className="sidebar-progress-pct" style={{ color: barColor }}>{a.pct}%</span>
+                  </div>
+                  <span className="sidebar-progress-detail">{a.done}/{a.total}</span>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
