@@ -355,6 +355,7 @@ function KpiFormModal({
     parentId: childEdit?.parentId || '',
   });
   const [saving, setSaving] = useState(false);
+  const [taskSearch, setTaskSearch] = useState('');
 
   const rate = form.targetValue > 0 ? calcAchievementRate(Number(form.currentValue), Number(form.targetValue)) : 0;
   const status = calcKpiStatus(rate);
@@ -508,23 +509,51 @@ function KpiFormModal({
           {/* 업무 연결 */}
           {tasks.length > 0 && (
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--tm-ink-secondary)', marginBottom: 6, letterSpacing: '0.02em' }}>
-                업무 연결 ({form.linkedTaskIds.length}건)
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--c-text-2)', marginBottom: 6, letterSpacing: '0.02em' }}>
+                업무 연결 ({form.linkedTaskIds.length}건 선택)
               </div>
-              <div style={{ maxHeight: 120, overflow: 'auto', border: '1px solid var(--tm-border-default)', borderRadius: 'var(--tm-radius-sm)', padding: 4 }}>
-                {tasks.filter((t) => t.status !== '완료').slice(0, 20).map((t) => (
-                  <label key={t.taskId} style={{
-                    display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px',
-                    fontSize: 12, cursor: 'pointer',
-                    background: form.linkedTaskIds.includes(t.taskId) ? 'var(--tm-brand-light)' : 'transparent',
-                    borderRadius: 4,
-                  }}>
-                    <input type="checkbox" checked={form.linkedTaskIds.includes(t.taskId)}
-                      onChange={() => toggleTask(t.taskId)} style={{ width: 14, height: 14 }} />
-                    {t.title}
-                    <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--tm-ink-tertiary)' }}>{t.assigneeName}</span>
-                  </label>
-                ))}
+              <div className="kpi-task-link-list">
+                <input
+                  className="kpi-task-search"
+                  placeholder="업무명 검색..."
+                  value={taskSearch}
+                  onChange={(e) => setTaskSearch(e.target.value)}
+                />
+                {(() => {
+                  const q = taskSearch.trim().toLowerCase();
+                  const filtered = q ? tasks.filter((t) => t.title.toLowerCase().includes(q)) : tasks;
+                  // 선택된 업무 먼저, 카테고리별 그룹핑
+                  const selected = filtered.filter((t) => form.linkedTaskIds.includes(t.taskId));
+                  const unselected = filtered.filter((t) => !form.linkedTaskIds.includes(t.taskId));
+                  const grouped: Record<string, Task[]> = {};
+                  for (const t of [...selected, ...unselected]) {
+                    const cat = t.category || '기타';
+                    if (!grouped[cat]) grouped[cat] = [];
+                    grouped[cat].push(t);
+                  }
+                  return Object.entries(grouped).map(([cat, catTasks]) => (
+                    <div key={cat} className="kpi-task-link-group">
+                      <div className="kpi-task-link-group-label">{cat}</div>
+                      {catTasks.map((t) => {
+                        const isLinked = form.linkedTaskIds.includes(t.taskId);
+                        const dd = t.dueDate instanceof Timestamp ? t.dueDate.toDate() : null;
+                        const dateStr = dd ? `${dd.getMonth()+1}.${String(dd.getDate()).padStart(2,'0')}` : '';
+                        return (
+                          <label key={t.taskId} className={`kpi-task-link-item ${isLinked ? 'selected' : ''}`}>
+                            <input type="checkbox" checked={isLinked}
+                              onChange={() => toggleTask(t.taskId)} style={{ width: 14, height: 14 }} />
+                            <span>{t.title}</span>
+                            <span className="kpi-task-link-meta">
+                              {t.assigneeName && <span>{t.assigneeName}</span>}
+                              {dateStr && <span>{dateStr}</span>}
+                              {t.status === '완료' && <span style={{ color: 'var(--c-green)' }}>완료</span>}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ));
+                })()}
               </div>
             </div>
           )}
