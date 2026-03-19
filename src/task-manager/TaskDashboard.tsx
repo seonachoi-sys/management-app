@@ -893,7 +893,7 @@ export default function TaskDashboard() {
                         <option key={c} value={c}>{c}</option>
                       ))}
                     </select>
-                    <select className="tm-select" value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)}>
+                    <select className="tm-select" value={assigneeFilter} onChange={(e) => { setAssigneeFilter(e.target.value); setShowAllAssignees(true); }}>
                       <option value="">전체 담당자</option>
                       {members.length > 0
                         ? members.map((m) => (
