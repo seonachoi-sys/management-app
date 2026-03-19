@@ -139,6 +139,13 @@ export default function TaskDashboard() {
   const [assigneeFilter, setAssigneeFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState(''); // 'YYYY-MM' or ''
   const [showAllAssignees, setShowAllAssignees] = useState(false);
+  const [toasts, setToasts] = useState<{ id: number; message: string }[]>([]);
+  const toastIdRef = React.useRef(0);
+  const addToast = useCallback((message: string) => {
+    const id = ++toastIdRef.current;
+    setToasts((prev) => [...prev, { id, message }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000);
+  }, []);
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [parentForNewTask, setParentForNewTask] = useState<string | null>(null);
@@ -764,9 +771,9 @@ export default function TaskDashboard() {
               try {
                 await update(taskId, updates, user.uid, user.displayName || user.email || '');
                 // 토스트 메시지
-                const dateStr = `${newDue.getMonth()+1}.${newDue.getDate()}`;
                 if (updates.dueDate) {
-                  alert(`마감일이 ${dateStr}(으)로 조정되었습니다`);
+                  const d = newDue;
+                  addToast(`마감일이 ${d.getMonth()+1}.${String(d.getDate()).padStart(2,'0')}(으)로 조정되었습니다`);
                 }
               } catch {}
             }}
@@ -807,6 +814,18 @@ export default function TaskDashboard() {
           onClose={() => setShowSettings(false)}
           userId={user?.uid}
         />
+      )}
+
+      {/* 인앱 토스트 */}
+      {toasts.length > 0 && (
+        <div className="toast-container">
+          {toasts.map((t) => (
+            <div key={t.id} className="toast-item toast-success">
+              <span className="toast-icon">✓</span>
+              <span className="toast-msg">{t.message}</span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
