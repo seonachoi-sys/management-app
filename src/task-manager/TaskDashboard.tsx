@@ -379,6 +379,9 @@ export default function TaskDashboard() {
           await update(data.taskId, data, user.uid, user.displayName || user.email || '');
         } else {
           const result = await create(data, user.uid);
+          if (result.parentReactivated) {
+            addToast(`"${result.parentReactivated}" 하위업무 추가로 진행중으로 변경되었습니다`);
+          }
           if (result.warning) {
             alert(result.warning);
           }

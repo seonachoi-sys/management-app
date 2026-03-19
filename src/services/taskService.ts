@@ -71,7 +71,7 @@ export function subscribeTasks(
 export async function createTask(
   data: Partial<Task>,
   userId: string,
-): Promise<{ id: string; warning?: string }> {
+): Promise<{ id: string; warning?: string; parentReactivated?: string }> {
   const { priorityScore, priority } = calculatePriorityScore(data);
 
   // 담당자 업무량 체크 (전체 조회 후 클라이언트 필터)
@@ -99,7 +99,29 @@ export async function createTask(
     createdBy: userId,
   });
 
-  return { id: docRef.id, warning };
+  // 완료된 상위업무에 하위업무 추가 시 → 상위업무를 '진행중'으로 변경
+  let parentReactivated: string | undefined;
+  if (data.parentTaskId) {
+    const parentRef = doc(db, TASKS, data.parentTaskId);
+    const parentSnap = await getDoc(parentRef);
+    if (parentSnap.exists()) {
+      const parentData = parentSnap.data() as Task;
+      if (parentData.status === '완료') {
+        await updateDoc(parentRef, {
+          status: '진행중',
+          completedDate: null,
+          leadTimeDays: null,
+          progressRate: 0,
+          updatedAt: serverTimestamp(),
+          lastModifiedBy: '자동변경',
+          lastModifiedAt: serverTimestamp(),
+        });
+        parentReactivated = parentData.title;
+      }
+    }
+  }
+
+  return { id: docRef.id, warning, parentReactivated };
 }
 
 /* ─── 수정 ─── */
