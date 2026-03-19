@@ -4,6 +4,7 @@ import type { Kpi, ChildKpi, KpiPeriod, KpiStatus, Task } from '../types';
 import { useKpis, useChildKpis } from '../hooks/useKpis';
 import { useTasks } from '../hooks/useTasks';
 import { useSettings } from '../hooks/useSettings';
+import { useMembers } from '../hooks/useMembers';
 import { calcAchievementRate, calcKpiStatus } from '../services/kpiService';
 
 const PERIOD_COLOR: Record<KpiPeriod, string> = {
@@ -22,6 +23,7 @@ const STATUS_COLOR: Record<KpiStatus, string> = {
 export default function KpiPanel() {
   const { kpis, loading, create, update, remove } = useKpis();
   const { tasks } = useTasks({});
+  const { members } = useMembers();
   const [periodFilter, setPeriodFilter] = useState<KpiPeriod | ''>('');
   const [showForm, setShowForm] = useState(false);
   const [editingKpi, setEditingKpi] = useState<Kpi | null>(null);
@@ -180,6 +182,7 @@ export default function KpiPanel() {
           childEdit={editingChild}
           parentKpis={kpis}
           tasks={tasks}
+          members={members}
           onSave={async (data, isChild, parentId) => {
             if (isChild && parentId) {
               const { createChildKpi, updateChildKpi } = await import('../services/kpiService');
@@ -321,6 +324,7 @@ function KpiFormModal({
   childEdit,
   parentKpis,
   tasks,
+  members,
   onSave,
   onClose,
 }: {
@@ -328,6 +332,7 @@ function KpiFormModal({
   childEdit: { child: ChildKpi | null; parentId: string } | null;
   parentKpis: Kpi[];
   tasks: Task[];
+  members: { memberId: string; name: string }[];
   onSave: (data: Record<string, any>, isChild: boolean, parentId?: string) => Promise<void>;
   onClose: () => void;
 }) {
@@ -382,8 +387,8 @@ function KpiFormModal({
         targetValue: Number(form.targetValue),
         currentValue: Number(form.currentValue),
         unit: form.unit,
-        startDate: form.startDate ? Timestamp.fromDate(new Date(form.startDate)) : null,
-        endDate: form.endDate ? Timestamp.fromDate(new Date(form.endDate)) : null,
+        startDate: form.startDate ? Timestamp.fromDate(new Date(form.startDate + 'T00:00:00')) : null,
+        endDate: form.endDate ? Timestamp.fromDate(new Date(form.endDate + 'T00:00:00')) : null,
         linkedTaskIds: form.linkedTaskIds,
       };
       if (!form.isChild) {
@@ -456,7 +461,32 @@ function KpiFormModal({
           </div>
 
           <label>담당자
-            <input name="assigneeName" value={form.assigneeName} onChange={handleChange} placeholder="담당자명" />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+              {members.map((m) => {
+                const names = form.assigneeName ? form.assigneeName.split(',').map((n: string) => n.trim()).filter(Boolean) : [];
+                const isSelected = names.includes(m.name);
+                return (
+                  <button key={m.memberId} type="button"
+                    onClick={() => {
+                      const next = isSelected ? names.filter((n: string) => n !== m.name) : [...names, m.name];
+                      setForm((f) => ({ ...f, assigneeName: next.join(',') }));
+                    }}
+                    style={{
+                      padding: '4px 10px', fontSize: 12, borderRadius: 4, cursor: 'pointer',
+                      border: `1px solid ${isSelected ? 'var(--c-accent)' : 'var(--c-line)'}`,
+                      background: isSelected ? 'var(--c-accent-light)' : 'var(--c-bg)',
+                      color: isSelected ? 'var(--c-accent)' : 'var(--c-text-2)',
+                      fontWeight: isSelected ? 600 : 400, fontFamily: 'var(--font)',
+                    }}
+                  >{m.name}</button>
+                );
+              })}
+            </div>
+            {form.assigneeName && (
+              <div style={{ fontSize: 11, color: 'var(--c-text-3)', marginTop: 4 }}>
+                선택: {form.assigneeName}
+              </div>
+            )}
           </label>
 
           {/* 달성률 미리보기 */}
