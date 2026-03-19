@@ -770,25 +770,52 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     return (
       <>
         <Block title="2주간 완료 업무" count={completed.length} dotColor="green" defaultOpen>
-          {renderCategoryBlocks(groupByCategory(completed), (tasks) => renderCompletedList(tasks))}
+          {(() => {
+            const groups = groupByCategory(completed).sort((a, b) => b.tasks.length - a.tasks.length);
+            if (groups.length === 0) return <div className="rpt-empty">해당 없음</div>;
+            return groups.map((g) => (
+              <div key={g.category} className="rpt-cat-group">
+                <div className="rpt-cat-label">{g.category} <span className="rpt-cat-cnt">{g.tasks.length}건</span></div>
+                <div className="rpt-list rpt-list-indent">
+                  {g.tasks.map((t) => (
+                    <div key={t.taskId} className="rpt-item rpt-item-simple">
+                      <span className="rpt-item-title">{t.title}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ));
+          })()}
           <LeadTimeSummary tasks={completed} />
         </Block>
 
         <Block title="다음 2주 진행 예정" count={upcoming.length} dotColor="blue" defaultOpen>
-          {upcoming.length === 0 ? <div className="rpt-empty">해당 없음</div> : (
-            <div className="rpt-list">
-              {upcoming.map((t) => {
-                const dd = tsToDate(t.dueDate);
-                return (
-                  <div key={t.taskId} className="rpt-item">
-                    <span className="rpt-item-title">{t.title}</span>
-                    <span className="rpt-item-assignee">{t.assigneeName}</span>
-                    {dd && <span className="rpt-item-date">{format(dd, 'M.dd')} 마감</span>}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {(() => {
+            const sorted = [...upcoming].sort((a, b) => {
+              const da = tsToDate(a.dueDate)?.getTime() ?? Infinity;
+              const db = tsToDate(b.dueDate)?.getTime() ?? Infinity;
+              return da - db;
+            });
+            const groups = groupByCategory(sorted).sort((a, b) => b.tasks.length - a.tasks.length);
+            if (groups.length === 0) return <div className="rpt-empty">해당 없음</div>;
+            return groups.map((g) => (
+              <div key={g.category} className="rpt-cat-group">
+                <div className="rpt-cat-label">{g.category} <span className="rpt-cat-cnt">{g.tasks.length}건</span></div>
+                <div className="rpt-list rpt-list-indent">
+                  {g.tasks.map((t) => {
+                    const dd = tsToDate(t.dueDate);
+                    return (
+                      <div key={t.taskId} className="rpt-item">
+                        <span className="rpt-item-title">{t.title}</span>
+                        <span className="rpt-item-assignee">{t.assigneeName}</span>
+                        {dd && <span className="rpt-item-date">{format(dd, 'M.dd')}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ));
+          })()}
         </Block>
 
         <Block title="결정 필요 사항" count={ceoDecision.length} dotColor="yellow" defaultOpen>

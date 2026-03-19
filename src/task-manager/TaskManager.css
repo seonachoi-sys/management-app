@@ -980,7 +980,10 @@
 .rpt-cat-group { border-bottom: 1px solid var(--c-line-light); }
 .rpt-cat-group:last-child { border-bottom: none; }
 .rpt-cat-label { padding: 10px 16px 4px; font-size: 12px; font-weight: 700; color: var(--c-text-2); display: flex; align-items: center; gap: 6px; }
-.rpt-cat-cnt { font-size: 10px; font-family: var(--mono); font-weight: 700; background: var(--c-bg-inset); padding: 1px 6px; border-radius: 100px; color: var(--c-text-3); }
+.rpt-cat-cnt { font-size: 10px; font-family: var(--mono); font-weight: 700; background: var(--c-accent-light); padding: 1px 6px; border-radius: 100px; color: var(--c-accent); }
+.rpt-list-indent { padding-left: 16px; }
+.rpt-item-simple { padding: 3px 12px; }
+.rpt-cat-group + .rpt-cat-group { border-top: 0.5px solid var(--c-line-light); }
 
 .rpt-member-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; padding: 12px 16px; }
 .rpt-member-card { padding: 12px; background: var(--c-bg-sub); border-radius: var(--radius); }
