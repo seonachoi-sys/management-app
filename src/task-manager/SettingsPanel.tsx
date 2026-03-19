@@ -3,6 +3,7 @@ import type { Member } from '../types';
 import { useMembers } from '../hooks/useMembers';
 import { createMember, updateMember } from '../services/memberService';
 import { importCsvToFirestore } from '../utils/csvImport';
+import { checkMigration, runMigration } from '../utils/assigneeMigration';
 
 interface Props {
   taskCategories: string[];
@@ -109,6 +110,8 @@ export default function SettingsPanel({
   const { members } = useMembers();
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [editMember, setEditMember] = useState<Member | null>(null);
+  const [migrationInfo, setMigrationInfo] = useState('');
+  const [migrationRunning, setMigrationRunning] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState('');
   const [importResult, setImportResult] = useState('');
@@ -253,6 +256,64 @@ export default function SettingsPanel({
               <div style={{ fontSize: 12, color: 'var(--tm-ink-tertiary)', padding: 8 }}>등록된 팀원이 없습니다</div>
             )}
           </div>
+        </div>
+
+        {/* 담당자 마이그레이션 */}
+        <div style={{ marginBottom: 24, padding: 16, background: 'var(--tm-surface-inset)', borderRadius: 'var(--tm-radius-sm)', border: '1px dashed var(--tm-border-default)' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tm-ink-secondary)', marginBottom: 8 }}>
+            담당자 데이터 정리
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--tm-ink-tertiary)', marginBottom: 10 }}>
+            SeonA Choi → 최선아 변환, 복수 담당자 → 첫번째만 유지
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="tm-btn-add" style={{ padding: '7px 14px' }} disabled={migrationRunning}
+              onClick={async () => {
+                setMigrationRunning(true);
+                try {
+                  const info = await checkMigration();
+                  let msg = `[확인 결과]\n`;
+                  msg += `SeonA Choi: 업무 ${info.seonaChoi.tasks}건, KPI ${info.seonaChoi.kpis}건\n`;
+                  msg += `복수 담당자: 업무 ${info.multiAssignee.tasks}건, KPI ${info.multiAssignee.kpis}건\n`;
+                  msg += `미배정: 업무 ${info.unassigned.tasks.length}건, KPI ${info.unassigned.kpis.length}건\n`;
+                  if (info.unassigned.tasks.length > 0) {
+                    msg += `\n[미배정 업무]\n`;
+                    info.unassigned.tasks.forEach((t) => { msg += `  ${t.title} · ${t.category} · ${t.dueDate}\n`; });
+                  }
+                  if (info.unassigned.kpis.length > 0) {
+                    msg += `\n[미배정 KPI]\n`;
+                    info.unassigned.kpis.forEach((k) => { msg += `  ${k.title} · ${k.period}\n`; });
+                  }
+                  setMigrationInfo(msg);
+                } catch (err: any) {
+                  setMigrationInfo(`오류: ${err.message}`);
+                } finally {
+                  setMigrationRunning(false);
+                }
+              }}>
+              건수 확인
+            </button>
+            <button className="tm-btn-save" style={{ padding: '7px 14px' }} disabled={migrationRunning}
+              onClick={async () => {
+                if (!window.confirm('SeonA Choi → 최선아 변환 + 복수 담당자 첫번째만 유지를 실행하시겠습니까?')) return;
+                setMigrationRunning(true);
+                try {
+                  const result = await runMigration();
+                  setMigrationInfo(`[완료]\n${result}`);
+                } catch (err: any) {
+                  setMigrationInfo(`오류: ${err.message}`);
+                } finally {
+                  setMigrationRunning(false);
+                }
+              }}>
+              마이그레이션 실행
+            </button>
+          </div>
+          {migrationInfo && (
+            <pre style={{ marginTop: 8, fontSize: 11, padding: '8px 10px', background: '#f5f5f5', borderRadius: 4, whiteSpace: 'pre-wrap', maxHeight: 200, overflow: 'auto' }}>
+              {migrationInfo}
+            </pre>
+          )}
         </div>
 
         <div className="tm-form-actions">
