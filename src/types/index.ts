@@ -63,7 +63,7 @@ export interface Member {
 
 /* ─── KPI ─── */
 export type KpiPeriod = '월간' | '분기' | '반기' | '연간';
-export type KpiStatus = '달성' | '진행중' | '위험';
+export type KpiStatus = '대기' | '진행중' | '완료' | '달성' | '위험';
 
 export interface Kpi {
   kpiId: string;
@@ -81,6 +81,7 @@ export interface Kpi {
   linkedTaskIds: string[];
   startDate: Timestamp | null;
   endDate: Timestamp | null;
+  completedDate: Timestamp | null;
   isParent: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -102,6 +103,7 @@ export interface ChildKpi {
   linkedTaskIds: string[];
   startDate: Timestamp | null;
   endDate: Timestamp | null;
+  completedDate: Timestamp | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import type { Kpi, ChildKpi, KpiPeriod, KpiStatus, Task } from '../types';
 import { useKpis, useChildKpis } from '../hooks/useKpis';
@@ -15,10 +15,57 @@ const PERIOD_COLOR: Record<KpiPeriod, string> = {
 };
 
 const STATUS_COLOR: Record<KpiStatus, string> = {
-  '달성': 'var(--tm-success)',
-  '진행중': 'var(--tm-warning)',
-  '위험': 'var(--tm-urgent)',
+  '대기': '#999',
+  '진행중': 'var(--c-accent, #2f6ce5)',
+  '완료': 'var(--c-green, #0d9f61)',
+  '달성': 'var(--tm-success, #0d9f61)',
+  '위험': 'var(--c-red, #e03e3e)',
 };
+
+const KPI_STATUS_OPTIONS: KpiStatus[] = ['대기', '진행중', '완료'];
+
+/* ─── KPI 상태 드롭다운 ─── */
+function KpiStatusDropdown({ current, onChange }: { current: KpiStatus; onChange: (s: KpiStatus) => void }) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  const handleOpen = () => {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 4, left: rect.left });
+    }
+    setOpen(!open);
+  };
+
+  // 외부 클릭 닫기
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [open]);
+
+  const color = STATUS_COLOR[current] || '#999';
+  return (
+    <span style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+      <button ref={btnRef} className="tm-status-badge-sm" style={{ color, borderColor: color }} onClick={handleOpen}>
+        {current}
+      </button>
+      {open && (
+        <div className="tm-status-menu" style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 200 }}>
+          {KPI_STATUS_OPTIONS.map((s) => (
+            <button key={s} className={`tm-status-option ${s === current ? 'selected' : ''}`}
+              style={{ color: STATUS_COLOR[s] }}
+              onClick={() => { if (s !== current) onChange(s); setOpen(false); }}>
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </span>
+  );
+}
 
 export default function KpiPanel() {
   const { kpis, loading, create, update, remove } = useKpis();
@@ -29,6 +76,38 @@ export default function KpiPanel() {
   const [editingKpi, setEditingKpi] = useState<Kpi | null>(null);
   const [editingChild, setEditingChild] = useState<{ child: ChildKpi | null; parentId: string } | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [toasts, setToasts] = useState<{ id: number; message: string }[]>([]);
+  const toastIdRef = useRef(0);
+  const addToast = useCallback((message: string) => {
+    const id = ++toastIdRef.current;
+    setToasts((prev) => [...prev, { id, message }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000);
+  }, []);
+
+  const handleKpiStatusChange = useCallback(async (kpiId: string, newStatus: KpiStatus, kpi: Kpi) => {
+    if (newStatus === '완료' && kpi.achievementRate < 100) {
+      if (!window.confirm(`완료 처리하시겠습니까? 현재 달성률 ${kpi.achievementRate}%`)) return;
+    }
+    const data: Partial<Kpi> = { status: newStatus };
+    if (newStatus === '완료') {
+      data.completedDate = Timestamp.now() as any;
+    }
+    await update(kpiId, data);
+    addToast(`"${kpi.title}" 상태가 ${newStatus}(으)로 변경되었습니다`);
+  }, [update, addToast]);
+
+  const handleChildStatusChange = useCallback(async (parentKpiId: string, childKpiId: string, newStatus: KpiStatus, child: ChildKpi) => {
+    if (newStatus === '완료' && child.achievementRate < 100) {
+      if (!window.confirm(`완료 처리하시겠습니까? 현재 달성률 ${child.achievementRate}%`)) return;
+    }
+    const { updateChildKpi } = await import('../services/kpiService');
+    const data: Partial<ChildKpi> = { status: newStatus };
+    if (newStatus === '완료') {
+      data.completedDate = Timestamp.now() as any;
+    }
+    await updateChildKpi(parentKpiId, childKpiId, data);
+    addToast(`"${child.title}" 상태가 ${newStatus}(으)로 변경되었습니다`);
+  }, [addToast]);
 
   const filtered = useMemo(() => {
     if (!periodFilter) return kpis;
@@ -37,7 +116,7 @@ export default function KpiPanel() {
 
   const stats = useMemo(() => ({
     total: kpis.length,
-    achieved: kpis.filter((k) => k.status === '달성').length,
+    achieved: kpis.filter((k) => k.status === '달성' || k.status === '완료').length,
     inProgress: kpis.filter((k) => k.status === '진행중').length,
     risk: kpis.filter((k) => k.status === '위험').length,
   }), [kpis]);
@@ -131,6 +210,8 @@ export default function KpiPanel() {
                   onDelete={() => { if (window.confirm('이 KPI를 삭제하시겠습니까?')) remove(kpi.kpiId); }}
                   onEditChild={(child) => { setEditingChild({ child, parentId: kpi.kpiId }); setEditingKpi(null); setShowForm(true); }}
                   onAddChild={() => { setEditingChild({ child: null, parentId: kpi.kpiId }); setEditingKpi(null); setShowForm(true); }}
+                  onStatusChange={(newStatus) => handleKpiStatusChange(kpi.kpiId, newStatus, kpi)}
+                  onChildStatusChange={(childKpiId, newStatus, child) => handleChildStatusChange(kpi.kpiId, childKpiId, newStatus, child)}
                 />
               ))}
             </div>
@@ -203,13 +284,25 @@ export default function KpiPanel() {
           onClose={() => { setShowForm(false); setEditingKpi(null); setEditingChild(null); }}
         />
       )}
+
+      {/* 토스트 */}
+      {toasts.length > 0 && (
+        <div className="toast-container">
+          {toasts.map((t) => (
+            <div key={t.id} className="toast-item toast-success">
+              <span className="toast-icon">✓</span>
+              <span className="toast-msg">{t.message}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 /* ─── KPI 카드 (하위 포함) ─── */
 function KpiCardWithChildren({
-  kpi, tasks, expanded, onToggle, onEdit, onDelete, onEditChild, onAddChild,
+  kpi, tasks, expanded, onToggle, onEdit, onDelete, onEditChild, onAddChild, onStatusChange, onChildStatusChange,
 }: {
   kpi: Kpi;
   tasks: Task[];
@@ -219,6 +312,8 @@ function KpiCardWithChildren({
   onDelete: () => void;
   onEditChild: (child: ChildKpi) => void;
   onAddChild: () => void;
+  onStatusChange: (status: KpiStatus) => void;
+  onChildStatusChange: (childKpiId: string, status: KpiStatus, child: ChildKpi) => void;
 }) {
   const { children } = useChildKpis(expanded || kpi.childKpiIds?.length > 0 ? kpi.kpiId : null);
   const linkedCount = kpi.linkedTaskIds?.length || 0;
@@ -241,9 +336,7 @@ function KpiCardWithChildren({
             <span className="kpi-badge" style={{ background: `${periodColor}15`, color: periodColor }}>
               {kpi.period}
             </span>
-            <span className="kpi-badge" style={{ background: `${statusColor}15`, color: statusColor }}>
-              {kpi.status}
-            </span>
+            <KpiStatusDropdown current={kpi.status} onChange={onStatusChange} />
             {children.length > 0 && (
               <span className="kpi-meta-tag">하위 {children.length}</span>
             )}
@@ -288,9 +381,7 @@ function KpiCardWithChildren({
               <div className="tm-task-header">
                 <span className="kpi-child-arrow">└</span>
                 <span className="tm-task-title">{child.title}</span>
-                <span className="kpi-badge" style={{ background: `${childColor}15`, color: childColor }}>
-                  {child.status}
-                </span>
+                <KpiStatusDropdown current={child.status} onChange={(s) => onChildStatusChange(child.childKpiId, s, child)} />
               </div>
               <div className="kpi-value-row">
                 <span className="kpi-current kpi-current-sm" style={{ color: childColor }}>
