@@ -100,14 +100,29 @@ export default function KpiPanel() {
     if (newStatus === '완료' && child.achievementRate < 100) {
       if (!window.confirm(`완료 처리하시겠습니까? 현재 달성률 ${child.achievementRate}%`)) return;
     }
-    const { updateChildKpi } = await import('../services/kpiService');
+    const { updateChildKpi, fetchChildKpis } = await import('../services/kpiService');
     const data: Partial<ChildKpi> = { status: newStatus };
     if (newStatus === '완료') {
       data.completedDate = Timestamp.now() as any;
     }
     await updateChildKpi(parentKpiId, childKpiId, data);
     addToast(`"${child.title}" 상태가 ${newStatus}(으)로 변경되었습니다`);
-  }, [addToast]);
+
+    // 하위 KPI 전부 완료 시 상위 KPI 자동 완료
+    if (newStatus === '완료') {
+      const siblings = await fetchChildKpis(parentKpiId);
+      const allDone = siblings.every((c) =>
+        c.childKpiId === childKpiId ? true : c.status === '완료' || c.status === '달성',
+      );
+      if (allDone && siblings.length > 0) {
+        const parent = kpis.find((k) => k.kpiId === parentKpiId);
+        await update(parentKpiId, { status: '완료', completedDate: Timestamp.now() } as Partial<Kpi>);
+        if (parent) {
+          addToast(`"${parent.title}" 하위 KPI 전부 완료로 자동 완료 처리되었습니다`);
+        }
+      }
+    }
+  }, [addToast, kpis, update]);
 
   const filtered = useMemo(() => {
     if (!periodFilter) return kpis;
