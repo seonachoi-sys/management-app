@@ -275,44 +275,35 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     const nextWeekStart = startOfWeek(addWeeks(today, 1), { weekStartsOn: 1 });
     const nextWeekEnd = endOfWeek(addWeeks(today, 1), { weekStartsOn: 1 });
 
-    // 이번 주 진행 업무: 진행중 상태이면서 마감일이 이번 주
-    const inProgress = reportTasks.filter((t) => {
-      if (t.status === '완료') return false;
-      const dd = tsToDate(t.dueDate);
-      if (dd && dd >= weekStart && dd <= weekEnd) return true;
-      const sd = tsToDate(t.startDate);
-      if (sd && dd && sd <= weekEnd && dd >= weekStart) return true;
-      return false;
-    });
-
-    // 이번 주 완료 업무
+    // 1. 이번 주 완료 업무: completedAt이 이번 주
     const completed = reportTasks.filter((t) => {
       if (t.status !== '완료') return false;
       const cd = tsToDate(t.completedDate);
-      if (cd && cd >= weekStart && cd <= weekEnd) return true;
-      const dd = tsToDate(t.dueDate);
-      if (!cd && dd && dd >= weekStart && dd <= weekEnd) return true;
-      return false;
+      return cd !== null && cd >= weekStart && cd <= weekEnd;
     });
 
-    // 차주 예정 업무
+    // 2. 이번 주 미완료 업무: 진행중이지만 이번 주 마감 넘긴 것
+    const incomplete = reportTasks.filter((t) => {
+      if (t.status === '완료') return false;
+      const dd = tsToDate(t.dueDate);
+      return dd !== null && dd >= weekStart && dd <= weekEnd && dd < today;
+    });
+
+    // 3. 차주 진행 예정: dueDate가 다음 주, 우선순위 순
     const nextWeek = reportTasks.filter((t) => {
       if (t.status === '완료') return false;
       const dd = tsToDate(t.dueDate);
-      if (dd && dd >= nextWeekStart && dd <= nextWeekEnd) return true;
-      const sd = tsToDate(t.startDate);
-      if (sd && sd >= nextWeekStart && sd <= nextWeekEnd) return true;
-      return false;
+      return dd !== null && dd >= nextWeekStart && dd <= nextWeekEnd;
     });
 
-    // 이월 업무: 마감일 지남 + 미완료
+    // 4. 차주 이월 업무: 미완료 + dueDate < 오늘
     const delayed = reportTasks.filter((t) => {
       if (t.status === '완료') return false;
       const dd = tsToDate(t.dueDate);
       return dd !== null && dd < today;
     });
 
-    return { inProgress, completed, nextWeek, delayed };
+    return { completed, incomplete, nextWeek, delayed };
   }, [reportType, reportTasks]);
 
   /* ─── 격주(CEO) 리포트 데이터 ─── */
@@ -385,11 +376,11 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   /* ─── 통합 stats (요약 카드용) ─── */
   const stats = useMemo(() => {
     if (reportType === '주간' && weeklyData) {
-      const total = weeklyData.inProgress.length + weeklyData.completed.length + weeklyData.delayed.length;
+      const total = weeklyData.completed.length + weeklyData.incomplete.length + weeklyData.nextWeek.length + weeklyData.delayed.length;
       return {
         total,
         completed: weeklyData.completed.length,
-        incomplete: weeklyData.inProgress.length,
+        incomplete: weeklyData.incomplete.length,
         delayed: weeklyData.delayed.length,
       };
     }
@@ -436,7 +427,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   }, [reportType, weeklyData, biweeklyData, monthlyData]);
 
   const incompleteTasks = useMemo(() => {
-    if (reportType === '주간') return weeklyData?.inProgress || [];
+    if (reportType === '주간') return weeklyData?.incomplete || [];
     if (reportType === '격주') return biweeklyData?.inProgress || [];
     return monthlyData?.newTasks || [];
   }, [reportType, weeklyData, biweeklyData, monthlyData]);
@@ -554,7 +545,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   /* ─── 주간 리포트 렌더 ─── */
   const renderWeeklyReport = () => {
     if (!weeklyData) return null;
-    const { inProgress, completed, nextWeek, delayed } = weeklyData;
+    const { completed, incomplete, nextWeek, delayed } = weeklyData;
 
     // 담당자별 KPI 그룹
     const kpiByAssignee: Record<string, Kpi[]> = {};
@@ -566,12 +557,27 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
 
     return (
       <>
-        <Block title="이번 주 진행 업무" count={inProgress.length} dotColor="blue" defaultOpen>
-          {renderAssigneeBlocks(groupByAssignee(inProgress), (tasks) => renderTaskList(tasks))}
-        </Block>
-
         <Block title="이번 주 완료 업무" count={completed.length} dotColor="green" defaultOpen>
           {renderCategoryBlocks(groupByCategory(completed), (tasks) => renderCompletedList(tasks))}
+        </Block>
+
+        <Block title="이번 주 미완료 업무" count={incomplete.length} dotColor="red" danger defaultOpen>
+          {incomplete.length === 0 ? <div className="rpt-empty">해당 없음</div> : (
+            <div className="rpt-list">
+              {incomplete.map((t) => {
+                const dd = tsToDate(t.dueDate);
+                const delayDays = dd ? Math.abs(differenceInDays(dd, new Date())) : 0;
+                return (
+                  <div key={t.taskId} className="rpt-item rpt-item-delayed">
+                    <span className="rpt-item-title">{t.title}</span>
+                    <span className="rpt-item-assignee">{t.assigneeName}</span>
+                    <span className="rpt-item-tag rpt-tag-red">{delayDays}일 지연</span>
+                    {t.notes && <span className="rpt-item-note" title={t.notes}>📋</span>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Block>
 
         <Block title="차주 진행 예정" count={nextWeek.length} dotColor="blue" defaultOpen={false}>
@@ -796,7 +802,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
             <div className="tm-perf-item">
               <div className="tm-perf-value" style={{ color: 'var(--c-accent)' }}>{stats.incomplete}</div>
               <div className="tm-perf-label">
-                {reportType === '월간' ? '신규' : '진행'}
+                {reportType === '월간' ? '신규' : '미완료'}
               </div>
             </div>
             <div className="tm-perf-item">
