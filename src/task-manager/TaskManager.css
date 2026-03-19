@@ -1261,6 +1261,7 @@
 }
 .week-card:hover { border-color: var(--c-accent, #2f6ce5); background: #fafcff; }
 .week-card-new { border-left-color: #2f6ce5 !important; }
+.week-card-delayed { border-left-color: #e03e3e !important; background: #fef8f8; }
 
 .week-card-top { display: flex; align-items: center; gap: 8px; }
 .week-card-title { flex: 1; font-size: 13px; font-weight: 500; color: var(--c-text, #1a1a1a); }

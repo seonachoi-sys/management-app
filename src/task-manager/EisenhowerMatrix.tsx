@@ -94,9 +94,9 @@ function DraggableCard({
       </div>
       <div className="em-card-meta">
         <span className="em-card-assignee" style={{ color: color.text }}>{task.assigneeName || '미배정'}</span>
-        {task.dueDate && (
-          <span className={`em-card-dday ${isDelayed ? 'em-dday-over' : ''}`}>
-            {dDayLabel(task.dueDate)}
+        {dueDate && (
+          <span className={`em-card-dday ${isDelayed ? 'em-dday-over' : daysLeft !== null && daysLeft <= 5 ? 'em-dday-warn' : ''}`}>
+            {`${dueDate.getMonth()+1}.${String(dueDate.getDate()).padStart(2,'0')}`}
           </span>
         )}
         {task.progressRate > 0 && (

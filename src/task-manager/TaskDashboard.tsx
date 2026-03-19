@@ -278,7 +278,8 @@ export default function TaskDashboard() {
     const weekTasks = leafTasks.filter((t) => {
       const dd = t.dueDate?.toDate?.();
       if (!dd) return true;
-      return dd >= weekStart && dd <= weekEnd;
+      // 이번 주 범위 + 지연(마감 지난) 업무도 포함
+      return dd <= weekEnd;
     });
 
     const dateMap: Record<string, Task[]> = {};
@@ -298,12 +299,13 @@ export default function TaskDashboard() {
       const mdd = `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, '0')}`;
       let subLabel = '마감';
       let colorClass: WeekGroup['colorClass'] = 'info';
-      if (key === todayStr) { subLabel = '오늘'; colorClass = 'danger'; }
-      else if (dLeft >= 1 && dLeft <= 5) { colorClass = 'warning'; }
+      if (dLeft < 0) { subLabel = '마감 (지연)'; colorClass = 'danger'; }
+      else if (key === todayStr) { subLabel = '오늘 마감'; colorClass = 'danger'; }
+      else if (dLeft >= 1 && dLeft <= 5) { subLabel = '마감'; colorClass = 'warning'; }
       else if (dLeft >= 6) { subLabel = '까지 마감'; colorClass = 'info'; }
-      else if (dLeft < 0) { subLabel = `D+${Math.abs(dLeft)} 지연`; colorClass = 'danger'; }
 
-      groups.push({ dateKey: key, label: `${mdd} ${subLabel}`, subLabel: key === todayStr ? '오늘' : '', colorClass, tasks: dateMap[key] });
+      const isDelayed = dLeft < 0;
+      groups.push({ dateKey: key, label: `${mdd} ${subLabel}`, subLabel: key === todayStr ? '오늘' : isDelayed ? '지연' : '', colorClass, tasks: dateMap[key] });
     });
 
     if (noDateTasks.length > 0) {
@@ -641,7 +643,7 @@ export default function TaskDashboard() {
                     const isNew = !t.isNewDismissed && t.createdAt && differenceInDays(new Date(), t.createdAt instanceof Timestamp ? t.createdAt.toDate() : new Date(t.createdAt as unknown as string)) <= 7;
 
                     return (
-                      <div key={t.taskId} className={`week-card ${isNew ? 'week-card-new' : ''}`} onClick={() => { setEditingTask(t); setParentForNewTask(null); setShowForm(true); }}>
+                      <div key={t.taskId} className={`week-card ${isNew ? 'week-card-new' : ''} ${dLeft !== null && dLeft < 0 ? 'week-card-delayed' : ''}`} onClick={() => { setEditingTask(t); setParentForNewTask(null); setShowForm(true); }}>
                         <div className="week-card-top">
                           <StatusDropdownInline current={t.status} onChange={(s) => handleStatusChange(t.taskId, s)} />
                           <span className="week-card-title">{t.title}</span>
