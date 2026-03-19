@@ -8,6 +8,8 @@ import {
   endOfWeek,
   addWeeks,
   addDays,
+  addMonths,
+  subMonths,
   differenceInDays,
 } from 'date-fns';
 import type { Task, MeetingType, Kpi } from '../types';
@@ -208,6 +210,36 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   const [startDate, setStartDate] = useState(format(startOfMonth(now), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(now), 'yyyy-MM-dd'));
 
+  /* ─── 월간 보고서: 월 선택 (기본값: 지난달) ─── */
+  const [selectedMonth, setSelectedMonth] = useState(() => format(subMonths(new Date(), 1), 'yyyy-MM'));
+
+  // 월 선택 옵션 (최근 12개월)
+  const monthOptions = useMemo(() => {
+    const opts: { value: string; label: string }[] = [];
+    for (let i = 0; i < 12; i++) {
+      const d = subMonths(new Date(), i);
+      opts.push({ value: format(d, 'yyyy-MM'), label: format(d, 'yyyy년 M월') });
+    }
+    return opts;
+  }, []);
+
+  // 선택월 기준 기간 자동 계산
+  const monthlyPeriod = useMemo(() => {
+    const base = new Date(selectedMonth + '-01');
+    const monthStart = startOfMonth(base);
+    const monthEnd = endOfMonth(base);
+    const nextMonthStart = startOfMonth(addMonths(base, 1));
+    const nextMonthEnd = endOfMonth(addMonths(base, 1));
+    return {
+      start: format(monthStart, 'yyyy-MM-dd'),
+      end: format(monthEnd, 'yyyy-MM-dd'),
+      nextStart: format(nextMonthStart, 'yyyy-MM-dd'),
+      nextEnd: format(nextMonthEnd, 'yyyy-MM-dd'),
+      label: format(base, 'yyyy년 M월'),
+      nextLabel: format(addMonths(base, 1), 'M'),
+    };
+  }, [selectedMonth]);
+
   /* ─── 2주 보고서: 미팅 날짜 선택 ─── */
   const sortedCeoDates = useMemo(() => [...ceoMeetingDates].sort(), [ceoMeetingDates]);
   const [selectedCeoDate, setSelectedCeoDate] = useState<string>('');
@@ -248,11 +280,11 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
         setEndDate(format(endOfWeek(addWeeks(today, 1), { weekStartsOn: 1 }), 'yyyy-MM-dd'));
       }
     } else {
-      setStartDate(format(startOfMonth(today), 'yyyy-MM-dd'));
-      setEndDate(format(endOfMonth(today), 'yyyy-MM-dd'));
+      setStartDate(monthlyPeriod.start);
+      setEndDate(monthlyPeriod.end);
     }
     setGenerated(false);
-  }, [reportType, biweeklyPeriod]);
+  }, [reportType, biweeklyPeriod, monthlyPeriod]);
 
   const handleGenerate = useCallback(async () => {
     setLoading(true);
@@ -349,35 +381,37 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   /* ─── 월간 리포트 데이터 ─── */
   const monthlyData = useMemo(() => {
     if (reportType !== '월간') return null;
-    const rangeStart = new Date(startDate);
-    const rangeEnd = new Date(endDate);
+    const rangeStart = new Date(monthlyPeriod.start);
+    const rangeEnd = new Date(monthlyPeriod.end);
     rangeEnd.setHours(23, 59, 59, 999);
-    const today = new Date();
+    const nextStart = new Date(monthlyPeriod.nextStart);
+    const nextEnd = new Date(monthlyPeriod.nextEnd);
+    nextEnd.setHours(23, 59, 59, 999);
 
+    // 1. N월 완료 업무: completedAt이 선택월
     const completed = reportTasks.filter((t) => {
       if (t.status !== '완료') return false;
       const cd = tsToDate(t.completedDate);
-      if (cd && cd >= rangeStart && cd <= rangeEnd) return true;
-      const dd = tsToDate(t.dueDate);
-      if (!cd && dd && dd >= rangeStart && dd <= rangeEnd) return true;
-      return false;
+      return cd !== null && cd >= rangeStart && cd <= rangeEnd;
     });
 
-    // 이월 업무: 마감일 지남 + 미완료
-    const delayed = reportTasks.filter((t) => {
+    // 2. N+1월 이월 업무: 선택월 미완료 (dueDate가 선택월 이내이지만 미완료)
+    const carryover = reportTasks.filter((t) => {
       if (t.status === '완료') return false;
       const dd = tsToDate(t.dueDate);
-      return dd !== null && dd < today;
+      return dd !== null && dd >= rangeStart && dd <= rangeEnd;
     });
 
-    // 신규 업무: 이번 달에 생성된 업무
-    const newTasks = reportTasks.filter((t) => {
-      const created = tsToDate(t.createdAt);
-      return created !== null && created >= rangeStart && created <= rangeEnd;
+    // 3. N+1월 진행 예정: dueDate가 차월, 진행중/대기
+    const nextMonthTasks = reportTasks.filter((t) => {
+      if (t.status === '완료') return false;
+      if (t.status !== '진행중' && t.status !== '대기') return false;
+      const dd = tsToDate(t.dueDate);
+      return dd !== null && dd >= nextStart && dd <= nextEnd;
     });
 
-    return { completed, delayed, newTasks };
-  }, [reportType, reportTasks, startDate, endDate]);
+    return { completed, carryover, nextMonthTasks };
+  }, [reportType, reportTasks, monthlyPeriod]);
 
   /* ─── 통합 stats (요약 카드용) ─── */
   const stats = useMemo(() => {
@@ -400,12 +434,12 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       };
     }
     if (reportType === '월간' && monthlyData) {
-      const total = monthlyData.completed.length + monthlyData.delayed.length + monthlyData.newTasks.length;
+      const total = monthlyData.completed.length + monthlyData.carryover.length + monthlyData.nextMonthTasks.length;
       return {
         total,
         completed: monthlyData.completed.length,
-        incomplete: monthlyData.newTasks.length,
-        delayed: monthlyData.delayed.length,
+        incomplete: monthlyData.nextMonthTasks.length,
+        delayed: monthlyData.carryover.length,
       };
     }
     return { total: 0, completed: 0, incomplete: 0, delayed: 0 };
@@ -418,10 +452,13 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       const ef = format(new Date(biweeklyPeriod.selected), 'M.dd');
       return `${sf} ~ ${ef} 대표이사 보고`;
     }
+    if (reportType === '월간') {
+      return `${monthlyPeriod.label} 업무 현황`;
+    }
     const rangeStart = new Date(startDate);
     const rangeEnd = new Date(endDate);
     return `${format(rangeStart, 'yyyy.MM.dd')} ~ ${format(rangeEnd, 'yyyy.MM.dd')}`;
-  }, [reportType, startDate, endDate, biweeklyPeriod]);
+  }, [reportType, startDate, endDate, biweeklyPeriod, monthlyPeriod]);
 
   /* ─── 카테고리 그룹 (클립보드/Obsidian 용) ─── */
   const completedTasks = useMemo(() => {
@@ -433,7 +470,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   const incompleteTasks = useMemo(() => {
     if (reportType === '주간') return weeklyData?.incomplete || [];
     if (reportType === '격주') return biweeklyData?.upcoming || [];
-    return monthlyData?.newTasks || [];
+    return monthlyData?.nextMonthTasks || [];
   }, [reportType, weeklyData, biweeklyData, monthlyData]);
 
   const completedByCategory = useMemo(() => groupByCategory(completedTasks), [completedTasks]);
@@ -689,19 +726,16 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   /* ─── 월간 리포트 렌더 ─── */
   const renderMonthlyReport = () => {
     if (!monthlyData) return null;
-    const { completed, delayed, newTasks } = monthlyData;
+    const { completed, carryover, nextMonthTasks } = monthlyData;
     const completedGroups = groupByCategory(completed);
-    const newTaskGroups = groupByCategory(newTasks);
+    const nMonth = monthlyPeriod.nextLabel;
 
-    // 카테고리별 완료율 계산
+    // 카테고리별 완료율: 선택월 마감 업무 중 완료 비율
     const allMonthTasks = reportTasks.filter((t) => {
       const dd = tsToDate(t.dueDate);
-      const sd = tsToDate(t.startDate);
-      const rangeStart = new Date(startDate);
-      const rangeEnd = new Date(endDate); rangeEnd.setHours(23,59,59,999);
-      if (dd && dd >= rangeStart && dd <= rangeEnd) return true;
-      if (sd && sd >= rangeStart && sd <= rangeEnd) return true;
-      return false;
+      const rs = new Date(monthlyPeriod.start);
+      const re = new Date(monthlyPeriod.end); re.setHours(23,59,59,999);
+      return dd !== null && dd >= rs && dd <= re;
     });
     const catCompletionRate: Record<string, { total: number; done: number }> = {};
     allMonthTasks.forEach((t) => {
@@ -713,7 +747,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
 
     return (
       <>
-        <Block title="전월 완료 업무" count={completed.length} dotColor="green" defaultOpen>
+        <Block title={`${monthlyPeriod.label} 완료 업무`} count={completed.length} dotColor="green" defaultOpen>
           {completedGroups.length === 0 ? <div className="rpt-empty">해당 없음</div> :
             completedGroups.map((g) => {
               const rate = catCompletionRate[g.category];
@@ -734,17 +768,16 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
           }
         </Block>
 
-        <Block title="이월 업무" count={delayed.length} dotColor="red" danger defaultOpen>
-          {delayed.length === 0 ? <div className="rpt-empty">해당 없음</div> : (
+        <Block title={`${nMonth}월 이월 업무`} count={carryover.length} dotColor="red" danger defaultOpen>
+          {carryover.length === 0 ? <div className="rpt-empty">해당 없음</div> : (
             <div className="rpt-list">
-              {delayed.map((t) => {
-                const dd = tsToDate(t.dueDate);
-                const delayDays = dd ? Math.abs(differenceInDays(dd, new Date())) : 0;
+              {carryover.map((t) => {
+                const statusLabel = t.status === '보류' ? '보류' : t.status === '지연' ? '지연' : '미완료';
                 return (
                   <div key={t.taskId} className="rpt-item rpt-item-delayed">
                     <span className="rpt-item-title">{t.title}</span>
                     <span className="rpt-item-assignee">{t.assigneeName}</span>
-                    <span className="rpt-item-tag rpt-tag-red">{delayDays}일 지연</span>
+                    <span className="rpt-item-tag rpt-tag-red">{statusLabel}</span>
                     <span className="rpt-item-reason">{t.notes || '사유 미입력'}</span>
                   </div>
                 );
@@ -753,8 +786,21 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
           )}
         </Block>
 
-        <Block title="당월 신규 업무" count={newTasks.length} dotColor="blue" defaultOpen>
-          {renderCategoryBlocks(newTaskGroups, (tasks) => renderTaskList(tasks, false))}
+        <Block title={`${nMonth}월 진행 예정 업무`} count={nextMonthTasks.length} dotColor="blue" defaultOpen>
+          {nextMonthTasks.length === 0 ? <div className="rpt-empty">해당 없음</div> : (
+            <div className="rpt-list">
+              {nextMonthTasks.map((t) => {
+                const dd = tsToDate(t.dueDate);
+                return (
+                  <div key={t.taskId} className="rpt-item">
+                    <span className="rpt-item-title">{t.title}</span>
+                    <span className="rpt-item-assignee">{t.assigneeName}</span>
+                    {dd && <span className="rpt-item-date">{format(dd, 'M.dd')} 마감</span>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Block>
       </>
     );
@@ -788,6 +834,19 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
               {sortedCeoDates.length === 0 && <option value="">미팅 일정 없음</option>}
               {sortedCeoDates.map((d) => (
                 <option key={d} value={d}>{format(new Date(d), 'yyyy.MM.dd (EEE)')}</option>
+              ))}
+            </select>
+          </label>
+        ) : reportType === '월간' ? (
+          <label className="rpt-date-label">
+            기준 월
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              style={{ minWidth: 140 }}
+            >
+              {monthOptions.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
           </label>
@@ -837,7 +896,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
             <div className="tm-perf-item">
               <div className="tm-perf-value" style={{ color: 'var(--c-accent)' }}>{stats.incomplete}</div>
               <div className="tm-perf-label">
-                {reportType === '월간' ? '신규' : '미완료'}
+                {reportType === '월간' ? '차월 예정' : reportType === '격주' ? '예정' : '미완료'}
               </div>
             </div>
             <div className="tm-perf-item">
@@ -847,7 +906,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
             <div className="tm-perf-item">
               <div className="tm-perf-value" style={{ color: 'var(--c-red)' }}>{stats.delayed}</div>
               <div className="tm-perf-label">
-                {reportType === '격주' ? '결정 필요' : '지연'}
+                {reportType === '격주' ? '결정 필요' : reportType === '월간' ? '이월' : '지연'}
               </div>
             </div>
           </div>
