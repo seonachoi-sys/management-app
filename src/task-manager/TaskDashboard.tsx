@@ -406,9 +406,42 @@ export default function TaskDashboard() {
       }
       try {
         await update(taskId, data, user.uid, user.displayName || user.email || '');
+
+        // 하위업무 전체 완료 시 상위업무 자동 완료
+        if (newStatus === '완료') {
+          const thisTask = tasks.find((t) => t.taskId === taskId);
+          if (thisTask?.parentTaskId) {
+            const parentId = thisTask.parentTaskId;
+            const siblings = tasks.filter((t) => t.parentTaskId === parentId);
+            if (siblings.length > 0) {
+              const allDone = siblings.every((t) =>
+                t.taskId === taskId ? true : t.status === '완료',
+              );
+              if (allDone) {
+                const parent = tasks.find((t) => t.taskId === parentId);
+                const { Timestamp: Ts } = await import('firebase/firestore');
+                const now = Ts.now();
+                const startDate = parent?.startDate?.toDate?.();
+                const leadTimeDays = startDate
+                  ? Math.ceil((now.toDate().getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+                  : undefined;
+                const autoData: Partial<Task> = {
+                  status: '완료',
+                  completedDate: now,
+                  progressRate: 100,
+                  ...(leadTimeDays !== undefined ? { leadTimeDays } : {}),
+                };
+                await update(parentId, autoData, 'system', '자동완료');
+                if (parent) {
+                  addToast(`"${parent.title}" 이(가) 자동으로 완료 처리되었습니다`);
+                }
+              }
+            }
+          }
+        }
       } catch {}
     },
-    [user, update],
+    [user, update, tasks, addToast],
   );
 
   const handleDelete = useCallback(
