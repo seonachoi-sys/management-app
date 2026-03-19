@@ -376,6 +376,40 @@ export default function TaskDashboard() {
     return Object.values(map).sort((a, b) => b.progress - a.progress);
   }, [tasks]);
 
+  // ─── 사이드바 데이터 ───
+  const sidebarData = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+    const wStart = startOfWeek(now, { weekStartsOn: 1 });
+    const wEnd = endOfWeek(now, { weekStartsOn: 1 });
+
+    // 이번 주 업무 (하위업무만, 마감일 이번 주)
+    const weekTasks = tasks.filter((t) => {
+      const dd = t.dueDate?.toDate?.();
+      return dd && dd >= wStart && dd <= wEnd;
+    });
+    const weekDone = weekTasks.filter((t) => t.status === '완료').length;
+    const weekTotal = weekTasks.length;
+    const weekPct = weekTotal > 0 ? Math.round((weekDone / weekTotal) * 100) : 0;
+
+    // 지연 업무
+    const delayed = tasks.filter((t) => {
+      if (t.status === '완료') return false;
+      const dd = t.dueDate?.toDate?.();
+      return dd ? dd < now : false;
+    }).slice(0, 10);
+
+    // 오늘 마감
+    const todayDue = tasks.filter((t) => {
+      if (t.status === '완료') return false;
+      const dd = t.dueDate?.toDate?.();
+      return dd ? (dd >= now && dd <= todayEnd) : false;
+    }).slice(0, 10);
+
+    return { weekDone, weekTotal, weekPct, delayed, todayDue };
+  }, [tasks]);
+
   const handleSave = useCallback(
     async (data: Partial<Task>, keepFormOpen?: boolean) => {
       if (!user) return;
@@ -799,26 +833,65 @@ export default function TaskDashboard() {
             </div>
 
             <div className="tm-side-col">
-              <div className="tm-workload-card">
-                <div className="tm-workload-title">팀원별 업무량</div>
-                {workload.length === 0 ? (
-                  <div style={{ fontSize: 12, color: 'var(--tm-ink-tertiary)', padding: '16px 0' }}>
-                    업무 데이터 없음
-                  </div>
-                ) : (
-                  workload.map((w) => (
-                    <div key={w.name} className="tm-workload-item">
-                      <div className="tm-workload-name">{w.name}</div>
-                      <div className="tm-workload-counts">
-                        <span className="tm-workload-count tm-wc-progress">{w.progress}</span>
-                        <span className="tm-workload-count tm-wc-done">{w.done}</span>
-                        {w.delayed > 0 && (
-                          <span className="tm-workload-count tm-wc-delayed">{w.delayed}</span>
-                        )}
+              {/* 이번 주 완료율 */}
+              <div className="sidebar-card">
+                <div className="sidebar-title">이번 주 완료율</div>
+                <div className="sidebar-stat-row">
+                  <span className="sidebar-big">{sidebarData.weekDone} <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--c-text-3)' }}>/ {sidebarData.weekTotal} 완료</span></span>
+                  <span className="sidebar-pct" style={{ color: 'var(--c-green)' }}>{sidebarData.weekPct}%</span>
+                </div>
+                <div className="sidebar-bar">
+                  <div className="sidebar-bar-fill" style={{ width: `${sidebarData.weekPct}%`, background: 'var(--c-green)' }} />
+                </div>
+              </div>
+
+              {/* 지연 경보 */}
+              {sidebarData.delayed.length > 0 && (
+                <div className="sidebar-card">
+                  <div className="sidebar-title" style={{ color: 'var(--c-red)' }}>지연 경보 ({sidebarData.delayed.length})</div>
+                  <div className="sidebar-list">
+                    {sidebarData.delayed.map((t) => (
+                      <div key={t.taskId} className="sidebar-list-item">
+                        <span className="sidebar-dot" style={{ background: 'var(--c-red)' }} />
+                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
+                        <span className="sidebar-meta">{t.assigneeName}</span>
                       </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 오늘 마감 */}
+              {sidebarData.todayDue.length > 0 && (
+                <div className="sidebar-card">
+                  <div className="sidebar-title" style={{ color: 'var(--c-orange)' }}>오늘 마감 ({sidebarData.todayDue.length})</div>
+                  <div className="sidebar-list">
+                    {sidebarData.todayDue.map((t) => (
+                      <div key={t.taskId} className="sidebar-list-item">
+                        <span className="sidebar-dot" style={{ background: 'var(--c-orange)' }} />
+                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
+                        <span className="sidebar-meta">{t.assigneeName}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 팀원별 업무량 */}
+              <div className="sidebar-card">
+                <div className="sidebar-title">팀원별 업무량</div>
+                {workload.length === 0 ? (
+                  <div style={{ fontSize: 12, color: 'var(--c-text-3)', padding: '8px 0' }}>데이터 없음</div>
+                ) : workload.map((w) => (
+                  <div key={w.name} className="sidebar-member-row">
+                    <span className="sidebar-member-name">{w.name}</span>
+                    <div className="sidebar-member-counts">
+                      <span className="sidebar-member-tag tag-progress">{w.progress}</span>
+                      <span className="sidebar-member-tag tag-done">{w.done}</span>
+                      {w.delayed > 0 && <span className="sidebar-member-tag tag-delayed">{w.delayed}</span>}
                     </div>
-                  ))
-                )}
+                  </div>
+                ))}
               </div>
             </div>
           </div>

@@ -1331,3 +1331,73 @@
   background: var(--c-bg);
 }
 .kpi-task-search::placeholder { color: var(--c-text-4); }
+
+/* ═══ Sidebar — 공통 ═══ */
+.sidebar-card {
+  background: var(--c-bg);
+  border: 0.5px solid var(--c-line);
+  border-radius: 10px;
+  padding: 14px;
+}
+.sidebar-card + .sidebar-card { margin-top: 10px; }
+
+.sidebar-title {
+  font-size: 11px; font-weight: 700;
+  color: var(--c-text-3); text-transform: uppercase;
+  letter-spacing: 0.04em; margin-bottom: 10px;
+}
+.sidebar-big {
+  font-size: 22px; font-weight: 500; color: var(--c-text);
+  font-family: var(--mono); line-height: 1;
+}
+.sidebar-pct {
+  font-size: 13px; font-weight: 700; font-family: var(--mono);
+  margin-left: auto;
+}
+.sidebar-bar {
+  height: 5px; background: var(--c-bg-inset); border-radius: 100px;
+  overflow: hidden; margin: 8px 0 4px;
+}
+.sidebar-bar-fill {
+  height: 100%; border-radius: 100px;
+  transition: width 0.3s;
+}
+.sidebar-stat-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.sidebar-divider {
+  height: 0; border: none; border-top: 0.5px solid var(--c-line-light);
+  margin: 0;
+}
+
+/* 사이드바 목록 */
+.sidebar-list {
+  max-height: 120px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.sidebar-list-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--c-text-2);
+  padding: 3px 0; line-height: 1.3;
+}
+.sidebar-list-item .sidebar-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  flex-shrink: 0;
+}
+.sidebar-list-item .sidebar-meta {
+  color: var(--c-text-3); margin-left: auto; white-space: nowrap;
+}
+
+/* 사이드바 팀원 행 */
+.sidebar-member-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 0; font-size: 12px;
+}
+.sidebar-member-name { font-weight: 500; color: var(--c-text); }
+.sidebar-member-counts { display: flex; gap: 4px; font-size: 10px; font-family: var(--mono); }
+.sidebar-member-tag {
+  padding: 1px 5px; border-radius: 3px; font-weight: 600;
+}
+.sidebar-member-tag.tag-progress { background: var(--c-accent-light); color: var(--c-accent); }
+.sidebar-member-tag.tag-done { background: var(--c-green-bg); color: var(--c-green); }
+.sidebar-member-tag.tag-delayed { background: var(--c-red-bg); color: var(--c-red); }
