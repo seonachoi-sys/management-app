@@ -596,32 +596,12 @@ function KpiFormModal({
           </div>
 
           <label>담당자
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-              {members.map((m) => {
-                const names = form.assigneeName ? form.assigneeName.split(',').map((n: string) => n.trim()).filter(Boolean) : [];
-                const isSelected = names.includes(m.name);
-                return (
-                  <button key={m.memberId} type="button"
-                    onClick={() => {
-                      const next = isSelected ? names.filter((n: string) => n !== m.name) : [...names, m.name];
-                      setForm((f) => ({ ...f, assigneeName: next.join(',') }));
-                    }}
-                    style={{
-                      padding: '4px 10px', fontSize: 12, borderRadius: 4, cursor: 'pointer',
-                      border: `1px solid ${isSelected ? 'var(--c-accent)' : 'var(--c-line)'}`,
-                      background: isSelected ? 'var(--c-accent-light)' : 'var(--c-bg)',
-                      color: isSelected ? 'var(--c-accent)' : 'var(--c-text-2)',
-                      fontWeight: isSelected ? 600 : 400, fontFamily: 'var(--font)',
-                    }}
-                  >{m.name}</button>
-                );
-              })}
-            </div>
-            {form.assigneeName && (
-              <div style={{ fontSize: 11, color: 'var(--c-text-3)', marginTop: 4 }}>
-                선택: {form.assigneeName}
-              </div>
-            )}
+            <select name="assigneeName" value={form.assigneeName} onChange={handleChange}>
+              <option value="">선택</option>
+              {members.map((m) => (
+                <option key={m.memberId} value={m.name}>{m.name}</option>
+              ))}
+            </select>
           </label>
 
           {/* 달성률 미리보기 */}
