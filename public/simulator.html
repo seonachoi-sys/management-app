@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>신규과제 시뮬레이터</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:#f0f2f5;color:#333;font-size:13px}
+.header{background:linear-gradient(135deg,#4a148c,#7b1fa2);color:#fff;padding:20px 28px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.header h1{font-size:22px}
+.header p{font-size:12px;opacity:.8;margin-top:3px}
+.container{max-width:1500px;margin:0 auto;padding:20px}
+
+/* Control Panel */
+.ctrl-panel{background:#fff;border-radius:10px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:20px}
+.ctrl-panel h3{font-size:15px;font-weight:700;margin-bottom:14px;color:#4a148c}
+.ctrl-row{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.ctrl-row:last-child{margin-bottom:0}
+.ctrl-row label{font-weight:700;min-width:120px;font-size:13px}
+.ctrl-row select,.ctrl-row input{padding:7px 12px;border:1px solid #ccc;border-radius:6px;font-size:13px;font-family:inherit}
+.ctrl-row input[type="number"]{width:200px;text-align:right}
+.target-input{font-size:16px!important;font-weight:700;color:#4a148c;border:2px solid #7b1fa2!important;padding:10px 14px!important}
+.btn{padding:10px 24px;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:14px;font-family:inherit;transition:.2s}
+.btn-primary{background:#4a148c;color:#fff}.btn-primary:hover{background:#6a1b9a}
+.btn-success{background:#2e7d32;color:#fff}.btn-success:hover{background:#388e3c}
+.btn-warning{background:#e65100;color:#fff}.btn-warning:hover{background:#bf360c}
+.btn-group{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+
+/* Cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:20px}
+.card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08);border-left:4px solid #4a148c}
+.card .lb{font-size:12px;color:#666;margin-bottom:4px}
+.card .vl{font-size:24px;font-weight:700;color:#4a148c}
+.card .sub{font-size:11px;color:#888;margin-top:4px}
+.card.accent{border-left-color:#e65100}.card.accent .vl{color:#e65100}
+.card.green{border-left-color:#2e7d32}.card.green .vl{color:#2e7d32}
+.card.blue{border-left-color:#1565c0}.card.blue .vl{color:#1565c0}
+.card.match{border-left-color:#2e7d32;background:#e8f5e9}.card.match .vl{color:#2e7d32}
+.card.over{border-left-color:#c62828;background:#fce4ec}.card.over .vl{color:#c62828}
+
+/* Info Box */
+.info-box{background:#f3e5f5;border:1px solid #ce93d8;border-radius:10px;padding:16px;margin-bottom:20px;font-size:12px;line-height:1.8}
+.info-box h4{color:#4a148c;margin-bottom:8px;font-size:14px}
+.info-box .formula{background:#fff;padding:8px 12px;border-radius:6px;margin:6px 0;font-family:monospace;font-size:13px;color:#333}
+
+/* Table */
+.tbl-wrap{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow-x:auto;margin-bottom:18px}
+table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
+thead th{background:#f5f5f5;padding:8px 6px;text-align:center;font-weight:600;color:#444;border-bottom:2px solid #ddd;position:sticky;top:0}
+thead th.purple{background:#f3e5f5;color:#4a148c}
+tbody td{padding:7px 6px;text-align:center;border-bottom:1px solid #eee}
+tbody tr:hover{background:#faf4ff}
+td.left{text-align:left;font-weight:600}
+td.right{text-align:right}
+.total-row{background:#f3e5f5!important;font-weight:700}
+.excluded{opacity:.4}
+input.rate-input{width:60px;padding:4px 6px;border:1px solid #ccc;border-radius:4px;text-align:center;font-size:12px;font-family:inherit}
+input.rate-input:focus{border-color:#7b1fa2;outline:none;box-shadow:0 0 0 2px rgba(122,31,162,.2)}
+input.rate-input.auto-set{background:#e8f5e9;border-color:#2e7d32}
+.chk-cell{cursor:pointer}
+
+/* Progress bar */
+.progress-wrap{margin:20px 0}
+.progress-bar{height:30px;background:#f0f0f0;border-radius:8px;overflow:hidden;position:relative}
+.progress-fill{height:100%;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;transition:width .3s}
+.progress-fill.ok{background:linear-gradient(90deg,#2e7d32,#66bb6a)}
+.progress-fill.warn{background:linear-gradient(90deg,#e65100,#ff9800)}
+.progress-fill.over{background:linear-gradient(90deg,#c62828,#ef5350)}
+.progress-labels{display:flex;justify-content:space-between;font-size:11px;color:#666;margin-top:4px}
+
+/* Section */
+.section-title{font-size:15px;font-weight:700;margin:18px 0 10px;color:#333}
+
+/* Optimization result */
+.opt-result{background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:18px;border-left:4px solid #2e7d32}
+.opt-result h4{color:#2e7d32;margin-bottom:8px}
+.opt-result .detail{font-size:12px;color:#555;line-height:1.8}
+
+@media print{
+  body{background:#fff}
+  .header,.ctrl-panel,.btn-group,.info-box{display:none!important}
+  .container{max-width:100%;padding:0;margin:0}
+}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>신규과제 인건비 시뮬레이터</h1>
+<p>현물 인건비 목표 금액 입력 → 최적 참여율 자동 산출 | v1.0</p>
+</div>
+<div class="container">
+
+<!-- 개념 설명 -->
+<div class="info-box">
+<h4>"월 추가 인건비(보험포함)" 이란?</h4>
+과제에 인력이 참여할 때 발생하는 <b>월 인건비 총액</b>으로, 급여뿐 아니라 기업이 부담하는 4대보험료까지 포함한 금액입니다.
+<div class="formula">월 추가 인건비(보험포함) = (월 급여(A) + 4대보험 기업부담(B)) × 참여율(%)</div>
+<div style="margin-top:4px">
+<b>A. 월 급여</b> = 연봉 ÷ 12 (기본급 기준, 수당·상여 제외)<br>
+<b>B. 4대보험 기업부담</b> = 국민연금 + 건강보험 + 장기요양 + 고용보험 + 산재보험 (기업 부담분)<br>
+<b>현물 인건비</b> = 과제에 참여하는 인력의 급여를 회사가 자체 재원으로 지급하고, 그 금액을 민간부담금(현물)으로 인정받는 것
+</div>
+</div>
+
+<!-- 설정 패널 -->
+<div class="ctrl-panel">
+<h3>시뮬레이션 설정</h3>
+<div class="ctrl-row">
+<label>기준 연도:</label>
+<select id="selYear" onchange="recalc()">
+<option value="2026">2026년</option>
+<option value="2027">2027년</option>
+</select>
+<label>기준 월:</label>
+<select id="selMonth" onchange="recalc()"></select>
+</div>
+<div class="ctrl-row">
+<label>현물 인건비 목표:</label>
+<input type="number" id="targetAmount" class="target-input" placeholder="월 목표 금액 (원)" step="100000" min="0" value="30000000" oninput="recalc()">
+<span style="font-size:12px;color:#888">원/월</span>
+</div>
+<div class="btn-group">
+<button class="btn btn-primary" onclick="optimize()">자동 최적화 산출</button>
+<button class="btn btn-success" onclick="optimizeMinPeople()">최소 인원 최적화</button>
+<button class="btn btn-warning" onclick="resetAll()">초기화</button>
+</div>
+</div>
+
+<!-- 요약 카드 -->
+<div class="cards" id="summaryCards"></div>
+
+<!-- 달성률 프로그레스 -->
+<div class="progress-wrap" id="progressWrap"></div>
+
+<!-- 인력 배분 테이블 -->
+<div class="section-title">인력별 참여율 배분</div>
+<div class="tbl-wrap">
+<table>
+<thead>
+<tr>
+<th>포함</th>
+<th>성명</th>
+<th>직책</th>
+<th>연봉</th>
+<th>월 급여(A)</th>
+<th class="purple">국민연금</th>
+<th class="purple">건강보험</th>
+<th class="purple">장기요양</th>
+<th class="purple">고용보험</th>
+<th class="purple">산재보험</th>
+<th class="purple">보험합계(B)</th>
+<th>A+B</th>
+<th>기존과제<br>참여율합</th>
+<th>잔여<br>가용율</th>
+<th class="purple">신규과제<br>참여율</th>
+<th class="purple">월 현물<br>인건비</th>
+</tr>
+</thead>
+<tbody id="tBody"></tbody>
+<tfoot id="tFoot"></tfoot>
+</table>
+</div>
+
+<!-- 최적화 결과 상세 -->
+<div id="optResult"></div>
+
+</div>
+
+<script>
+// ═══ DATA (payroll.html과 동일) ═══
+const MONTHS=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+const P2026=['AI빅테크','의료데이터','바이오코어','인재성장'];
+const P2027=['AI빅테크','바이오코어','인재성장'];
+
+const insMap={
+'박재민':{p:302570,h:250830,c:32960,e:0},'문재훈':{p:0,h:190680,c:25050,e:0},
+'안준':{p:302570,h:239660,c:31490,e:0},'신규보':{p:302570,h:235620,c:30960,e:0},
+'박지훈':{p:172090,h:132420,c:17400,e:33150},'송은정':{p:127440,h:98070,c:12880,e:24550},
+'김현지':{p:96370,h:72940,c:9580,e:29700},'김종찬':{p:227620,h:175170,c:23010,e:43850},
+'김선열':{p:230470,h:177370,c:23300,e:44400},'문상아':{p:188380,h:144980,c:19050,e:36290},
+'김여진':{p:198450,h:152700,c:20060,e:38220},'김근영':{p:136130,h:103050,c:13540,e:22200},
+'이웅해':{p:178360,h:137240,c:18030,e:34350},'정예원':{p:148530,h:114300,c:15010,e:28610},
+'김주희':{p:115660,h:89000,c:11690,e:22280},'박준현':{p:269460,h:207340,c:27240,e:51900},
+'강상현':{p:302570,h:286970,c:37700,e:71840},'이정태':{p:294920,h:226950,c:29820,e:56810},
+'이상신':{p:189660,h:145970,c:19180,e:36540},'탁윤원':{p:302570,h:233780,c:30710,e:58520},
+'이경준':{p:269840,h:204880,c:26920,e:51290},'임도균':{p:302570,h:232940,c:30600,e:62310},
+'강민정':{p:118080,h:91370,c:12000,e:22870},'임아란':{p:155320,h:118540,c:15570,e:29670},
+'김세은':{p:136460,h:104150,c:13680,e:26070},'김도형':{p:176890,h:111560,c:14650,e:34260},
+'최선아':{p:155650,h:119130,c:15650,e:29820},'류성현':{p:183160,h:83180,c:10930,e:35860},
+'윤혁':{p:123500,h:93470,c:12280,e:15850},'임동철':{p:197310,h:149340,c:19620,e:37380},
+'송채원':{p:142500,h:107850,c:14170,e:27000}
+};
+
+const accidentMap={
+'강민정':19210,'강상현':60340,'김근영':18640,'김도형':28770,'김선열':37300,
+'김세은':21900,'김여진':32110,'김종찬':36830,'김주희':18710,'김현지':24940,
+'류성현':30120,'문상아':30480,'박준현':43600,'박지훈':27840,'송은정':20620,
+'송채원':22680,'윤혁':13310,'이경준':43080,'이상신':30690,'이웅해':28860,
+'이정태':47720,'임도균':52340,'임동철':31400,'임아란':24920,'정예원':24030,
+'최선아':25050,'탁윤원':49160,
+'박재민':0,'문재훈':0,'안준':0,'신규보':0
+};
+
+const posMap={
+'박재민':'대표이사','문재훈':'이사','안준':'이사','신규보':'이사',
+'박지훈':'팀장','송은정':'사원','김현지':'대리','김종찬':'대리',
+'김선열':'대리','문상아':'대리','김여진':'대리','김근영':'사원',
+'이웅해':'대리','정예원':'사원','김주희':'사원','박준현':'대리',
+'강상현':'부서장','이정태':'책임','이상신':'사원','탁윤원':'대리',
+'이경준':'대리','임도균':'책임','강민정':'사원','임아란':'사원',
+'김세은':'사원','김도형':'사원','최선아':'대리','류성현':'사원',
+'윤혁':'사원','임동철':'사원','송채원':'사원'
+};
+
+const people=[
+{name:'박재민',salary:104650020,isExec:true,
+ y2026:{'AI빅테크':{r:'책임',t:'현물',m:[90,90,90,90,90,90,80,80,80,80,80,80]},'의료데이터':{r:'',t:'현물',m:[10,10,10,10,10,10,10,10,10,10,10,10]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'책임',t:'현물',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'문재훈',salary:73690560,isExec:true,maxRate:50,
+ y2026:{'AI빅테크':{r:'',t:'현물',m:[50,50,50,50,50,50,50,50,50,50,50,50]},'의료데이터':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현물',m:[40,40,40,40,40,40,40,40,40,40,40,40]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'안준',salary:97843200,isExec:true,
+ y2026:{'AI빅테크':{r:'',t:'현물',m:[72,72,72,72,72,72,72,72,72,72,72,72]},'의료데이터':{r:'',t:'현물',m:[10,10,10,10,10,10,10,10,10,10,10,10]},'바이오코어':{r:'',t:'현물',m:[18,18,18,18,18,18,18,18,18,18,18,18]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현물',m:[84,84,84,84,84,84,84,84,84,84,84,84]},'바이오코어':{r:'',t:'현물',m:[16,16,16,16,16,16,16,16,16,16,16,16]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'신규보',salary:92664000,isExec:true,
+ y2026:{'AI빅테크':{r:'',t:'현물',m:[80,80,80,80,80,80,80,80,80,80,80,80]},'의료데이터':{r:'책임',t:'현물',m:[10,10,10,10,10,10,10,10,10,10,10,10]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'책임',t:'현물',m:[10,10,10,10,10,10,10,10,10,10,10,10]}},
+ y2027:{'AI빅테크':{r:'',t:'현물',m:[90,90,90,90,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'책임',t:'현물',m:[10,10,10,10,0,0,0,0,0,0,0,0]}}},
+{name:'박지훈',salary:49226400,
+ y2026:{'AI빅테크':{r:'',t:'현물',m:[60,60,60,60,60,60,60,60,60,60,60,60]},'의료데이터':{r:'',t:'현물',m:[15,15,15,15,15,15,15,15,15,15,15,15]},'바이오코어':{r:'',t:'',m:[25,25,25,25,25,25,25,25,25,25,25,25]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현물',m:[56,56,56,56,56,56,56,56,56,56,56,56]},'바이오코어':{r:'',t:'',m:[44,44,44,44,44,44,44,44,44,44,44,44]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'송은정',salary:35429940,
+ y2026:{'AI빅테크':{r:'',t:'현물',m:[10,10,10,10,10,10,10,10,10,10,10,10]},'의료데이터':{r:'',t:'현물',m:[10,10,10,10,10,10,10,10,10,10,10,10]},'바이오코어':{r:'',t:'',m:[30,30,30,30,30,30,30,30,30,30,30,30]},'인재성장':{r:'',t:'',m:[50,50,50,50,50,50,50,50,50,50,50,50]}},
+ y2027:{'AI빅테크':{r:'',t:'현물',m:[16,16,16,16,75,75,75,75,75,75,75,75]},'바이오코어':{r:'',t:'',m:[25,25,25,25,25,25,25,25,25,25,25,25]},'인재성장':{r:'',t:'',m:[59,59,59,59,0,0,0,0,0,0,0,0]}}},
+{name:'김현지',salary:44730000,
+ y2026:{'AI빅테크':{r:'',t:'현물',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'의료데이터':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현물',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'김종찬',salary:70040916,
+ y2026:{'AI빅테크':{r:'',t:'현물',m:[65,65,65,65,65,65,65,65,65,65,65,65]},'의료데이터':{r:'',t:'현물',m:[10,10,10,10,10,10,10,10,10,10,10,10]},'바이오코어':{r:'',t:'',m:[25,25,25,25,25,25,25,25,25,25,25,25]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현물',m:[67,67,67,67,67,67,67,67,67,67,67,67]},'바이오코어':{r:'',t:'',m:[33,33,33,33,33,33,33,33,33,33,33,33]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'김선열',salary:66970800,
+ y2026:{'AI빅테크':{r:'',t:'현물',m:[85,85,85,85,85,85,85,85,85,85,85,85]},'의료데이터':{r:'',t:'현금',m:[15,15,15,15,15,15,15,15,15,15,15,15]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현물',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'문상아',salary:53040000,
+ y2026:{'AI빅테크':{r:'',t:'현물',m:[75,75,75,75,75,75,75,75,75,75,75,75]},'의료데이터':{r:'',t:'현금',m:[25,25,25,25,25,25,25,25,25,25,25,25]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현물',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'김여진',salary:55495550,
+ y2026:{'AI빅테크':{r:'',t:'현물',m:[75,75,75,75,75,75,75,75,75,75,75,75]},'의료데이터':{r:'',t:'현금',m:[25,25,25,25,25,25,25,25,25,25,25,25]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현물',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'김근영',salary:41216000,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[61,61,61,61,61,61,61,61,61,61,61,61]},'의료데이터':{r:'',t:'현금',m:[39,39,39,39,39,39,39,39,39,39,39,39]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'이웅해',salary:46737600,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,20,20,20,20,20,20]},'의료데이터':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'정예원',salary:44990400,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,20,20,20,20,20,20]},'의료데이터':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'김주희',salary:37778400,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,20,20,20,20,20,20]},'의료데이터':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'박준현',salary:79394000,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[60,60,60,60,60,60,20,20,20,20,20,20]},'의료데이터':{r:'',t:'현금',m:[10,10,10,10,10,10,10,10,10,10,10,10]},'바이오코어':{r:'책임',t:'',m:[30,30,30,30,30,30,30,30,30,30,30,30]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[70,70,70,70,70,70,70,70,70,70,70,70]},'바이오코어':{r:'책임',t:'',m:[30,30,30,30,30,30,30,30,30,30,30,30]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'강상현',salary:104535000,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,50,50,50,50,50,50]},'의료데이터':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'이정태',salary:81885000,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,50,50,50,50,50,50]},'의료데이터':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'이상신',salary:53508000,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,50,50,50,50,50,50]},'의료데이터':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'탁윤원',salary:84800004,
+ y2026:{'AI빅테크':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'의료데이터':{r:'',t:'현금',m:[100,100,0,0,0,0,0,0,0,0,0,0]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'이경준',salary:75000000,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,50,50,50,50,50,50]},'의료데이터':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'임도균',salary:95372000,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[90,90,90,90,90,90,20,20,20,20,20,20]},'의료데이터':{r:'',t:'현금',m:[10,10,10,10,10,10,10,10,10,10,10,10]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'강민정',salary:34344000,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[90,90,90,90,90,90,20,20,20,20,20,20]},'의료데이터':{r:'',t:'현금',m:[10,10,10,10,10,10,10,10,10,10,10,10]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'임아란',salary:46267200,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[90,90,90,90,90,90,20,20,20,20,20,20]},'의료데이터':{r:'',t:'현금',m:[10,10,10,10,10,10,10,10,10,10,10,10]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'김세은',salary:43044000,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[90,90,90,90,90,90,20,20,20,20,20,20]},'의료데이터':{r:'',t:'현금',m:[10,10,10,10,10,10,10,10,10,10,10,10]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'김도형',salary:50904000,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[90,90,90,90,90,90,20,20,20,20,20,20]},'의료데이터':{r:'',t:'현금',m:[10,10,10,10,10,10,10,10,10,10,10,10]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'최선아',salary:47949750,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[65,65,65,65,65,65,20,20,20,20,20,20]},'의료데이터':{r:'',t:'현금',m:[10,10,10,10,10,10,10,10,10,10,10,10]},'바이오코어':{r:'',t:'',m:[25,25,25,25,25,25,25,25,25,25,25,25]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[60,60,60,60,60,60,60,60,60,60,60,60]},'바이오코어':{r:'',t:'',m:[40,40,40,40,40,40,40,40,40,40,40,40]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'류성현',salary:53500000,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[90,90,90,90,90,90,20,20,20,20,20,20]},'의료데이터':{r:'',t:'현금',m:[10,10,10,10,10,10,10,10,10,10,10,10]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'윤혁',salary:44000000,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[56,56,56,56,56,56,20,20,20,20,20,20]},'의료데이터':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'바이오코어':{r:'',t:'',m:[44,44,44,44,44,44,44,44,44,44,44,44]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[60,60,60,60,60,60,60,60,60,60,60,60]},'바이오코어':{r:'',t:'',m:[40,40,40,40,40,40,40,40,40,40,40,40]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'임동철',salary:72100000,
+ y2026:{'AI빅테크':{r:'',t:'현금',m:[90,90,90,90,90,90,18,18,18,18,18,18]},'의료데이터':{r:'',t:'현금',m:[10,10,10,10,10,10,10,10,10,10,10,10]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'현금',m:[100,100,100,100,100,100,100,100,100,100,100,100]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}},
+{name:'송채원',salary:36000000,
+ y2026:{'AI빅테크':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'의료데이터':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,100,100,100,100,100,100,0,0,0,0]}},
+ y2027:{'AI빅테크':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'바이오코어':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]},'인재성장':{r:'',t:'',m:[0,0,0,0,0,0,0,0,0,0,0,0]}}}
+];
+
+// ═══ HELPERS ═══
+const fmt=n=>n.toLocaleString('ko-KR');
+
+function getIns(name){
+  const i=insMap[name];
+  if(!i) return {pension:0,health:0,ltcare:0,employ:0,accident:0,total:0};
+  const accident=accidentMap[name]||0;
+  return {pension:i.p,health:i.h,ltcare:i.c,employ:i.e,accident,total:i.p+i.h+i.c+i.e+accident};
+}
+
+function getMonthly(p){ return p.salary ? Math.round(p.salary/12) : 0; }
+function getCostPerUnit(p){ return (getMonthly(p)+getIns(p.name).total)/100; }
+
+function getExistingRate(p,yr,mi){
+  const data = yr===2026 ? p.y2026 : p.y2027;
+  const projects = yr===2026 ? P2026 : P2027;
+  let sum=0;
+  projects.forEach(pj=>{
+    if(data[pj]) sum += (data[pj].m[mi]||0);
+  });
+  return sum;
+}
+
+function getAvailableRate(p,yr,mi){
+  const maxRate = p.maxRate || 100;
+  return Math.max(0, maxRate - getExistingRate(p,yr,mi));
+}
+
+// ═══ STATE ═══
+let simRates={}; // {name: rate}
+let included={}; // {name: bool}
+
+function init(){
+  const sm=document.getElementById('selMonth');
+  MONTHS.forEach((m,i)=>{sm.innerHTML+=`<option value="${i}">${m}</option>`});
+  people.forEach(p=>{
+    included[p.name]=true;
+    simRates[p.name]=0;
+  });
+  recalc();
+}
+
+function recalc(){
+  const yr=+document.getElementById('selYear').value;
+  const mi=+document.getElementById('selMonth').value;
+  const target=+(document.getElementById('targetAmount').value)||0;
+
+  renderTable(yr,mi);
+  renderSummary(yr,mi,target);
+}
+
+function renderTable(yr,mi){
+  const tbody=document.getElementById('tBody');
+  const tfoot=document.getElementById('tFoot');
+  let html='';
+  let tSalary=0,tPen=0,tHea=0,tLtc=0,tEmp=0,tAcc=0,tInsTotal=0,tAplusB=0,tCost=0;
+  let participantCount=0;
+
+  people.forEach((p,idx)=>{
+    if(!p.salary) return;
+    const ms=getMonthly(p);
+    const ins=getIns(p.name);
+    const aplusb=ms+ins.total;
+    const existing=getExistingRate(p,yr,mi);
+    const available=getAvailableRate(p,yr,mi);
+    const rate=simRates[p.name]||0;
+    const cost=Math.round(aplusb*rate/100);
+    const isIncluded=included[p.name];
+    const isAutoSet=rate>0;
+
+    if(isIncluded && rate>0) participantCount++;
+    if(isIncluded){
+      tSalary+=ms;tPen+=ins.pension;tHea+=ins.health;tLtc+=ins.ltcare;
+      tEmp+=ins.employ;tAcc+=ins.accident;tInsTotal+=ins.total;tAplusB+=aplusb;
+      tCost+=cost;
+    }
+
+    html+=`<tr class="${isIncluded?'':'excluded'}">
+      <td class="chk-cell"><input type="checkbox" ${isIncluded?'checked':''} onchange="toggleInclude('${p.name}',this.checked)"></td>
+      <td class="left">${p.name}</td>
+      <td>${posMap[p.name]||''}</td>
+      <td class="right">${fmt(p.salary)}</td>
+      <td class="right">${fmt(ms)}</td>
+      <td class="right">${ins.pension?fmt(ins.pension):'-'}</td>
+      <td class="right">${fmt(ins.health)}</td>
+      <td class="right">${fmt(ins.ltcare)}</td>
+      <td class="right">${ins.employ?fmt(ins.employ):'-'}</td>
+      <td class="right">${ins.accident?fmt(ins.accident):'-'}</td>
+      <td class="right" style="font-weight:600">${fmt(ins.total)}</td>
+      <td class="right" style="font-weight:600">${fmt(aplusb)}</td>
+      <td class="right">${existing}%</td>
+      <td class="right" style="color:${available>0?'#2e7d32':'#c62828'};font-weight:600">${available}%</td>
+      <td><input type="number" class="rate-input ${isAutoSet?'auto-set':''}" value="${rate}" min="0" max="${available}"
+           onchange="setRate('${p.name}',this.value,${available})" ${isIncluded?'':'disabled'}></td>
+      <td class="right" style="font-weight:700;color:${cost>0?'#4a148c':'#999'}">${cost?fmt(cost):'-'}</td>
+    </tr>`;
+  });
+
+  tbody.innerHTML=html;
+  tfoot.innerHTML=`<tr class="total-row">
+    <td colspan="4">합계 (참여: ${participantCount}명)</td>
+    <td class="right">${fmt(tSalary)}</td>
+    <td class="right">${fmt(tPen)}</td><td class="right">${fmt(tHea)}</td>
+    <td class="right">${fmt(tLtc)}</td><td class="right">${fmt(tEmp)}</td>
+    <td class="right">${fmt(tAcc)}</td><td class="right">${fmt(tInsTotal)}</td>
+    <td class="right">${fmt(tAplusB)}</td>
+    <td colspan="2"></td><td></td>
+    <td class="right" style="font-size:14px">${fmt(tCost)}</td>
+  </tr>`;
+}
+
+function renderSummary(yr,mi,target){
+  let totalCost=0;
+  let participantCount=0;
+  people.forEach(p=>{
+    if(!included[p.name]||!p.salary) return;
+    const rate=simRates[p.name]||0;
+    if(rate>0){
+      participantCount++;
+      totalCost+=Math.round((getMonthly(p)+getIns(p.name).total)*rate/100);
+    }
+  });
+
+  const diff=totalCost-target;
+  const pct=target>0?totalCost/target*100:0;
+  const isMatch=Math.abs(diff)<=target*0.02; // 2% 이내
+  const isOver=diff>0;
+
+  let cardClass=isMatch?'match':(isOver?'over':'blue');
+
+  document.getElementById('summaryCards').innerHTML=`
+    <div class="card blue"><div class="lb">목표 현물 인건비</div><div class="vl">${fmt(target)}</div><div class="sub">월 목표 금액</div></div>
+    <div class="card ${cardClass}"><div class="lb">산출 현물 인건비</div><div class="vl">${fmt(totalCost)}</div><div class="sub">현재 배분 기준</div></div>
+    <div class="card ${isMatch?'green':(isOver?'over':'accent')}"><div class="lb">차이</div><div class="vl">${diff>=0?'+':''}${fmt(diff)}</div><div class="sub">${isMatch?'목표 달성!':isOver?'초과':'부족'}</div></div>
+    <div class="card"><div class="lb">참여 인원</div><div class="vl">${participantCount}명</div><div class="sub">전체 ${people.filter(p=>p.salary>0).length}명 중</div></div>
+    <div class="card green"><div class="lb">달성률</div><div class="vl">${pct.toFixed(1)}%</div><div class="sub">목표 대비</div></div>
+  `;
+
+  // Progress bar
+  const fillPct=Math.min(pct,120);
+  const fillClass=isMatch?'ok':(isOver?'over':'warn');
+  document.getElementById('progressWrap').innerHTML=`
+    <div class="progress-bar">
+      <div class="progress-fill ${fillClass}" style="width:${fillPct/1.2}%">${pct.toFixed(1)}%</div>
+    </div>
+    <div class="progress-labels">
+      <span>0</span>
+      <span>목표: ${fmt(target)}원</span>
+      <span>현재: ${fmt(totalCost)}원</span>
+    </div>
+  `;
+}
+
+// ═══ INTERACTIONS ═══
+function toggleInclude(name,val){
+  included[name]=val;
+  if(!val) simRates[name]=0;
+  recalc();
+}
+
+function setRate(name,val,max){
+  let v=parseInt(val)||0;
+  if(v<0)v=0;
+  if(v>max)v=max;
+  simRates[name]=v;
+  recalc();
+}
+
+function resetAll(){
+  people.forEach(p=>{simRates[p.name]=0;included[p.name]=true;});
+  document.getElementById('optResult').innerHTML='';
+  recalc();
+}
+
+// ═══ OPTIMIZATION: 균등 분배 ═══
+function optimize(){
+  const yr=+document.getElementById('selYear').value;
+  const mi=+document.getElementById('selMonth').value;
+  const target=+(document.getElementById('targetAmount').value)||0;
+  if(target<=0){alert('목표 금액을 입력하세요.');return;}
+
+  // Reset rates
+  people.forEach(p=>simRates[p.name]=0);
+
+  // Build candidate list: included people with available rate > 0
+  const candidates=[];
+  people.forEach(p=>{
+    if(!included[p.name]||!p.salary) return;
+    const available=getAvailableRate(p,yr,mi);
+    if(available<=0) return;
+    const costPer1=getCostPerUnit(p);
+    candidates.push({name:p.name, available, costPer1, person:p});
+  });
+
+  if(candidates.length===0){alert('배분 가능한 인력이 없습니다.');return;}
+
+  // Strategy: distribute evenly, then fine-tune
+  // First pass: give everyone equal rate proportionally
+  let remaining=target;
+
+  // Sort by cost per unit (ascending) for efficient allocation
+  candidates.sort((a,b)=>b.costPer1-a.costPer1);
+
+  // Iterative allocation: each round, give 1% to the candidate that brings us closest to target
+  let allocated={};
+  candidates.forEach(c=>allocated[c.name]=0);
+
+  for(let iter=0;iter<10000&&remaining>0;iter++){
+    let bestCandidate=null;
+    let bestDiff=Infinity;
+
+    for(const c of candidates){
+      if(allocated[c.name]>=c.available) continue;
+      const newCost=Math.round(c.costPer1);
+      const newRemaining=remaining-newCost;
+      if(Math.abs(newRemaining)<Math.abs(bestDiff)){
+        bestDiff=newRemaining;
+        bestCandidate=c;
+      }
+    }
+
+    if(!bestCandidate) break;
+    if(remaining-Math.round(bestCandidate.costPer1)<-target*0.05) break; // Don't exceed by more than 5%
+
+    allocated[bestCandidate.name]++;
+    remaining-=Math.round(bestCandidate.costPer1);
+  }
+
+  // Apply results
+  for(const c of candidates){
+    simRates[c.name]=allocated[c.name];
+  }
+
+  // Show result
+  showOptResult('균등 분배 최적화', candidates, allocated, target);
+  recalc();
+}
+
+// ═══ OPTIMIZATION: 최소 인원 ═══
+function optimizeMinPeople(){
+  const yr=+document.getElementById('selYear').value;
+  const mi=+document.getElementById('selMonth').value;
+  const target=+(document.getElementById('targetAmount').value)||0;
+  if(target<=0){alert('목표 금액을 입력하세요.');return;}
+
+  people.forEach(p=>simRates[p.name]=0);
+
+  const candidates=[];
+  people.forEach(p=>{
+    if(!included[p.name]||!p.salary) return;
+    const available=getAvailableRate(p,yr,mi);
+    if(available<=0) return;
+    const costPer1=getCostPerUnit(p);
+    const maxCost=Math.round(costPer1*available);
+    candidates.push({name:p.name, available, costPer1, maxCost, person:p});
+  });
+
+  if(candidates.length===0){alert('배분 가능한 인력이 없습니다.');return;}
+
+  // Sort by max possible contribution (descending) - greedy approach for minimum people
+  candidates.sort((a,b)=>b.maxCost-a.maxCost);
+
+  let remaining=target;
+  let allocated={};
+  candidates.forEach(c=>allocated[c.name]=0);
+
+  for(const c of candidates){
+    if(remaining<=0) break;
+    // How many percent do we need from this person?
+    const neededRate=Math.min(c.available, Math.ceil(remaining/c.costPer1));
+    const actualCost=Math.round(c.costPer1*neededRate);
+    allocated[c.name]=neededRate;
+    remaining-=actualCost;
+  }
+
+  // Fine-tune: if we overshot, reduce last person
+  if(remaining<0){
+    // Find last allocated person and reduce
+    for(let i=candidates.length-1;i>=0;i--){
+      const c=candidates[i];
+      if(allocated[c.name]>0){
+        while(allocated[c.name]>0 && remaining<-Math.round(c.costPer1)*0.5){
+          allocated[c.name]--;
+          remaining+=Math.round(c.costPer1);
+        }
+        break;
+      }
+    }
+  }
+
+  for(const c of candidates){
+    simRates[c.name]=allocated[c.name];
+  }
+
+  showOptResult('최소 인원 최적화', candidates, allocated, target);
+  recalc();
+}
+
+function showOptResult(title, candidates, allocated, target){
+  let totalCost=0;
+  let usedCount=0;
+  const details=[];
+
+  candidates.forEach(c=>{
+    const rate=allocated[c.name];
+    if(rate>0){
+      const cost=Math.round(c.costPer1*rate);
+      totalCost+=cost;
+      usedCount++;
+      details.push(`${c.name}: ${rate}% (월 ${fmt(cost)}원)`);
+    }
+  });
+
+  const diff=totalCost-target;
+  const pct=(totalCost/target*100).toFixed(1);
+
+  document.getElementById('optResult').innerHTML=`
+    <div class="opt-result">
+      <h4>${title} 결과</h4>
+      <div class="detail">
+        <b>목표:</b> ${fmt(target)}원 → <b>산출:</b> ${fmt(totalCost)}원 (${pct}%, 차이: ${diff>=0?'+':''}${fmt(diff)}원)<br>
+        <b>참여 인원:</b> ${usedCount}명<br>
+        <b>배분 내역:</b><br>
+        ${details.map(d=>'&nbsp;&nbsp;- '+d).join('<br>')}
+      </div>
+    </div>
+  `;
+}
+
+init();
+</script>
+</body>
+</html>
