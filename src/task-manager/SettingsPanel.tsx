@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { Member } from '../types';
 import { useMembers } from '../hooks/useMembers';
 import { createMember, updateMember } from '../services/memberService';
@@ -27,6 +27,11 @@ function CategoryEditor({
   const [list, setList] = useState([...items]);
   const [newItem, setNewItem] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // 외부(Firestore) 변경 반영
+  useEffect(() => {
+    setList([...items]);
+  }, [items]);
 
   const add = () => {
     const val = newItem.trim();

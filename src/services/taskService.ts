@@ -182,16 +182,40 @@ export async function updateTask(
   });
 }
 
-/* ─── 삭제 (완전 삭제 + 하위업무도 함께 삭제) ─── */
+/* ─── 삭제 (완전 삭제 + 하위업무 + orphan 정리) ─── */
 export async function deleteTask(taskId: string): Promise<void> {
-  // 하위업무 먼저 삭제
   const allSnap = await getDocs(collection(db, TASKS));
   const childDocs = allSnap.docs.filter((d) => d.data().parentTaskId === taskId);
+  const idsToDelete = [taskId, ...childDocs.map((d) => d.id)];
+
+  // 하위업무 먼저 삭제
   for (const child of childDocs) {
     await deleteDoc(doc(db, TASKS, child.id));
   }
   // 상위업무 삭제
   await deleteDoc(doc(db, TASKS, taskId));
+
+  // KPI linkedTaskIds에서 orphan 참조 제거
+  try {
+    const kpiSnap = await getDocs(collection(db, 'kpis'));
+    for (const kpiDoc of kpiSnap.docs) {
+      const linked: string[] = kpiDoc.data().linkedTaskIds || [];
+      const cleaned = linked.filter((id) => !idsToDelete.includes(id));
+      if (cleaned.length !== linked.length) {
+        await updateDoc(doc(db, 'kpis', kpiDoc.id), { linkedTaskIds: cleaned });
+      }
+    }
+  } catch { /* KPI 정리 실패해도 삭제는 완료 */ }
+
+  // taskHistory 정리
+  try {
+    const histSnap = await getDocs(collection(db, HISTORY));
+    for (const hDoc of histSnap.docs) {
+      if (idsToDelete.includes(hDoc.data().taskId)) {
+        await deleteDoc(doc(db, HISTORY, hDoc.id));
+      }
+    }
+  } catch { /* 이력 정리 실패해도 삭제는 완료 */ }
 }
 
 /* ─── 전체 업무 한번 조회 (리포트용) ─── */

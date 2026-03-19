@@ -162,6 +162,8 @@ export default function TaskDashboard() {
   }, [statusFilter, categoryFilter, assigneeFilter]);
 
   const { tasks, loading, error } = useTasks(filters);
+  const tasksRef = React.useRef(tasks);
+  tasksRef.current = tasks;
   const { members } = useMembers();
 
   // 로그인 이메일 → 팀원 매핑 → 담당자 자동 필터
@@ -415,16 +417,17 @@ export default function TaskDashboard() {
 
         // 하위업무 전체 완료 시 상위업무 자동 완료
         if (newStatus === '완료') {
-          const thisTask = tasks.find((t) => t.taskId === taskId);
+          const latest = tasksRef.current;
+          const thisTask = latest.find((t) => t.taskId === taskId);
           if (thisTask?.parentTaskId) {
             const parentId = thisTask.parentTaskId;
-            const siblings = tasks.filter((t) => t.parentTaskId === parentId);
+            const siblings = latest.filter((t) => t.parentTaskId === parentId);
             if (siblings.length > 0) {
               const allDone = siblings.every((t) =>
                 t.taskId === taskId ? true : t.status === '완료',
               );
               if (allDone) {
-                const parent = tasks.find((t) => t.taskId === parentId);
+                const parent = latest.find((t) => t.taskId === parentId);
                 const { Timestamp: Ts } = await import('firebase/firestore');
                 const autoData: Partial<Task> = {
                   status: '완료',
@@ -441,7 +444,7 @@ export default function TaskDashboard() {
         }
       } catch {}
     },
-    [user, update, tasks, addToast],
+    [user, update, addToast],
   );
 
   const handleDelete = useCallback(
