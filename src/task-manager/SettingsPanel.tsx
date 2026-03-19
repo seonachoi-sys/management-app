@@ -7,8 +7,10 @@ import { importCsvToFirestore } from '../utils/csvImport';
 interface Props {
   taskCategories: string[];
   kpiCategories: string[];
+  ceoMeetingDates: string[];
   onSaveTaskCategories: (cats: string[]) => Promise<void>;
   onSaveKpiCategories: (cats: string[]) => Promise<void>;
+  onSaveCeoMeetingDates: (dates: string[]) => Promise<void>;
   onClose: () => void;
   userId?: string;
 }
@@ -93,11 +95,12 @@ function CategoryEditor({
 }
 
 export default function SettingsPanel({
-  taskCategories, kpiCategories,
-  onSaveTaskCategories, onSaveKpiCategories,
+  taskCategories, kpiCategories, ceoMeetingDates,
+  onSaveTaskCategories, onSaveKpiCategories, onSaveCeoMeetingDates,
   onClose,
   userId,
 }: Props) {
+  const [newMeetingDate, setNewMeetingDate] = useState('');
   const { members } = useMembers();
   const [showMemberForm, setShowMemberForm] = useState(false);
   const [editMember, setEditMember] = useState<Member | null>(null);
@@ -174,6 +177,48 @@ export default function SettingsPanel({
 
         <CategoryEditor label="업무 분류 관리" items={taskCategories} onSave={onSaveTaskCategories} />
         <CategoryEditor label="KPI 분류 관리" items={kpiCategories} onSave={onSaveKpiCategories} />
+
+        {/* 대표이사 미팅 일정 */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tm-ink-secondary)', marginBottom: 8 }}>
+            대표이사 미팅 일정
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <input
+              type="date"
+              value={newMeetingDate}
+              onChange={(e) => setNewMeetingDate(e.target.value)}
+              style={{
+                flex: 1, padding: '7px 12px',
+                border: '1px solid var(--tm-border-default)',
+                borderRadius: 'var(--tm-radius-sm)',
+                fontSize: 13, fontFamily: 'var(--tm-font)',
+                background: 'var(--tm-surface-inset)',
+              }}
+            />
+            <button className="tm-btn-add" style={{ padding: '7px 14px' }} onClick={() => {
+              if (!newMeetingDate || ceoMeetingDates.includes(newMeetingDate)) return;
+              onSaveCeoMeetingDates([...ceoMeetingDates, newMeetingDate].sort());
+              setNewMeetingDate('');
+            }}>추가</button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {ceoMeetingDates.map((date) => (
+              <div key={date} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '6px 12px', background: 'var(--tm-surface-inset)',
+                borderRadius: 'var(--tm-radius-sm)', fontSize: 13,
+              }}>
+                <span style={{ flex: 1, fontWeight: 500 }}>{date}</span>
+                <button onClick={() => onSaveCeoMeetingDates(ceoMeetingDates.filter(d => d !== date))}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tm-urgent)', fontSize: 11 }}>✕</button>
+              </div>
+            ))}
+            {ceoMeetingDates.length === 0 && (
+              <div style={{ fontSize: 12, color: 'var(--tm-ink-tertiary)', padding: 8 }}>등록된 미팅 일정이 없습니다</div>
+            )}
+          </div>
+        </div>
 
         {/* 팀원 관리 */}
         <div style={{ marginBottom: 16 }}>

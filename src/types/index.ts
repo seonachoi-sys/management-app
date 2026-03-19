@@ -30,9 +30,11 @@ export interface Task {
   recurrenceRule: RecurrenceRule;
   ceoFlag: boolean;
   ceoFlagReason: string;
+  importance: 'high' | 'normal';
   googleTaskId: string | null;
   lastModifiedBy: string | null;
   lastModifiedAt: Timestamp | null;
+  isNewDismissed: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   createdBy: string;
@@ -43,6 +45,7 @@ export interface AppSettings {
   categories: string[];       // 업무 분류 (레거시 호환)
   taskCategories: string[];
   kpiCategories: string[];
+  ceoMeetingDates: string[];  // 대표이사 미팅 일정 (YYYY-MM-DD 형식)
 }
 
 export type TaskFormData = Omit<Task, 'taskId' | 'priorityScore' | 'createdAt' | 'updatedAt' | 'createdBy'>;

@@ -9,6 +9,7 @@ const DEFAULTS: AppSettings = {
   categories: [...DEFAULT_TASK_CATEGORIES],
   taskCategories: [...DEFAULT_TASK_CATEGORIES],
   kpiCategories: [...DEFAULT_KPI_CATEGORIES],
+  ceoMeetingDates: [],
 };
 
 export function subscribeSettings(
@@ -24,6 +25,7 @@ export function subscribeSettings(
           categories: data.taskCategories || data.categories || DEFAULTS.taskCategories,
           taskCategories: data.taskCategories || data.categories || DEFAULTS.taskCategories,
           kpiCategories: data.kpiCategories || DEFAULTS.kpiCategories,
+          ceoMeetingDates: data.ceoMeetingDates || [],
         });
       } else {
         // 초기값 저장
@@ -41,4 +43,8 @@ export async function updateTaskCategories(categories: string[]): Promise<void> 
 
 export async function updateKpiCategories(categories: string[]): Promise<void> {
   await setDoc(SETTINGS_REF, { kpiCategories: categories }, { merge: true });
+}
+
+export async function updateCeoMeetingDates(dates: string[]): Promise<void> {
+  await setDoc(SETTINGS_REF, { ceoMeetingDates: dates }, { merge: true });
 }

@@ -38,6 +38,7 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
     recurrenceRule: task?.recurrenceRule || null as RecurrenceRule,
     ceoFlag: task?.ceoFlag || false,
     ceoFlagReason: task?.ceoFlagReason || '',
+    importance: task?.importance || 'normal',
   });
 
   const isParentTask = !form.parentTaskId;
@@ -105,6 +106,7 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
       recurrenceRule: (!isParentTask && form.isRecurring) ? form.recurrenceRule : null,
       ceoFlag: isParentTask ? false : form.ceoFlag,
       ceoFlagReason: (!isParentTask && form.ceoFlag) ? form.ceoFlagReason : '',
+      importance: isParentTask ? 'normal' : form.importance,
     };
 
     if (task) data.taskId = task.taskId;
@@ -137,6 +139,7 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
       recurrenceRule: null,
       ceoFlag: false,
       ceoFlagReason: '',
+      importance: 'normal',
     }));
   };
 
@@ -305,6 +308,43 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
                   />
                 </label>
               )}
+
+              <div style={{ margin: '10px 0' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, marginRight: 10 }}>중요도</span>
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, importance: 'high' }))}
+                  style={{
+                    padding: '4px 14px',
+                    fontSize: 13,
+                    border: '1px solid var(--c-border, #ccc)',
+                    borderRadius: '4px 0 0 4px',
+                    cursor: 'pointer',
+                    background: form.importance === 'high' ? 'var(--c-primary, #2563eb)' : 'transparent',
+                    color: form.importance === 'high' ? '#fff' : 'inherit',
+                    fontWeight: form.importance === 'high' ? 700 : 400,
+                  }}
+                >
+                  중요
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, importance: 'normal' }))}
+                  style={{
+                    padding: '4px 14px',
+                    fontSize: 13,
+                    border: '1px solid var(--c-border, #ccc)',
+                    borderLeft: 'none',
+                    borderRadius: '0 4px 4px 0',
+                    cursor: 'pointer',
+                    background: form.importance === 'normal' ? 'var(--c-primary, #2563eb)' : 'transparent',
+                    color: form.importance === 'normal' ? '#fff' : 'inherit',
+                    fontWeight: form.importance === 'normal' ? 700 : 400,
+                  }}
+                >
+                  보통
+                </button>
+              </div>
             </>
           )}
 

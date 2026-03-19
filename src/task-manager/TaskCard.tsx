@@ -50,7 +50,9 @@ function StatusDropdown({
   onChange: (status: TaskStatus) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -63,21 +65,30 @@ function StatusDropdown({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
 
+  const handleToggle = () => {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, left: rect.left });
+    }
+    setOpen(!open);
+  };
+
   return (
     <div ref={ref} className="tm-status-dropdown">
       <button
+        ref={btnRef}
         className="tm-status-badge"
         style={{
           color: STATUS_COLOR[current],
           background: STATUS_BG[current],
           borderColor: STATUS_COLOR[current],
         }}
-        onClick={() => setOpen(!open)}
+        onClick={handleToggle}
       >
         {current}
       </button>
       {open && (
-        <div className="tm-status-menu">
+        <div className="tm-status-menu" style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}>
           {ALL_STATUSES.map((s) => (
             <button
               key={s}

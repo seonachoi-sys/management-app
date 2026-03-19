@@ -5,6 +5,7 @@ import {
   subscribeSettings,
   updateTaskCategories,
   updateKpiCategories,
+  updateCeoMeetingDates,
 } from '../services/settingsService';
 
 export function useSettings() {
@@ -12,6 +13,7 @@ export function useSettings() {
     categories: DEFAULT_TASK_CATEGORIES,
     taskCategories: DEFAULT_TASK_CATEGORIES,
     kpiCategories: DEFAULT_KPI_CATEGORIES,
+    ceoMeetingDates: [],
   });
   const [loading, setLoading] = useState(true);
 
@@ -31,13 +33,19 @@ export function useSettings() {
     await updateKpiCategories(cats);
   }, []);
 
+  const saveCeoMeetingDates = useCallback(async (dates: string[]) => {
+    await updateCeoMeetingDates(dates);
+  }, []);
+
   return {
     categories: settings.taskCategories,
     taskCategories: settings.taskCategories,
     kpiCategories: settings.kpiCategories,
+    ceoMeetingDates: settings.ceoMeetingDates,
     loading,
     saveTaskCategories,
     saveKpiCategories,
+    saveCeoMeetingDates,
     saveCategories: saveTaskCategories, // 레거시 호환
   };
 }

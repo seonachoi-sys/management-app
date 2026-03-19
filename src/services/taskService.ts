@@ -142,7 +142,8 @@ export async function updateTask(
     priorityScore,
     priority,
     updatedAt: serverTimestamp(),
-    ...(changedByName ? { lastModifiedBy: changedByName, lastModifiedAt: serverTimestamp() } : {}),
+    lastModifiedBy: changedByName || changedBy,
+    lastModifiedAt: serverTimestamp(),
   });
 }
 

@@ -49,8 +49,8 @@ function classifyTask(task: Task): Quadrant {
     isUrgent = daysLeft <= 3;
   }
 
-  // 중요도: priority 긴급/높음 또는 ceoFlag
-  const isImportant = task.priority === '긴급' || task.priority === '높음' || task.ceoFlag;
+  // 중요도: importance 필드 기준, ceoFlag true면 자동 중요
+  const isImportant = task.importance === 'high' || task.ceoFlag;
 
   if (isUrgent && isImportant) return 'q1';
   if (!isUrgent && isImportant) return 'q2';

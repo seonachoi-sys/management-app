@@ -1,5 +1,8 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Task, TaskStatus } from '../types';
+import { updateDoc, doc, Timestamp } from 'firebase/firestore';
+import { db } from '../firebase/config';
+import { startOfWeek, endOfWeek, format, differenceInDays, addDays } from 'date-fns';
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../hooks/useTasks';
 import { useMembers } from '../hooks/useMembers';
 import { useNotifications } from '../hooks/useNotifications';
@@ -24,8 +27,6 @@ import SettingsPanel from './SettingsPanel';
 import KpiPanel from './KpiPanel';
 import EisenhowerMatrix from './EisenhowerMatrix';
 import type { Quadrant } from './EisenhowerMatrix';
-import { Timestamp } from 'firebase/firestore';
-import { addDays } from 'date-fns';
 import './TaskManager.css';
 
 /* ─── 카테고리별 그룹 섹션 ─── */
@@ -90,6 +91,32 @@ function CategorySection({
   );
 }
 
+/* ─── 이번 주 뷰용 인라인 상태 드롭다운 ─── */
+const STATUS_COLORS: Record<string, string> = {
+  '대기': '#999', '진행중': 'var(--c-accent, #2f6ce5)', '완료': 'var(--c-green, #0d9f61)',
+  '지연': 'var(--c-red, #e03e3e)', '보류': '#bbb',
+};
+function StatusDropdownInline({ current, onChange }: { current: TaskStatus; onChange: (s: TaskStatus) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+      <button
+        className="tm-status-badge-sm"
+        style={{ color: STATUS_COLORS[current], borderColor: STATUS_COLORS[current] }}
+        onClick={() => setOpen(!open)}
+      >{current}</button>
+      {open && (
+        <div className="tm-status-menu" style={{ position: 'fixed', zIndex: 200 }}>
+          {(['대기','진행중','완료','지연','보류'] as TaskStatus[]).map((s) => (
+            <button key={s} className="tm-status-option" style={{ color: STATUS_COLORS[s] }}
+              onClick={() => { if (s !== current) onChange(s); setOpen(false); }}>{s}</button>
+          ))}
+        </div>
+      )}
+    </span>
+  );
+}
+
 const STATUS_OPTIONS: { value: TaskStatus | ''; label: string }[] = [
   { value: '', label: '전체' },
   { value: '대기', label: '대기' },
@@ -101,16 +128,17 @@ const STATUS_OPTIONS: { value: TaskStatus | ''; label: string }[] = [
 
 export default function TaskDashboard() {
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const { categories, kpiCategories, saveTaskCategories, saveKpiCategories } = useSettings();
+  const { categories, kpiCategories, ceoMeetingDates, saveTaskCategories, saveKpiCategories, saveCeoMeetingDates } = useSettings();
 
   // localStorage → Firestore 마이그레이션
   useMigration(user?.uid);
 
-  const [view, setView] = useState<'list' | 'matrix' | 'report' | 'kpi'>('kpi');
+  const [view, setView] = useState<'list' | 'weekly' | 'matrix' | 'report' | 'kpi'>('kpi');
   const [statusFilter, setStatusFilter] = useState<TaskStatus | ''>('');
   const [categoryFilter, setCategoryFilter] = useState('전체');
   const [assigneeFilter, setAssigneeFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState(''); // 'YYYY-MM' or ''
+  const [showAllAssignees, setShowAllAssignees] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [parentForNewTask, setParentForNewTask] = useState<string | null>(null);
@@ -128,6 +156,21 @@ export default function TaskDashboard() {
 
   const { tasks, loading, error } = useTasks(filters);
   const { members } = useMembers();
+
+  // 로그인 이메일 → 팀원 매핑 → 담당자 자동 필터
+  const mappedMember = useMemo(() => {
+    if (!user?.email || members.length === 0) return null;
+    return members.find((m) => m.email === user.email) || null;
+  }, [user?.email, members]);
+
+  useEffect(() => {
+    if (showAllAssignees) return; // 전체보기 모드면 자동필터 안함
+    if (mappedMember) {
+      setAssigneeFilter(mappedMember.name);
+    } else {
+      setAssigneeFilter(''); // 매핑 실패 시 전체 담당자
+    }
+  }, [mappedMember, showAllAssignees]);
   const { notifications, unreadCount, read, readAll } = useNotifications(user?.uid);
   const { create } = useCreateTask();
   const { update } = useUpdateTask();
@@ -210,6 +253,68 @@ export default function TaskDashboard() {
       }).length,
     };
   }, [tasks]);
+
+  // ─── 이번 주 뷰: filteredTasks 기준 날짜별 그룹핑 ───
+  const weeklyGroups = useMemo(() => {
+    const now = new Date();
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // 월요일 시작
+    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+
+    // filteredTasks에서 하위업무만 (상위 헤더 제외)
+    const leafTasks = filteredTasks.filter((t) => {
+      if (!t.parentTaskId && filteredTasks.some((c) => c.parentTaskId === t.taskId)) return false;
+      return t.status !== '완료';
+    });
+
+    // 이번 주 범위 업무
+    const weekTasks = leafTasks.filter((t) => {
+      const dd = t.dueDate?.toDate?.();
+      if (!dd) return true; // 날짜 미정도 포함
+      return dd >= weekStart && dd <= weekEnd;
+    });
+
+    // 날짜별 그룹핑
+    const groups: { dateKey: string; label: string; isToday: boolean; tasks: Task[] }[] = [];
+    const dateMap: Record<string, Task[]> = {};
+    const noDateTasks: Task[] = [];
+
+    weekTasks.forEach((t) => {
+      const dd = t.dueDate?.toDate?.();
+      if (!dd) {
+        noDateTasks.push(t);
+      } else {
+        const key = format(dd, 'yyyy-MM-dd');
+        if (!dateMap[key]) dateMap[key] = [];
+        dateMap[key].push(t);
+      }
+    });
+
+    const today = format(now, 'yyyy-MM-dd');
+    Object.keys(dateMap).sort().forEach((key) => {
+      const d = new Date(key);
+      const label = `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, '0')}`;
+      groups.push({
+        dateKey: key,
+        label,
+        isToday: key === today,
+        tasks: dateMap[key],
+      });
+    });
+
+    // 날짜 미정 그룹은 맨 아래
+    if (noDateTasks.length > 0) {
+      groups.push({ dateKey: 'no-date', label: '날짜 미정', isToday: false, tasks: noDateTasks });
+    }
+
+    return groups;
+  }, [filteredTasks]);
+
+  // NEW 뱃지 dismiss 핸들러
+  const handleDismissNew = useCallback(async (taskId: string) => {
+    try {
+      await updateDoc(doc(db, 'tasks', taskId), { isNewDismissed: true });
+    } catch {}
+  }, []);
 
   const urgentTasks = useMemo(
     () => tasks.filter((t) => t.priority === '긴급' && t.status !== '완료'),
@@ -368,6 +473,9 @@ export default function TaskDashboard() {
         <button className={`tm-tab ${view === 'kpi' ? 'active' : ''}`} onClick={() => setView('kpi')}>
           KPI
         </button>
+        <button className={`tm-tab ${view === 'weekly' ? 'active' : ''}`} onClick={() => setView('weekly')}>
+          이번 주
+        </button>
         <button className={`tm-tab ${view === 'list' ? 'active' : ''}`} onClick={() => setView('list')}>
           업무관리
         </button>
@@ -416,26 +524,103 @@ export default function TaskDashboard() {
 
       {error && <div className="tm-error">{error}</div>}
 
+      {/* ─── 상단 pill 배너 (이번주 + 업무관리 공통) ─── */}
+      {(view === 'list' || view === 'weekly') && (
+        <div className="tm-stats-pills">
+          <span className="tm-pill pill-blue">{stats.total} 전체</span>
+          <span className="tm-pill pill-orange">{stats.inProgress} 진행</span>
+          <span className="tm-pill pill-green">{stats.done} 완료</span>
+          <span className="tm-pill pill-red">{stats.delayed} 지연</span>
+          {mappedMember && (
+            <button
+              className={`tm-pill pill-toggle ${showAllAssignees ? 'active' : ''}`}
+              onClick={() => setShowAllAssignees(!showAllAssignees)}
+            >
+              {showAllAssignees ? '전체 보기 중' : `${mappedMember.name} 업무`}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ═══ 이번 주 뷰 ═══ */}
+      {view === 'weekly' && (
+        <>
+          {/* 필터 */}
+          <div className="tm-controls" style={{ marginBottom: 12 }}>
+            <div className="tm-select-group">
+              <select className="tm-select" value={assigneeFilter} onChange={(e) => { setAssigneeFilter(e.target.value); setShowAllAssignees(true); }}>
+                <option value="">전체 담당자</option>
+                {members.length > 0
+                  ? members.map((m) => <option key={m.memberId} value={m.name}>{m.name}</option>)
+                  : Array.from(new Set(tasks.map((t) => t.assigneeName).filter(Boolean))).map((n) => <option key={n} value={n}>{n}</option>)
+                }
+              </select>
+              <select className="tm-select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+                <option value="전체">전체 카테고리</option>
+                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <select className="tm-select" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)}>
+                <option value="">전체 월</option>
+                {monthOptions.map((m) => {
+                  const [y, mo] = m.split('-');
+                  return <option key={m} value={m}>{y}년 {Number(mo)}월</option>;
+                })}
+              </select>
+            </div>
+          </div>
+
+          {/* 날짜별 그룹 */}
+          <div className="tm-weekly-view">
+            {weeklyGroups.length === 0 && (
+              <div className="tm-empty">이번 주 업무가 없습니다.</div>
+            )}
+            {weeklyGroups.map((group) => (
+              <div key={group.dateKey} className="tm-weekly-group">
+                <div className="tm-weekly-date-header">
+                  <span className="tm-weekly-date">{group.label}</span>
+                  {group.isToday && <span className="tm-weekly-today">오늘</span>}
+                  <span className="tm-weekly-count">{group.tasks.length}건</span>
+                </div>
+                <div className="tm-weekly-cards">
+                  {group.tasks.map((t) => {
+                    const dd = t.dueDate?.toDate?.();
+                    const dLeft = dd ? differenceInDays(dd, new Date()) : null;
+                    const chipClass = dLeft !== null && dLeft < 0 ? 'chip-danger' : dLeft !== null && dLeft <= 2 ? 'chip-warning' : 'chip-info';
+                    const isNew = !t.isNewDismissed && t.createdAt && differenceInDays(new Date(), t.createdAt instanceof Timestamp ? t.createdAt.toDate() : new Date(t.createdAt as unknown as string)) <= 7;
+
+                    return (
+                      <div key={t.taskId} className="tm-weekly-card" onClick={() => { setEditingTask(t); setParentForNewTask(null); setShowForm(true); }}>
+                        <div className="tm-wc-top">
+                          <StatusDropdownInline current={t.status} onChange={(s) => handleStatusChange(t.taskId, s)} />
+                          <span className="tm-wc-title">{t.title}</span>
+                          {isNew && (
+                            <span className="tm-wc-new" onClick={(e) => { e.stopPropagation(); handleDismissNew(t.taskId); }}>NEW</span>
+                          )}
+                          {dd && (
+                            <span className={`tm-wc-chip ${chipClass}`}>
+                              {`${dd.getMonth()+1}.${String(dd.getDate()).padStart(2,'0')}`}
+                            </span>
+                          )}
+                        </div>
+                        <div className="tm-wc-bottom">
+                          {t.assigneeName && <span className="tm-wc-assignee">{t.assigneeName}</span>}
+                          {t.progressRate > 0 && <span className="tm-wc-progress">{t.progressRate}%</span>}
+                          {t.importance === 'high' && <span className="tm-wc-importance">중요</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
       {view === 'list' && (
         <>
-          {/* 통계 카드 */}
-          <div className="tm-stats">
-            <div className="tm-stat-card stat-total">
-              <div className="tm-stat-label">전체 업무</div>
-              <div className="tm-stat-value">{stats.total}</div>
-            </div>
-            <div className="tm-stat-card stat-progress">
-              <div className="tm-stat-label">진행중</div>
-              <div className="tm-stat-value">{stats.inProgress}</div>
-            </div>
-            <div className="tm-stat-card stat-done">
-              <div className="tm-stat-label">완료</div>
-              <div className="tm-stat-value">{stats.done}</div>
-            </div>
-            <div className="tm-stat-card stat-delayed">
-              <div className="tm-stat-label">지연</div>
-              <div className="tm-stat-value">{stats.delayed}</div>
-            </div>
+          {/* 통계 카드 — 기존 호환 유지 */}
+          <div className="tm-stats" style={{ display: 'none' }}>
           </div>
 
           {urgentTasks.length > 0 && (
@@ -556,33 +741,40 @@ export default function TaskDashboard() {
             tasks={tasks}
             onQuadrantChange={async (taskId: string, quadrant: Quadrant) => {
               if (!user) return;
-              // 사분면에 따라 마감일/중요도 업데이트
+              const task = tasks.find(t => t.taskId === taskId);
               const now = new Date();
               const updates: Partial<Task> = {};
 
-              const isUrgent = quadrant === 'q1' || quadrant === 'q3';
-              const isImportant = quadrant === 'q1' || quadrant === 'q2';
+              // 사분면별 마감일
+              const dueDaysMap: Record<string, number> = { q1: 0, q3: 2, q2: 7, q4: 14 };
+              const newDue = addDays(now, dueDaysMap[quadrant]);
 
-              // 긴급 → 마감일을 내일로, 비긴급 → 7일 후
-              if (isUrgent) {
-                updates.dueDate = Timestamp.fromDate(addDays(now, 1));
-              } else {
-                updates.dueDate = Timestamp.fromDate(addDays(now, 7));
+              // 기존 마감일이 더 촉박하면 덮어쓰지 않음
+              const existingDue = task?.dueDate instanceof Timestamp ? task.dueDate.toDate() : null;
+              if (!existingDue || newDue < existingDue) {
+                updates.dueDate = Timestamp.fromDate(newDue);
               }
 
-              // 중요 → CEO 플래그 or 높은 우선순위
-              updates.ceoFlag = isImportant && (quadrant === 'q1');
+              // 중요도
+              const isImportant = quadrant === 'q1' || quadrant === 'q2';
+              updates.importance = isImportant ? 'high' : 'normal';
+              updates.ceoFlag = quadrant === 'q1' && (task?.ceoFlag || false);
               updates.priority = isImportant ? '높음' : '보통';
 
               try {
                 await update(taskId, updates, user.uid, user.displayName || user.email || '');
+                // 토스트 메시지
+                const dateStr = `${newDue.getMonth()+1}.${newDue.getDate()}`;
+                if (updates.dueDate) {
+                  alert(`마감일이 ${dateStr}(으)로 조정되었습니다`);
+                }
               } catch {}
             }}
           />
         </div>
       )}
 
-      {view === 'report' && <MeetingReportPanel />}
+      {view === 'report' && <MeetingReportPanel ceoMeetingDates={ceoMeetingDates} />}
 
       {view === 'kpi' && <KpiPanel />}
 
@@ -608,8 +800,10 @@ export default function TaskDashboard() {
         <SettingsPanel
           taskCategories={categories}
           kpiCategories={kpiCategories}
+          ceoMeetingDates={ceoMeetingDates}
           onSaveTaskCategories={saveTaskCategories}
           onSaveKpiCategories={saveKpiCategories}
+          onSaveCeoMeetingDates={saveCeoMeetingDates}
           onClose={() => setShowSettings(false)}
           userId={user?.uid}
         />
