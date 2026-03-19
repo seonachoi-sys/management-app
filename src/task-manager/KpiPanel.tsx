@@ -136,27 +136,26 @@ export default function KpiPanel() {
     risk: kpis.filter((k) => k.status === '위험').length,
   }), [kpis]);
 
-  // 팀원별 KPI 담당
-  const memberKpiCounts = useMemo(() => {
-    const map: Record<string, number> = {};
+  // ─── 사이드바 데이터 ───
+  const kpiSidebar = useMemo(() => {
+    const total = kpis.length;
+    const achieved = kpis.filter((k) => k.status === '달성' || k.status === '완료').length;
+    const pct = total > 0 ? Math.round((achieved / total) * 100) : 0;
+
+    // 위험 KPI (달성률 30% 이하)
+    const riskKpis = kpis.filter((k) => k.achievementRate <= 30 && k.status !== '완료' && k.status !== '달성');
+
+    // 담당자별 현황
+    const memberMap: Record<string, { done: number; progress: number }> = {};
     kpis.forEach((k) => {
       const name = k.assigneeName || '미배정';
-      map[name] = (map[name] || 0) + 1;
+      if (!memberMap[name]) memberMap[name] = { done: 0, progress: 0 };
+      if (k.status === '완료' || k.status === '달성') memberMap[name].done++;
+      else memberMap[name].progress++;
     });
-    return Object.entries(map).sort((a, b) => b[1] - a[1]);
-  }, [kpis]);
+    const memberStats = Object.entries(memberMap).sort((a, b) => b[1].progress - a[1].progress);
 
-  // 위험/마감 임박 알림
-  const warnings = useMemo(() => {
-    return kpis
-      .filter((k) => k.status === '위험' || (k.endDate && k.status !== '달성'))
-      .map((k) => {
-        const end = k.endDate instanceof Timestamp ? k.endDate.toDate() : null;
-        const daysLeft = end ? Math.ceil((end.getTime() - Date.now()) / 86400000) : null;
-        return { ...k, daysLeft };
-      })
-      .filter((k) => k.status === '위험' || (k.daysLeft !== null && k.daysLeft <= 14))
-      .slice(0, 5);
+    return { total, achieved, pct, riskKpis, memberStats };
   }, [kpis]);
 
   const toggleExpand = (id: string) => {
@@ -235,35 +234,45 @@ export default function KpiPanel() {
 
         {/* 사이드 패널 */}
         <div className="tm-side-col">
-          {/* 팀원별 KPI */}
-          <div className="tm-workload-card" style={{ marginBottom: 12 }}>
-            <div className="tm-workload-title">팀원별 KPI 담당</div>
-            {memberKpiCounts.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--tm-ink-tertiary)', padding: '12px 0' }}>데이터 없음</div>
-            ) : memberKpiCounts.map(([name, count]) => (
-              <div key={name} className="tm-workload-item">
-                <div className="tm-workload-name">{name}</div>
-                <span className="tm-workload-count tm-wc-progress">{count}</span>
-              </div>
-            ))}
+          {/* 전체 KPI 달성률 */}
+          <div className="sidebar-card">
+            <div className="sidebar-title">전체 KPI 달성률</div>
+            <div className="sidebar-stat-row">
+              <span className="sidebar-big">{kpiSidebar.achieved} <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--c-text-3)' }}>/ {kpiSidebar.total} 완료</span></span>
+              <span className="sidebar-pct" style={{ color: 'var(--c-green)' }}>{kpiSidebar.pct}%</span>
+            </div>
+            <div className="sidebar-bar">
+              <div className="sidebar-bar-fill" style={{ width: `${kpiSidebar.pct}%`, background: 'var(--c-green)' }} />
+            </div>
           </div>
 
-          {/* 주의 알림 */}
-          <div className="tm-workload-card">
-            <div className="tm-workload-title">주의 필요</div>
-            {warnings.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--tm-ink-tertiary)', padding: '12px 0' }}>이상 없음</div>
-            ) : warnings.map((w) => (
-              <div key={w.kpiId} style={{ padding: '6px 0', borderBottom: '1px solid var(--tm-border-subtle)', fontSize: 12 }}>
-                <div style={{ fontWeight: 600, color: 'var(--tm-ink-primary)', marginBottom: 2 }}>{w.title}</div>
-                <div style={{ display: 'flex', gap: 8, color: 'var(--tm-ink-tertiary)' }}>
-                  <span style={{ color: STATUS_COLOR[w.status], fontWeight: 600 }}>{w.status}</span>
-                  <span>{w.achievementRate}%</span>
-                  {w.daysLeft !== null && w.daysLeft <= 14 && (
-                    <span style={{ color: 'var(--tm-urgent)' }}>
-                      {w.daysLeft <= 0 ? '기한 초과' : `D-${w.daysLeft}`}
-                    </span>
-                  )}
+          {/* 위험 KPI */}
+          {kpiSidebar.riskKpis.length > 0 && (
+            <div className="sidebar-card">
+              <div className="sidebar-title" style={{ color: 'var(--c-red)' }}>위험 KPI ({kpiSidebar.riskKpis.length})</div>
+              <div className="sidebar-list">
+                {kpiSidebar.riskKpis.map((k) => (
+                  <div key={k.kpiId} className="sidebar-list-item">
+                    <span className="sidebar-dot" style={{ background: 'var(--c-red)' }} />
+                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.title}</span>
+                    <span className="sidebar-meta">{k.assigneeName} · {k.achievementRate}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 담당자별 KPI 현황 */}
+          <div className="sidebar-card">
+            <div className="sidebar-title">담당자별 KPI 현황</div>
+            {kpiSidebar.memberStats.length === 0 ? (
+              <div style={{ fontSize: 12, color: 'var(--c-text-3)', padding: '8px 0' }}>데이터 없음</div>
+            ) : kpiSidebar.memberStats.map(([name, counts]) => (
+              <div key={name} className="sidebar-member-row">
+                <span className="sidebar-member-name">{name}</span>
+                <div className="sidebar-member-counts">
+                  <span className="sidebar-member-tag tag-done">{counts.done}</span>
+                  <span className="sidebar-member-tag tag-progress">{counts.progress}</span>
                 </div>
               </div>
             ))}
