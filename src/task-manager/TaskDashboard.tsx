@@ -262,59 +262,88 @@ export default function TaskDashboard() {
   }, [tasks]);
 
   // ─── 이번 주 뷰: filteredTasks 기준 날짜별 그룹핑 ───
-  const weeklyGroups = useMemo(() => {
+  type WeekGroup = { dateKey: string; label: string; subLabel: string; colorClass: 'danger' | 'warning' | 'info' | 'muted'; tasks: Task[] };
+  const weeklyGroups = useMemo((): WeekGroup[] => {
     const now = new Date();
-    const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // 월요일 시작
+    now.setHours(0, 0, 0, 0);
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+    const todayStr = format(now, 'yyyy-MM-dd');
 
-    // filteredTasks에서 하위업무만 (상위 헤더 제외)
     const leafTasks = filteredTasks.filter((t) => {
       if (!t.parentTaskId && filteredTasks.some((c) => c.parentTaskId === t.taskId)) return false;
       return t.status !== '완료';
     });
 
-    // 이번 주 범위 업무
     const weekTasks = leafTasks.filter((t) => {
       const dd = t.dueDate?.toDate?.();
-      if (!dd) return true; // 날짜 미정도 포함
+      if (!dd) return true;
       return dd >= weekStart && dd <= weekEnd;
     });
 
-    // 날짜별 그룹핑
-    const groups: { dateKey: string; label: string; isToday: boolean; tasks: Task[] }[] = [];
     const dateMap: Record<string, Task[]> = {};
     const noDateTasks: Task[] = [];
-
     weekTasks.forEach((t) => {
       const dd = t.dueDate?.toDate?.();
-      if (!dd) {
-        noDateTasks.push(t);
-      } else {
-        const key = format(dd, 'yyyy-MM-dd');
-        if (!dateMap[key]) dateMap[key] = [];
-        dateMap[key].push(t);
-      }
+      if (!dd) { noDateTasks.push(t); return; }
+      const key = format(dd, 'yyyy-MM-dd');
+      if (!dateMap[key]) dateMap[key] = [];
+      dateMap[key].push(t);
     });
 
-    const today = format(now, 'yyyy-MM-dd');
+    const groups: WeekGroup[] = [];
     Object.keys(dateMap).sort().forEach((key) => {
       const d = new Date(key);
-      const label = `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, '0')}`;
-      groups.push({
-        dateKey: key,
-        label,
-        isToday: key === today,
-        tasks: dateMap[key],
-      });
+      const dLeft = differenceInDays(d, now);
+      const mdd = `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, '0')}`;
+      let subLabel = '마감';
+      let colorClass: WeekGroup['colorClass'] = 'info';
+      if (key === todayStr) { subLabel = '오늘'; colorClass = 'danger'; }
+      else if (dLeft >= 1 && dLeft <= 5) { colorClass = 'warning'; }
+      else if (dLeft >= 6) { subLabel = '까지 마감'; colorClass = 'info'; }
+      else if (dLeft < 0) { subLabel = `D+${Math.abs(dLeft)} 지연`; colorClass = 'danger'; }
+
+      groups.push({ dateKey: key, label: `${mdd} ${subLabel}`, subLabel: key === todayStr ? '오늘' : '', colorClass, tasks: dateMap[key] });
     });
 
-    // 날짜 미정 그룹은 맨 아래
     if (noDateTasks.length > 0) {
-      groups.push({ dateKey: 'no-date', label: '날짜 미정', isToday: false, tasks: noDateTasks });
+      groups.push({ dateKey: 'no-date', label: '날짜 미정', subLabel: '', colorClass: 'muted', tasks: noDateTasks });
     }
-
     return groups;
   }, [filteredTasks]);
+
+  // 이번 주 pill 배너 데이터
+  const weeklyPills = useMemo(() => {
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const todayStr = format(now, 'yyyy-MM-dd');
+    const allWeekTasks = weeklyGroups.flatMap((g) => g.tasks);
+
+    const todayTasks = allWeekTasks.filter((t) => {
+      const dd = t.dueDate?.toDate?.();
+      return dd && format(dd, 'yyyy-MM-dd') === todayStr;
+    });
+    const soonTasks = allWeekTasks.filter((t) => {
+      const dd = t.dueDate?.toDate?.();
+      if (!dd) return false;
+      const key = format(dd, 'yyyy-MM-dd');
+      return key !== todayStr && dd > now;
+    });
+    const newTasks = allWeekTasks.filter((t) => {
+      if (t.isNewDismissed) return false;
+      if (!t.createdAt) return false;
+      const created = t.createdAt instanceof Timestamp ? t.createdAt.toDate() : new Date(t.createdAt as unknown as string);
+      return differenceInDays(now, created) <= 7;
+    });
+    const doneTasks = filteredTasks.filter((t) => t.status === '완료');
+
+    const todayLabel = todayTasks.length > 0 ? `${now.getMonth()+1}.${String(now.getDate()).padStart(2,'0')}` : '';
+    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+    const soonLabel = soonTasks.length > 0
+      ? `${(now.getMonth()+1)}.${String(now.getDate()+1).padStart(2,'0')}~${(weekEnd.getMonth()+1)}.${String(weekEnd.getDate()).padStart(2,'0')}`
+      : '';
+
+    return { todayTasks, todayLabel, soonTasks, soonLabel, newTasks, doneTasks };
+  }, [weeklyGroups, filteredTasks]);
 
   // NEW 뱃지 dismiss 핸들러
   const handleDismissNew = useCallback(async (taskId: string) => {
@@ -531,18 +560,34 @@ export default function TaskDashboard() {
 
       {error && <div className="tm-error">{error}</div>}
 
-      {/* ─── 상단 pill 배너 (이번주 + 업무관리 공통) ─── */}
-      {(view === 'list' || view === 'weekly') && (
+      {/* ─── 상단 pill 배너 ─── */}
+      {view === 'list' && (
         <div className="tm-stats-pills">
           <span className="tm-pill pill-blue">{stats.total} 전체</span>
           <span className="tm-pill pill-orange">{stats.inProgress} 진행</span>
           <span className="tm-pill pill-green">{stats.done} 완료</span>
           <span className="tm-pill pill-red">{stats.delayed} 지연</span>
           {mappedMember && (
-            <button
-              className={`tm-pill pill-toggle ${showAllAssignees ? 'active' : ''}`}
-              onClick={() => setShowAllAssignees(!showAllAssignees)}
-            >
+            <button className={`tm-pill pill-toggle ${showAllAssignees ? 'active' : ''}`} onClick={() => setShowAllAssignees(!showAllAssignees)}>
+              {showAllAssignees ? '전체 보기 중' : `${mappedMember.name} 업무`}
+            </button>
+          )}
+        </div>
+      )}
+      {view === 'weekly' && (
+        <div className="tm-stats-pills">
+          {weeklyPills.todayTasks.length > 0 && (
+            <span className="tm-pill pill-red">{weeklyPills.todayLabel} 마감 {weeklyPills.todayTasks.length}건</span>
+          )}
+          {weeklyPills.soonTasks.length > 0 && (
+            <span className="tm-pill pill-orange">{weeklyPills.soonLabel} 마감 {weeklyPills.soonTasks.length}건</span>
+          )}
+          {weeklyPills.newTasks.length > 0 && (
+            <span className="tm-pill pill-blue">신규 {weeklyPills.newTasks.length}건</span>
+          )}
+          <span className="tm-pill pill-green">완료 {weeklyPills.doneTasks.length}건</span>
+          {mappedMember && (
+            <button className={`tm-pill pill-toggle ${showAllAssignees ? 'active' : ''}`} onClick={() => setShowAllAssignees(!showAllAssignees)}>
               {showAllAssignees ? '전체 보기 중' : `${mappedMember.name} 업무`}
             </button>
           )}
@@ -582,13 +627,13 @@ export default function TaskDashboard() {
               <div className="tm-empty">이번 주 업무가 없습니다.</div>
             )}
             {weeklyGroups.map((group) => (
-              <div key={group.dateKey} className="tm-weekly-group">
-                <div className="tm-weekly-date-header">
-                  <span className="tm-weekly-date">{group.label}</span>
-                  {group.isToday && <span className="tm-weekly-today">오늘</span>}
-                  <span className="tm-weekly-count">{group.tasks.length}건</span>
+              <div key={group.dateKey} className="week-group">
+                <div className={`week-date-header week-hdr-${group.colorClass}`}>
+                  <span className="week-date-label">{group.label}</span>
+                  {group.subLabel && <span className="week-date-sub">{group.subLabel}</span>}
+                  <span className="week-date-count">{group.tasks.length}건</span>
                 </div>
-                <div className="tm-weekly-cards">
+                <div className="week-cards">
                   {group.tasks.map((t) => {
                     const dd = t.dueDate?.toDate?.();
                     const dLeft = dd ? differenceInDays(dd, new Date()) : null;
@@ -596,23 +641,23 @@ export default function TaskDashboard() {
                     const isNew = !t.isNewDismissed && t.createdAt && differenceInDays(new Date(), t.createdAt instanceof Timestamp ? t.createdAt.toDate() : new Date(t.createdAt as unknown as string)) <= 7;
 
                     return (
-                      <div key={t.taskId} className="tm-weekly-card" onClick={() => { setEditingTask(t); setParentForNewTask(null); setShowForm(true); }}>
-                        <div className="tm-wc-top">
+                      <div key={t.taskId} className={`week-card ${isNew ? 'week-card-new' : ''}`} onClick={() => { setEditingTask(t); setParentForNewTask(null); setShowForm(true); }}>
+                        <div className="week-card-top">
                           <StatusDropdownInline current={t.status} onChange={(s) => handleStatusChange(t.taskId, s)} />
-                          <span className="tm-wc-title">{t.title}</span>
+                          <span className="week-card-title">{t.title}</span>
                           {isNew && (
-                            <span className="tm-wc-new" onClick={(e) => { e.stopPropagation(); handleDismissNew(t.taskId); }}>NEW</span>
+                            <span className="week-new-badge" onClick={(e) => { e.stopPropagation(); handleDismissNew(t.taskId); }}>NEW</span>
                           )}
                           {dd && (
-                            <span className={`tm-wc-chip ${chipClass}`}>
+                            <span className={`week-chip ${chipClass}`}>
                               {`${dd.getMonth()+1}.${String(dd.getDate()).padStart(2,'0')}`}
                             </span>
                           )}
                         </div>
-                        <div className="tm-wc-bottom">
-                          {t.assigneeName && <span className="tm-wc-assignee">{t.assigneeName}</span>}
-                          {t.progressRate > 0 && <span className="tm-wc-progress">{t.progressRate}%</span>}
-                          {t.importance === 'high' && <span className="tm-wc-importance">중요</span>}
+                        <div className="week-card-bottom">
+                          {t.assigneeName && <span className="week-assignee">{t.assigneeName}</span>}
+                          {t.progressRate > 0 && <span className="week-progress">{t.progressRate}%</span>}
+                          {t.importance === 'high' && <span className="week-importance">중요</span>}
                         </div>
                       </div>
                     );

@@ -239,6 +239,17 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
                 </label>
               </div>
 
+              {/* 중요도 토글 */}
+              <label>
+                중요도
+                <div className="tm-importance-toggle">
+                  <button type="button" className={`tm-importance-btn ${form.importance === 'high' ? 'active-high' : ''}`}
+                    onClick={() => setForm((f) => ({ ...f, importance: 'high' as const }))}>중요</button>
+                  <button type="button" className={`tm-importance-btn ${form.importance === 'normal' ? 'active-normal' : ''}`}
+                    onClick={() => setForm((f) => ({ ...f, importance: 'normal' as const }))}>보통</button>
+                </div>
+              </label>
+
               <div className="tm-form-row">
                 <label>
                   착수일
@@ -309,42 +320,6 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
                 </label>
               )}
 
-              <div style={{ margin: '10px 0' }}>
-                <span style={{ fontSize: 13, fontWeight: 600, marginRight: 10 }}>중요도</span>
-                <button
-                  type="button"
-                  onClick={() => setForm((f) => ({ ...f, importance: 'high' }))}
-                  style={{
-                    padding: '4px 14px',
-                    fontSize: 13,
-                    border: '1px solid var(--c-border, #ccc)',
-                    borderRadius: '4px 0 0 4px',
-                    cursor: 'pointer',
-                    background: form.importance === 'high' ? 'var(--c-primary, #2563eb)' : 'transparent',
-                    color: form.importance === 'high' ? '#fff' : 'inherit',
-                    fontWeight: form.importance === 'high' ? 700 : 400,
-                  }}
-                >
-                  중요
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setForm((f) => ({ ...f, importance: 'normal' }))}
-                  style={{
-                    padding: '4px 14px',
-                    fontSize: 13,
-                    border: '1px solid var(--c-border, #ccc)',
-                    borderLeft: 'none',
-                    borderRadius: '0 4px 4px 0',
-                    cursor: 'pointer',
-                    background: form.importance === 'normal' ? 'var(--c-primary, #2563eb)' : 'transparent',
-                    color: form.importance === 'normal' ? '#fff' : 'inherit',
-                    fontWeight: form.importance === 'normal' ? 700 : 400,
-                  }}
-                >
-                  보통
-                </button>
-              </div>
             </>
           )}
 

@@ -1229,3 +1229,57 @@
   from { opacity: 1; transform: translateY(0); }
   to   { opacity: 0; transform: translateY(-8px); }
 }
+
+/* ═══ WEEK VIEW (week- prefix) ═══ */
+.week-group { margin-bottom: 20px; }
+
+.week-date-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 8px; margin-bottom: 8px;
+  font-weight: 700; font-size: 14px;
+}
+.week-hdr-danger  { background: #fce4ec; color: #e03e3e; }
+.week-hdr-warning { background: #fdf6ee; color: #d9730d; }
+.week-hdr-info    { background: #eef3fd; color: #2f6ce5; }
+.week-hdr-muted   { background: var(--c-bg-sub, #fafafa); color: var(--c-text-3, #999); }
+
+.week-date-label { flex: 1; }
+.week-date-sub {
+  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px;
+  background: rgba(255,255,255,.7); color: inherit;
+}
+.week-date-count { font-size: 11px; font-weight: 500; opacity: .7; }
+
+.week-cards { display: flex; flex-direction: column; gap: 6px; }
+
+.week-card {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 10px 14px; border-radius: 8px;
+  background: var(--c-bg, #fff); border: 1px solid var(--c-border, #e8e8e8);
+  border-left: 3px solid transparent;
+  cursor: pointer; transition: .15s;
+}
+.week-card:hover { border-color: var(--c-accent, #2f6ce5); background: #fafcff; }
+.week-card-new { border-left-color: #2f6ce5 !important; }
+
+.week-card-top { display: flex; align-items: center; gap: 8px; }
+.week-card-title { flex: 1; font-size: 13px; font-weight: 500; color: var(--c-text, #1a1a1a); }
+
+.week-chip {
+  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px;
+  white-space: nowrap;
+}
+
+.week-new-badge {
+  font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 8px;
+  background: #2f6ce5; color: #fff; cursor: pointer; white-space: nowrap;
+  animation: newPulse 2s infinite;
+}
+
+.week-card-bottom { display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--c-text-3, #999); }
+.week-assignee { font-weight: 500; }
+.week-progress { color: var(--c-accent, #2f6ce5); font-weight: 600; }
+.week-importance {
+  font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 8px;
+  background: #fce4ec; color: #e03e3e;
+}
