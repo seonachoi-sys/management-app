@@ -138,7 +138,7 @@ export default function TaskDashboard() {
   const [categoryFilter, setCategoryFilter] = useState('전체');
   const [assigneeFilter, setAssigneeFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState(''); // 'YYYY-MM' or ''
-  const [showAllAssignees, setShowAllAssignees] = useState(false);
+  const [autoMappedDone, setAutoMappedDone] = useState(false);
   const [toasts, setToasts] = useState<{ id: number; message: string }[]>([]);
   const toastIdRef = React.useRef(0);
   const addToast = useCallback((message: string) => {
@@ -172,14 +172,14 @@ export default function TaskDashboard() {
     return members.find((m) => m.email === user.email) || null;
   }, [user?.email, members]);
 
+  // 로그인 시 최초 1회만 자동 매핑 (이후 수동 변경 보호)
   useEffect(() => {
-    if (showAllAssignees) return; // 전체보기 모드면 자동필터 안함
+    if (autoMappedDone) return;
     if (mappedMember) {
       setAssigneeFilter(mappedMember.name);
-    } else {
-      setAssigneeFilter(''); // 매핑 실패 시 전체 담당자
+      setAutoMappedDone(true);
     }
-  }, [mappedMember, showAllAssignees]);
+  }, [mappedMember, autoMappedDone]);
   const { notifications, unreadCount, read, readAll } = useNotifications(user?.uid);
   const { create } = useCreateTask();
   const { update } = useUpdateTask();
@@ -739,8 +739,10 @@ export default function TaskDashboard() {
           <span className="tm-pill pill-green">{stats.done} 완료</span>
           <span className="tm-pill pill-red">{stats.delayed} 지연</span>
           {mappedMember && (
-            <button className={`tm-pill pill-toggle ${showAllAssignees ? 'active' : ''}`} onClick={() => setShowAllAssignees(!showAllAssignees)}>
-              {showAllAssignees ? '전체 보기 중' : `${mappedMember.name} 업무`}
+            <button className={`tm-pill pill-toggle ${assigneeFilter !== mappedMember.name ? 'active' : ''}`} onClick={() => {
+              setAssigneeFilter(assigneeFilter === mappedMember.name ? '' : mappedMember.name);
+            }}>
+              {assigneeFilter === mappedMember.name ? `${mappedMember.name} 업무` : '전체 보기 중'}
             </button>
           )}
         </div>
@@ -758,8 +760,10 @@ export default function TaskDashboard() {
           )}
           <span className="tm-pill pill-green">완료 {weeklyPills.doneTasks.length}건</span>
           {mappedMember && (
-            <button className={`tm-pill pill-toggle ${showAllAssignees ? 'active' : ''}`} onClick={() => setShowAllAssignees(!showAllAssignees)}>
-              {showAllAssignees ? '전체 보기 중' : `${mappedMember.name} 업무`}
+            <button className={`tm-pill pill-toggle ${assigneeFilter !== mappedMember.name ? 'active' : ''}`} onClick={() => {
+              setAssigneeFilter(assigneeFilter === mappedMember.name ? '' : mappedMember.name);
+            }}>
+              {assigneeFilter === mappedMember.name ? `${mappedMember.name} 업무` : '전체 보기 중'}
             </button>
           )}
         </div>
@@ -771,7 +775,7 @@ export default function TaskDashboard() {
           {/* 필터 */}
           <div className="tm-controls" style={{ marginBottom: 12 }}>
             <div className="tm-select-group">
-              <select className="tm-select" value={assigneeFilter} onChange={(e) => { setAssigneeFilter(e.target.value); setShowAllAssignees(true); }}>
+              <select className="tm-select" value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)}>
                 <option value="">전체 담당자</option>
                 {members.length > 0
                   ? members.map((m) => <option key={m.memberId} value={m.name}>{m.name}</option>)
@@ -893,7 +897,7 @@ export default function TaskDashboard() {
                         <option key={c} value={c}>{c}</option>
                       ))}
                     </select>
-                    <select className="tm-select" value={assigneeFilter} onChange={(e) => { setAssigneeFilter(e.target.value); setShowAllAssignees(true); }}>
+                    <select className="tm-select" value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)}>
                       <option value="">전체 담당자</option>
                       {members.length > 0
                         ? members.map((m) => (
