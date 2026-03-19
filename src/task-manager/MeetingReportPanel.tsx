@@ -70,6 +70,22 @@ function groupByCategory(tasks: Task[]): CategoryGroup[] {
   return Object.entries(map).map(([category, tasks]) => ({ category, tasks }));
 }
 
+interface AssigneeGroup { assignee: string; tasks: Task[]; }
+function groupByAssignee(tasks: Task[]): AssigneeGroup[] {
+  const map: Record<string, Task[]> = {};
+  for (const t of tasks) {
+    const name = t.assigneeName || '미배정';
+    if (!map[name]) map[name] = [];
+    map[name].push(t);
+  }
+  return Object.entries(map).map(([assignee, tasks]) => ({ assignee, tasks }));
+}
+
+const PRIORITY_ORDER: Record<string, number> = { '긴급': 0, '높음': 1, '보통': 2, '낮음': 3 };
+function sortByPriority(tasks: Task[]): Task[] {
+  return [...tasks].sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9));
+}
+
 /* ─── 카테고리 그룹 렌더링 헬퍼 ─── */
 function renderTaskList(tasks: Task[], showProgress = true) {
   const today = new Date();
@@ -125,6 +141,16 @@ function renderCategoryBlocks(groups: CategoryGroup[], renderFn: (tasks: Task[])
         {group.category} <span className="rpt-cat-cnt">{group.tasks.length}</span>
       </div>
       <div className="rpt-list">{renderFn(group.tasks)}</div>
+    </div>
+  ));
+}
+
+function renderAssigneeBlocks(groups: AssigneeGroup[], renderFn: (tasks: Task[]) => React.ReactNode) {
+  if (groups.length === 0) return <div className="rpt-empty">해당 없음</div>;
+  return groups.map((g) => (
+    <div key={g.assignee} className="rpt-cat-group">
+      <div className="rpt-cat-label">{g.assignee} <span className="rpt-cat-cnt">{g.tasks.length}</span></div>
+      <div className="rpt-list">{renderFn(g.tasks)}</div>
     </div>
   ));
 }
@@ -317,7 +343,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
 
     const ceoDecision = reportTasks.filter((t) => {
       if (t.status === '완료') return false;
-      return t.ceoFlag;
+      return t.ceoFlag || t.status === '보류';
     });
 
     return { completed, inProgress, ceoDecision };
@@ -529,31 +555,57 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   const renderWeeklyReport = () => {
     if (!weeklyData) return null;
     const { inProgress, completed, nextWeek, delayed } = weeklyData;
-    const inProgressGroups = groupByCategory(inProgress);
-    const completedGroups = groupByCategory(completed);
-    const nextWeekGroups = groupByCategory(nextWeek);
-    const delayedGroups = groupByCategory(delayed);
+
+    // 담당자별 KPI 그룹
+    const kpiByAssignee: Record<string, Kpi[]> = {};
+    allKpis.forEach((k) => {
+      const name = k.assigneeName || '미배정';
+      if (!kpiByAssignee[name]) kpiByAssignee[name] = [];
+      kpiByAssignee[name].push(k);
+    });
 
     return (
       <>
         <Block title="이번 주 진행 업무" count={inProgress.length} dotColor="blue" defaultOpen>
-          {renderCategoryBlocks(inProgressGroups, (tasks) => renderTaskList(tasks))}
+          {renderAssigneeBlocks(groupByAssignee(inProgress), (tasks) => renderTaskList(tasks))}
         </Block>
 
         <Block title="이번 주 완료 업무" count={completed.length} dotColor="green" defaultOpen>
-          {renderCategoryBlocks(completedGroups, (tasks) => renderCompletedList(tasks))}
+          {renderCategoryBlocks(groupByCategory(completed), (tasks) => renderCompletedList(tasks))}
         </Block>
 
-        <Block title="차주 예정 업무" count={nextWeek.length} dotColor="blue" defaultOpen={false}>
-          {renderCategoryBlocks(nextWeekGroups, (tasks) => renderTaskList(tasks))}
+        <Block title="차주 진행 예정" count={nextWeek.length} dotColor="blue" defaultOpen={false}>
+          {renderAssigneeBlocks(groupByAssignee(sortByPriority(nextWeek)), (tasks) => renderTaskList(tasks))}
         </Block>
 
-        <Block title="이월 업무" count={delayed.length} dotColor="red" danger defaultOpen>
-          {renderCategoryBlocks(delayedGroups, (tasks) => renderTaskList(tasks))}
+        <Block title="차주 이월 업무" count={delayed.length} dotColor="red" danger defaultOpen>
+          {delayed.length === 0 ? <div className="rpt-empty">해당 없음</div> : (
+            <div className="rpt-list">
+              {delayed.map((t) => {
+                const dd = tsToDate(t.dueDate);
+                const delayDays = dd ? Math.abs(differenceInDays(dd, new Date())) : 0;
+                return (
+                  <div key={t.taskId} className="rpt-item rpt-item-delayed">
+                    <span className="rpt-item-title">{t.title}</span>
+                    <span className="rpt-item-assignee">{t.assigneeName}</span>
+                    <span className="rpt-item-tag rpt-tag-red">{delayDays}일 지연</span>
+                    {t.notes && <span className="rpt-item-note" title={t.notes}>📋</span>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Block>
 
-        <Block title="KPI 현황" count={allKpis.length} dotColor="yellow" defaultOpen>
-          {renderKpiBlock(allKpis)}
+        <Block title="KPI 진행 현황" count={allKpis.length} dotColor="yellow" defaultOpen>
+          {Object.keys(kpiByAssignee).length === 0 ? <div className="rpt-empty">해당 없음</div> :
+            Object.entries(kpiByAssignee).map(([name, kpis]) => (
+              <div key={name} className="rpt-cat-group">
+                <div className="rpt-cat-label">{name} <span className="rpt-cat-cnt">{kpis.length}</span></div>
+                {renderKpiBlock(kpis)}
+              </div>
+            ))
+          }
         </Block>
       </>
     );
@@ -563,17 +615,22 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   const renderBiweeklyReport = () => {
     if (!biweeklyData) return null;
     const { completed, inProgress, ceoDecision } = biweeklyData;
-    const completedGroups = groupByCategory(completed);
-    const inProgressGroups = groupByCategory(inProgress);
+
+    const kpiByAssignee: Record<string, Kpi[]> = {};
+    allKpis.forEach((k) => {
+      const name = k.assigneeName || '미배정';
+      if (!kpiByAssignee[name]) kpiByAssignee[name] = [];
+      kpiByAssignee[name].push(k);
+    });
 
     return (
       <>
-        <Block title="완료 업무" count={completed.length} dotColor="green" defaultOpen>
-          {renderCategoryBlocks(completedGroups, (tasks) => renderCompletedList(tasks))}
+        <Block title="2주간 완료 업무" count={completed.length} dotColor="green" defaultOpen>
+          {renderCategoryBlocks(groupByCategory(completed), (tasks) => renderCompletedList(tasks))}
         </Block>
 
-        <Block title="진행 업무" count={inProgress.length} dotColor="blue" defaultOpen>
-          {renderCategoryBlocks(inProgressGroups, (tasks) => renderTaskList(tasks))}
+        <Block title="앞으로 2주 진행 업무" count={inProgress.length} dotColor="blue" defaultOpen>
+          {renderAssigneeBlocks(groupByAssignee(inProgress), (tasks) => renderTaskList(tasks))}
         </Block>
 
         <Block title="결정 필요 사항" count={ceoDecision.length} dotColor="yellow" defaultOpen>
@@ -585,15 +642,22 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
                 <div key={t.taskId} className="rpt-item">
                   <span className="rpt-item-title">{t.title}</span>
                   <span className="rpt-item-assignee">{t.assigneeName}</span>
-                  <span className="rpt-item-reason">{t.ceoFlagReason || t.notes}</span>
+                  <span className="rpt-item-reason">{t.ceoFlagReason || t.notes || (t.status === '보류' ? '보류 중' : '')}</span>
                 </div>
               ))}
             </div>
           )}
         </Block>
 
-        <Block title="KPI 현황" count={allKpis.length} dotColor="yellow" defaultOpen>
-          {renderKpiBlock(allKpis)}
+        <Block title="KPI 달성 현황" count={allKpis.length} dotColor="yellow" defaultOpen>
+          {Object.keys(kpiByAssignee).length === 0 ? <div className="rpt-empty">해당 없음</div> :
+            Object.entries(kpiByAssignee).map(([name, kpis]) => (
+              <div key={name} className="rpt-cat-group">
+                <div className="rpt-cat-label">{name} <span className="rpt-cat-cnt">{kpis.length}</span></div>
+                {renderKpiBlock(kpis)}
+              </div>
+            ))
+          }
         </Block>
       </>
     );
@@ -604,21 +668,70 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     if (!monthlyData) return null;
     const { completed, delayed, newTasks } = monthlyData;
     const completedGroups = groupByCategory(completed);
-    const delayedGroups = groupByCategory(delayed);
     const newTaskGroups = groupByCategory(newTasks);
+
+    // 카테고리별 완료율 계산
+    const allMonthTasks = reportTasks.filter((t) => {
+      const dd = tsToDate(t.dueDate);
+      const sd = tsToDate(t.startDate);
+      const rangeStart = new Date(startDate);
+      const rangeEnd = new Date(endDate); rangeEnd.setHours(23,59,59,999);
+      if (dd && dd >= rangeStart && dd <= rangeEnd) return true;
+      if (sd && sd >= rangeStart && sd <= rangeEnd) return true;
+      return false;
+    });
+    const catCompletionRate: Record<string, { total: number; done: number }> = {};
+    allMonthTasks.forEach((t) => {
+      const cat = t.category || '기타';
+      if (!catCompletionRate[cat]) catCompletionRate[cat] = { total: 0, done: 0 };
+      catCompletionRate[cat].total++;
+      if (t.status === '완료') catCompletionRate[cat].done++;
+    });
 
     return (
       <>
-        <Block title="완료 업무" count={completed.length} dotColor="green" defaultOpen>
-          {renderCategoryBlocks(completedGroups, (tasks) => renderCompletedList(tasks))}
+        <Block title="전월 완료 업무" count={completed.length} dotColor="green" defaultOpen>
+          {completedGroups.length === 0 ? <div className="rpt-empty">해당 없음</div> :
+            completedGroups.map((g) => {
+              const rate = catCompletionRate[g.category];
+              const pct = rate ? Math.round((rate.done / rate.total) * 100) : 0;
+              return (
+                <div key={g.category} className="rpt-cat-group">
+                  <div className="rpt-cat-label">
+                    {g.category}
+                    <span className="rpt-cat-cnt">{g.tasks.length}건</span>
+                    <span style={{ marginLeft: 8, fontSize: 11, color: pct >= 80 ? 'var(--c-green,#0d9f61)' : 'var(--c-text-3,#999)' }}>
+                      완료율 {pct}%
+                    </span>
+                  </div>
+                  <div className="rpt-list">{renderCompletedList(g.tasks)}</div>
+                </div>
+              );
+            })
+          }
         </Block>
 
         <Block title="이월 업무" count={delayed.length} dotColor="red" danger defaultOpen>
-          {renderCategoryBlocks(delayedGroups, (tasks) => renderTaskList(tasks))}
+          {delayed.length === 0 ? <div className="rpt-empty">해당 없음</div> : (
+            <div className="rpt-list">
+              {delayed.map((t) => {
+                const dd = tsToDate(t.dueDate);
+                const delayDays = dd ? Math.abs(differenceInDays(dd, new Date())) : 0;
+                return (
+                  <div key={t.taskId} className="rpt-item rpt-item-delayed">
+                    <span className="rpt-item-title">{t.title}</span>
+                    <span className="rpt-item-assignee">{t.assigneeName}</span>
+                    <span className="rpt-item-tag rpt-tag-red">{delayDays}일 지연</span>
+                    <span className="rpt-item-reason">{t.notes || '사유 미입력'}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Block>
 
-        <Block title="신규 업무" count={newTasks.length} dotColor="blue" defaultOpen>
-          {renderCategoryBlocks(newTaskGroups, (tasks) => renderTaskList(tasks))}
+        <Block title="당월 신규 업무" count={newTasks.length} dotColor="blue" defaultOpen>
+          {renderCategoryBlocks(newTaskGroups, (tasks) => renderTaskList(tasks, false))}
         </Block>
       </>
     );
