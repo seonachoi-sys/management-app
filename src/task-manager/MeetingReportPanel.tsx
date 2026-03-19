@@ -84,6 +84,87 @@ function groupByAssignee(tasks: Task[]): AssigneeGroup[] {
   return Object.entries(map).map(([assignee, tasks]) => ({ assignee, tasks }));
 }
 
+/* ─── 리드타임 통계 헬퍼 ─── */
+interface LeadTimeStats {
+  early: number;   // 조기완료 건수
+  onTime: number;  // 정시완료 건수
+  late: number;    // 지연완료 건수
+  avgDays: number; // 평균 리드타임 (양수=단축, 음수=지연)
+  hasData: boolean;
+}
+
+function calcLeadTimeStats(tasks: Task[]): LeadTimeStats {
+  const withLt = tasks.filter((t) => t.leadTimeDays != null);
+  if (withLt.length === 0) return { early: 0, onTime: 0, late: 0, avgDays: 0, hasData: false };
+  let early = 0, onTime = 0, late = 0, sum = 0;
+  for (const t of withLt) {
+    const d = t.leadTimeDays!;
+    sum += d;
+    if (d > 0) early++;
+    else if (d === 0) onTime++;
+    else late++;
+  }
+  return { early, onTime, late, avgDays: Math.round((sum / withLt.length) * 10) / 10, hasData: true };
+}
+
+function LeadTimeSummary({ tasks }: { tasks: Task[] }) {
+  const lt = calcLeadTimeStats(tasks);
+  if (!lt.hasData) return null;
+  const avgLabel = lt.avgDays > 0
+    ? `평균 ${lt.avgDays}일 단축`
+    : lt.avgDays < 0
+      ? `평균 ${Math.abs(lt.avgDays)}일 지연`
+      : '평균 정시완료';
+  const avgColor = lt.avgDays > 0 ? 'var(--c-green,#0d9f61)' : lt.avgDays < 0 ? 'var(--c-red,#e53935)' : 'var(--c-text-3,#999)';
+  return (
+    <div className="rpt-leadtime-bar" style={{ display: 'flex', gap: 12, padding: '8px 12px', fontSize: 12, background: 'var(--c-bg-2,#f7f8fa)', borderRadius: 6, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+      <span style={{ color: 'var(--c-green,#0d9f61)' }}>조기완료 {lt.early}건</span>
+      <span style={{ color: 'var(--c-text-3,#999)' }}>정시완료 {lt.onTime}건</span>
+      <span style={{ color: 'var(--c-red,#e53935)' }}>지연완료 {lt.late}건</span>
+      <span style={{ marginLeft: 'auto', fontWeight: 600, color: avgColor }}>{avgLabel}</span>
+    </div>
+  );
+}
+
+function LeadTimeByCategoryMonthly({ tasks, prevMonthTasks }: { tasks: Task[]; prevMonthTasks: Task[] }) {
+  const groups = groupByCategory(tasks.filter((t) => t.leadTimeDays != null));
+  if (groups.length === 0) return null;
+
+  const prevStats = calcLeadTimeStats(prevMonthTasks);
+
+  return (
+    <div style={{ padding: '8px 12px', fontSize: 12, background: 'var(--c-bg-2,#f7f8fa)', borderRadius: 6, marginTop: 6 }}>
+      <div style={{ fontWeight: 600, marginBottom: 6, color: 'var(--c-text-2,#666)' }}>카테고리별 평균 리드타임</div>
+      {groups.map((g) => {
+        const st = calcLeadTimeStats(g.tasks);
+        const label = st.avgDays > 0 ? `${st.avgDays}일 단축` : st.avgDays < 0 ? `${Math.abs(st.avgDays)}일 지연` : '정시';
+        const color = st.avgDays > 0 ? 'var(--c-green,#0d9f61)' : st.avgDays < 0 ? 'var(--c-red,#e53935)' : 'var(--c-text-3,#999)';
+        return (
+          <div key={g.category} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
+            <span>{g.category}</span>
+            <span style={{ color, fontWeight: 500 }}>{label}</span>
+          </div>
+        );
+      })}
+      {prevStats.hasData && (
+        <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--c-border,#e5e7eb)' }}>
+          {(() => {
+            const currentAvg = calcLeadTimeStats(tasks).avgDays;
+            const diff = Math.round((currentAvg - prevStats.avgDays) * 10) / 10;
+            if (diff === 0) return <span style={{ color: 'var(--c-text-3,#999)' }}>전월 대비 변동 없음</span>;
+            const improved = diff > 0;
+            return (
+              <span style={{ fontWeight: 600, color: improved ? 'var(--c-green,#0d9f61)' : 'var(--c-red,#e53935)' }}>
+                전월 대비 {Math.abs(diff)}일 {improved ? '개선' : '악화'}
+              </span>
+            );
+          })()}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const PRIORITY_ORDER: Record<string, number> = { '긴급': 0, '높음': 1, '보통': 2, '낮음': 3 };
 function sortByPriority(tasks: Task[]): Task[] {
   return [...tasks].sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9));
@@ -410,7 +491,17 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       return dd !== null && dd >= nextStart && dd <= nextEnd;
     });
 
-    return { completed, carryover, nextMonthTasks };
+    // 전월 완료 업무 (리드타임 전월 대비 비교용)
+    const prevStart = startOfMonth(subMonths(new Date(monthlyPeriod.start), 1));
+    const prevEnd = endOfMonth(subMonths(new Date(monthlyPeriod.start), 1));
+    prevEnd.setHours(23, 59, 59, 999);
+    const prevMonthCompleted = reportTasks.filter((t) => {
+      if (t.status !== '완료') return false;
+      const cd = tsToDate(t.completedDate);
+      return cd !== null && cd >= prevStart && cd <= prevEnd;
+    });
+
+    return { completed, carryover, nextMonthTasks, prevMonthCompleted };
   }, [reportType, reportTasks, monthlyPeriod]);
 
   /* ─── 통합 stats (요약 카드용) ─── */
@@ -600,6 +691,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       <>
         <Block title="이번 주 완료 업무" count={completed.length} dotColor="green" defaultOpen>
           {renderCategoryBlocks(groupByCategory(completed), (tasks) => renderCompletedList(tasks))}
+          <LeadTimeSummary tasks={completed} />
         </Block>
 
         <Block title="이번 주 미완료 업무" count={incomplete.length} dotColor="red" danger defaultOpen>
@@ -674,6 +766,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       <>
         <Block title="2주간 완료 업무" count={completed.length} dotColor="green" defaultOpen>
           {renderCategoryBlocks(groupByCategory(completed), (tasks) => renderCompletedList(tasks))}
+          <LeadTimeSummary tasks={completed} />
         </Block>
 
         <Block title="다음 2주 진행 예정" count={upcoming.length} dotColor="blue" defaultOpen>
@@ -726,7 +819,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   /* ─── 월간 리포트 렌더 ─── */
   const renderMonthlyReport = () => {
     if (!monthlyData) return null;
-    const { completed, carryover, nextMonthTasks } = monthlyData;
+    const { completed, carryover, nextMonthTasks, prevMonthCompleted } = monthlyData;
     const completedGroups = groupByCategory(completed);
     const nMonth = monthlyPeriod.nextLabel;
 
@@ -766,6 +859,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
               );
             })
           }
+          <LeadTimeByCategoryMonthly tasks={completed} prevMonthTasks={prevMonthCompleted} />
         </Block>
 
         <Block title={`${nMonth}월 이월 업무`} count={carryover.length} dotColor="red" danger defaultOpen>
