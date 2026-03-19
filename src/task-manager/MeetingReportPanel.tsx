@@ -48,6 +48,11 @@ function Block({
 }
 
 /* ─── 유틸 ─── */
+/** 날짜 문자열을 로컬 시간으로 파싱 (UTC 밀림 방지) */
+function localDate(dateStr: string): Date {
+  return new Date(dateStr + 'T00:00:00');
+}
+
 function tsToDate(ts: Timestamp | null | undefined): Date | null {
   if (!ts) return null;
   return ts instanceof Timestamp ? ts.toDate() : new Date(ts as unknown as string);
@@ -306,7 +311,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
 
   // 선택월 기준 기간 자동 계산
   const monthlyPeriod = useMemo(() => {
-    const base = new Date(selectedMonth + '-01');
+    const base = localDate(selectedMonth + '-01');
     const monthStart = startOfMonth(base);
     const monthEnd = endOfMonth(base);
     const nextMonthStart = startOfMonth(addMonths(base, 1));
@@ -336,7 +341,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   // 선택한 미팅일 기준 ±14일 자동 계산
   const biweeklyPeriod = useMemo(() => {
     if (!selectedCeoDate) return null;
-    const selected = new Date(selectedCeoDate);
+    const selected = localDate(selectedCeoDate);
     const prevDate = addDays(selected, -14);
     const nextDate = addDays(selected, 14);
     return {
@@ -430,10 +435,10 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   /* ─── 격주(CEO) 리포트 데이터 ─── */
   const biweeklyData = useMemo(() => {
     if (reportType !== '격주' || !biweeklyPeriod) return null;
-    const prevDate = new Date(biweeklyPeriod.start);
-    const selectedDate = new Date(biweeklyPeriod.selected);
+    const prevDate = localDate(biweeklyPeriod.start);
+    const selectedDate = localDate(biweeklyPeriod.selected);
     selectedDate.setHours(23, 59, 59, 999);
-    const nextDate = new Date(biweeklyPeriod.end);
+    const nextDate = localDate(biweeklyPeriod.end);
     nextDate.setHours(23, 59, 59, 999);
 
     // 1. 2주간 완료 업무: 직전미팅일 ~ 선택일 사이 completedAt
@@ -462,11 +467,11 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   /* ─── 월간 리포트 데이터 ─── */
   const monthlyData = useMemo(() => {
     if (reportType !== '월간') return null;
-    const rangeStart = new Date(monthlyPeriod.start);
-    const rangeEnd = new Date(monthlyPeriod.end);
+    const rangeStart = localDate(monthlyPeriod.start);
+    const rangeEnd = localDate(monthlyPeriod.end);
     rangeEnd.setHours(23, 59, 59, 999);
-    const nextStart = new Date(monthlyPeriod.nextStart);
-    const nextEnd = new Date(monthlyPeriod.nextEnd);
+    const nextStart = localDate(monthlyPeriod.nextStart);
+    const nextEnd = localDate(monthlyPeriod.nextEnd);
     nextEnd.setHours(23, 59, 59, 999);
 
     // 1. N월 완료 업무: completedAt이 선택월
@@ -492,8 +497,8 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     });
 
     // 전월 완료 업무 (리드타임 전월 대비 비교용)
-    const prevStart = startOfMonth(subMonths(new Date(monthlyPeriod.start), 1));
-    const prevEnd = endOfMonth(subMonths(new Date(monthlyPeriod.start), 1));
+    const prevStart = startOfMonth(subMonths(localDate(monthlyPeriod.start), 1));
+    const prevEnd = endOfMonth(subMonths(localDate(monthlyPeriod.start), 1));
     prevEnd.setHours(23, 59, 59, 999);
     const prevMonthCompleted = reportTasks.filter((t) => {
       if (t.status !== '완료') return false;
@@ -539,15 +544,15 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   /* ─── 기간 라벨 ─── */
   const periodLabel = useMemo(() => {
     if (reportType === '격주' && biweeklyPeriod) {
-      const sf = format(new Date(biweeklyPeriod.start), 'M.dd');
-      const ef = format(new Date(biweeklyPeriod.selected), 'M.dd');
+      const sf = format(localDate(biweeklyPeriod.start), 'M.dd');
+      const ef = format(localDate(biweeklyPeriod.selected), 'M.dd');
       return `${sf} ~ ${ef} 대표이사 보고`;
     }
     if (reportType === '월간') {
       return `${monthlyPeriod.label} 업무 현황`;
     }
-    const rangeStart = new Date(startDate);
-    const rangeEnd = new Date(endDate);
+    const rangeStart = localDate(startDate);
+    const rangeEnd = localDate(endDate);
     return `${format(rangeStart, 'yyyy.MM.dd')} ~ ${format(rangeEnd, 'yyyy.MM.dd')}`;
   }, [reportType, startDate, endDate, biweeklyPeriod, monthlyPeriod]);
 
@@ -826,8 +831,8 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     // 카테고리별 완료율: 선택월 마감 업무 중 완료 비율
     const allMonthTasks = reportTasks.filter((t) => {
       const dd = tsToDate(t.dueDate);
-      const rs = new Date(monthlyPeriod.start);
-      const re = new Date(monthlyPeriod.end); re.setHours(23,59,59,999);
+      const rs = localDate(monthlyPeriod.start);
+      const re = localDate(monthlyPeriod.end); re.setHours(23,59,59,999);
       return dd !== null && dd >= rs && dd <= re;
     });
     const catCompletionRate: Record<string, { total: number; done: number }> = {};

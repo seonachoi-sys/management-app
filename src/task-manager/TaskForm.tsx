@@ -96,9 +96,11 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
       category: form.category,
       status: isParentTask ? '대기' : form.status,
       parentTaskId: form.parentTaskId || null,
-      startDate: isParentTask ? null : (form.startDate ? Timestamp.fromDate(new Date(form.startDate)) : null),
-      dueDate: isParentTask ? null : (form.dueDate ? Timestamp.fromDate(new Date(form.dueDate)) : null),
-      completedDate: (!isParentTask && form.status === '완료') ? Timestamp.now() : null,
+      startDate: isParentTask ? null : (form.startDate ? Timestamp.fromDate(new Date(form.startDate + 'T00:00:00')) : null),
+      dueDate: isParentTask ? null : (form.dueDate ? Timestamp.fromDate(new Date(form.dueDate + 'T00:00:00')) : null),
+      completedDate: (!isParentTask && form.status === '완료')
+        ? (task?.status === '완료' && task?.completedDate ? task.completedDate : Timestamp.now())
+        : null,
       progressRate: isParentTask ? 0 : (Number(form.progressRate) || 0),
       kpiLinked: null,
       notes: isParentTask ? '' : form.notes.trim(),

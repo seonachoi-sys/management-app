@@ -294,7 +294,7 @@ export default function TaskDashboard() {
 
     const groups: WeekGroup[] = [];
     Object.keys(dateMap).sort().forEach((key) => {
-      const d = new Date(key);
+      const d = new Date(key + 'T00:00:00');
       const dLeft = differenceInDays(d, now);
       const mdd = `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, '0')}`;
       let subLabel = '마감';
@@ -341,7 +341,10 @@ export default function TaskDashboard() {
     const todayLabel = todayTasks.length > 0 ? `${now.getMonth()+1}.${String(now.getDate()).padStart(2,'0')}` : '';
     const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
     const soonLabel = soonTasks.length > 0
-      ? `${(now.getMonth()+1)}.${String(now.getDate()+1).padStart(2,'0')}~${(weekEnd.getMonth()+1)}.${String(weekEnd.getDate()).padStart(2,'0')}`
+      ? (() => {
+          const tomorrow = addDays(now, 1);
+          return `${tomorrow.getMonth()+1}.${String(tomorrow.getDate()).padStart(2,'0')}~${weekEnd.getMonth()+1}.${String(weekEnd.getDate()).padStart(2,'0')}`;
+        })()
       : '';
 
     return { todayTasks, todayLabel, soonTasks, soonLabel, newTasks, doneTasks };
@@ -753,7 +756,7 @@ export default function TaskDashboard() {
                       <option value="">전체 담당자</option>
                       {members.length > 0
                         ? members.map((m) => (
-                            <option key={m.memberId} value={m.memberId}>{m.name}</option>
+                            <option key={m.memberId} value={m.name}>{m.name}</option>
                           ))
                         : Array.from(new Set(tasks.map((t) => t.assigneeName).filter(Boolean))).map((name) => (
                             <option key={name} value={name}>{name}</option>

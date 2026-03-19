@@ -7,6 +7,7 @@ import {
   orderBy,
   onSnapshot,
   serverTimestamp,
+  getDoc,
   getDocs,
   deleteDoc,
 } from 'firebase/firestore';
@@ -60,11 +61,12 @@ export async function createKpi(data: Partial<Kpi>): Promise<string> {
 
 export async function updateKpi(kpiId: string, data: Partial<Kpi>): Promise<void> {
   const update: Record<string, unknown> = { ...data, updatedAt: serverTimestamp() };
-  // 값 변경 시 달성률/상태 재계산
+  // 값 변경 시 달성률/상태 재계산 (기존 문서 값과 병합)
   if (data.currentValue !== undefined || data.targetValue !== undefined) {
+    const existing = (await getDoc(doc(db, KPIS, kpiId))).data() as Kpi;
     const rate = calcAchievementRate(
-      data.currentValue ?? 0,
-      data.targetValue ?? 0,
+      data.currentValue ?? existing.currentValue,
+      data.targetValue ?? existing.targetValue,
     );
     update.achievementRate = rate;
     update.status = calcKpiStatus(rate);
@@ -129,7 +131,11 @@ export async function updateChildKpi(
 ): Promise<void> {
   const update: Record<string, unknown> = { ...data, updatedAt: serverTimestamp() };
   if (data.currentValue !== undefined || data.targetValue !== undefined) {
-    const rate = calcAchievementRate(data.currentValue ?? 0, data.targetValue ?? 0);
+    const existing = (await getDoc(doc(db, KPIS, parentKpiId, 'childKpis', childKpiId))).data() as ChildKpi;
+    const rate = calcAchievementRate(
+      data.currentValue ?? existing.currentValue,
+      data.targetValue ?? existing.targetValue,
+    );
     update.achievementRate = rate;
     update.status = calcKpiStatus(rate);
   }
