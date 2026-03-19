@@ -7,6 +7,7 @@ import {
   startOfWeek,
   endOfWeek,
   addWeeks,
+  addDays,
   differenceInDays,
 } from 'date-fns';
 import type { Task, MeetingType, Kpi } from '../types';
@@ -207,22 +208,30 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   const [startDate, setStartDate] = useState(format(startOfMonth(now), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(now), 'yyyy-MM-dd'));
 
-  /* ─── 격주 자동 기간 계산 ─── */
+  /* ─── 2주 보고서: 미팅 날짜 선택 ─── */
+  const sortedCeoDates = useMemo(() => [...ceoMeetingDates].sort(), [ceoMeetingDates]);
+  const [selectedCeoDate, setSelectedCeoDate] = useState<string>('');
+
+  // 기본값: 오늘 이후 가장 가까운 미팅일
+  useEffect(() => {
+    if (sortedCeoDates.length === 0) return;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const upcoming = sortedCeoDates.find((d) => d >= today);
+    setSelectedCeoDate(upcoming || sortedCeoDates[sortedCeoDates.length - 1]);
+  }, [sortedCeoDates]);
+
+  // 선택한 미팅일 기준 ±14일 자동 계산
   const biweeklyPeriod = useMemo(() => {
-    if (ceoMeetingDates.length === 0) return null;
-    const today = new Date();
-    const sorted = [...ceoMeetingDates].sort();
-    let prevDate = sorted[0];
-    let nextDate = sorted[sorted.length - 1];
-    for (let i = 0; i < sorted.length; i++) {
-      if (new Date(sorted[i]) > today) {
-        nextDate = sorted[i];
-        prevDate = sorted[i - 1] || sorted[i];
-        break;
-      }
-    }
-    return { start: prevDate, end: nextDate };
-  }, [ceoMeetingDates]);
+    if (!selectedCeoDate) return null;
+    const selected = new Date(selectedCeoDate);
+    const prevDate = addDays(selected, -14);
+    const nextDate = addDays(selected, 14);
+    return {
+      start: format(prevDate, 'yyyy-MM-dd'),
+      end: format(nextDate, 'yyyy-MM-dd'),
+      selected: selectedCeoDate,
+    };
+  }, [selectedCeoDate]);
 
   /* ─── 탭 변경 시 기간 자동 설정 ─── */
   useEffect(() => {
@@ -235,7 +244,6 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
         setStartDate(biweeklyPeriod.start);
         setEndDate(biweeklyPeriod.end);
       } else {
-        // fallback: 이번 주 ~ 다음 주
         setStartDate(format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
         setEndDate(format(endOfWeek(addWeeks(today, 1), { weekStartsOn: 1 }), 'yyyy-MM-dd'));
       }
@@ -308,37 +316,35 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
 
   /* ─── 격주(CEO) 리포트 데이터 ─── */
   const biweeklyData = useMemo(() => {
-    if (reportType !== '격주') return null;
-    const rangeStart = new Date(startDate);
-    const rangeEnd = new Date(endDate);
-    rangeEnd.setHours(23, 59, 59, 999);
+    if (reportType !== '격주' || !biweeklyPeriod) return null;
+    const prevDate = new Date(biweeklyPeriod.start);
+    const selectedDate = new Date(biweeklyPeriod.selected);
+    selectedDate.setHours(23, 59, 59, 999);
+    const nextDate = new Date(biweeklyPeriod.end);
+    nextDate.setHours(23, 59, 59, 999);
 
+    // 1. 2주간 완료 업무: 직전미팅일 ~ 선택일 사이 completedAt
     const completed = reportTasks.filter((t) => {
       if (t.status !== '완료') return false;
       const cd = tsToDate(t.completedDate);
-      if (cd && cd >= rangeStart && cd <= rangeEnd) return true;
-      const dd = tsToDate(t.dueDate);
-      if (!cd && dd && dd >= rangeStart && dd <= rangeEnd) return true;
-      return false;
+      return cd !== null && cd >= prevDate && cd <= selectedDate;
     });
 
-    const inProgress = reportTasks.filter((t) => {
+    // 2. 다음 2주 진행 예정: 선택일 ~ 다음미팅일 사이 dueDate
+    const upcoming = reportTasks.filter((t) => {
       if (t.status === '완료') return false;
-      const sd = tsToDate(t.startDate);
       const dd = tsToDate(t.dueDate);
-      if (sd && sd >= rangeStart && sd <= rangeEnd) return true;
-      if (dd && dd >= rangeStart && dd <= rangeEnd) return true;
-      if (sd && dd && sd <= rangeEnd && dd >= rangeStart) return true;
-      return false;
+      return dd !== null && dd > selectedDate && dd <= nextDate;
     });
 
+    // 3. 결정 필요: ceoFlag === true or status === '보류'
     const ceoDecision = reportTasks.filter((t) => {
       if (t.status === '완료') return false;
       return t.ceoFlag || t.status === '보류';
     });
 
-    return { completed, inProgress, ceoDecision };
-  }, [reportType, reportTasks, startDate, endDate]);
+    return { completed, upcoming, ceoDecision };
+  }, [reportType, reportTasks, biweeklyPeriod]);
 
   /* ─── 월간 리포트 데이터 ─── */
   const monthlyData = useMemo(() => {
@@ -385,11 +391,11 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       };
     }
     if (reportType === '격주' && biweeklyData) {
-      const total = biweeklyData.inProgress.length + biweeklyData.completed.length;
+      const total = biweeklyData.upcoming.length + biweeklyData.completed.length;
       return {
         total,
         completed: biweeklyData.completed.length,
-        incomplete: biweeklyData.inProgress.length,
+        incomplete: biweeklyData.upcoming.length,
         delayed: biweeklyData.ceoDecision.length,
       };
     }
@@ -408,10 +414,8 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   /* ─── 기간 라벨 ─── */
   const periodLabel = useMemo(() => {
     if (reportType === '격주' && biweeklyPeriod) {
-      const s = biweeklyPeriod.start;
-      const e = biweeklyPeriod.end;
-      const sf = format(new Date(s), 'M.dd');
-      const ef = format(new Date(e), 'M.dd');
+      const sf = format(new Date(biweeklyPeriod.start), 'M.dd');
+      const ef = format(new Date(biweeklyPeriod.selected), 'M.dd');
       return `${sf} ~ ${ef} 대표이사 보고`;
     }
     const rangeStart = new Date(startDate);
@@ -428,7 +432,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
 
   const incompleteTasks = useMemo(() => {
     if (reportType === '주간') return weeklyData?.incomplete || [];
-    if (reportType === '격주') return biweeklyData?.inProgress || [];
+    if (reportType === '격주') return biweeklyData?.upcoming || [];
     return monthlyData?.newTasks || [];
   }, [reportType, weeklyData, biweeklyData, monthlyData]);
 
@@ -620,7 +624,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   /* ─── 격주(CEO) 리포트 렌더 ─── */
   const renderBiweeklyReport = () => {
     if (!biweeklyData) return null;
-    const { completed, inProgress, ceoDecision } = biweeklyData;
+    const { completed, upcoming, ceoDecision } = biweeklyData;
 
     const kpiByAssignee: Record<string, Kpi[]> = {};
     allKpis.forEach((k) => {
@@ -635,8 +639,21 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
           {renderCategoryBlocks(groupByCategory(completed), (tasks) => renderCompletedList(tasks))}
         </Block>
 
-        <Block title="앞으로 2주 진행 업무" count={inProgress.length} dotColor="blue" defaultOpen>
-          {renderAssigneeBlocks(groupByAssignee(inProgress), (tasks) => renderTaskList(tasks))}
+        <Block title="다음 2주 진행 예정" count={upcoming.length} dotColor="blue" defaultOpen>
+          {upcoming.length === 0 ? <div className="rpt-empty">해당 없음</div> : (
+            <div className="rpt-list">
+              {upcoming.map((t) => {
+                const dd = tsToDate(t.dueDate);
+                return (
+                  <div key={t.taskId} className="rpt-item">
+                    <span className="rpt-item-title">{t.title}</span>
+                    <span className="rpt-item-assignee">{t.assigneeName}</span>
+                    {dd && <span className="rpt-item-date">{format(dd, 'M.dd')} 마감</span>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Block>
 
         <Block title="결정 필요 사항" count={ceoDecision.length} dotColor="yellow" defaultOpen>
@@ -760,15 +777,33 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
 
       {/* 날짜 선택 + 생성 */}
       <div className="rpt-date-bar">
-        <label className="rpt-date-label">
-          시작일
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-        </label>
-        <span className="rpt-date-sep">~</span>
-        <label className="rpt-date-label">
-          종료일
-          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-        </label>
+        {reportType === '격주' ? (
+          <label className="rpt-date-label">
+            미팅 날짜
+            <select
+              value={selectedCeoDate}
+              onChange={(e) => setSelectedCeoDate(e.target.value)}
+              style={{ minWidth: 140 }}
+            >
+              {sortedCeoDates.length === 0 && <option value="">미팅 일정 없음</option>}
+              {sortedCeoDates.map((d) => (
+                <option key={d} value={d}>{format(new Date(d), 'yyyy.MM.dd (EEE)')}</option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <>
+            <label className="rpt-date-label">
+              시작일
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </label>
+            <span className="rpt-date-sep">~</span>
+            <label className="rpt-date-label">
+              종료일
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </label>
+          </>
+        )}
         <button className="tm-btn-generate" onClick={handleGenerate} disabled={loading}>
           {loading ? '생성 중...' : '리포트 생성'}
         </button>
