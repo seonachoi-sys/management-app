@@ -153,13 +153,14 @@ export default function TaskDashboard() {
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState(getLastSyncTime());
 
+  // 담당자 필터는 subscribeTasks에서 제외 (상위업무 assigneeName이 빈 문자열이므로)
+  // categoryGroups 트리 구조에서 별도 처리
   const filters: TaskFilters = useMemo(() => {
     const f: TaskFilters = {};
     if (statusFilter) f.status = statusFilter;
     if (categoryFilter !== '전체') f.category = categoryFilter;
-    if (assigneeFilter) f.assignee = assigneeFilter;
     return f;
-  }, [statusFilter, categoryFilter, assigneeFilter]);
+  }, [statusFilter, categoryFilter]);
 
   const { tasks, loading, error } = useTasks(filters);
   const tasksRef = React.useRef(tasks);
@@ -197,20 +198,39 @@ export default function TaskDashboard() {
     return Array.from(months).sort().reverse();
   }, [tasks]);
 
-  // 월별 필터 적용된 업무
+  // 담당자 + 월별 필터 적용 (상위업무는 하위업무 매칭 시 포함)
   const filteredTasks = useMemo(() => {
-    if (!monthFilter) return tasks;
-    const [y, m] = monthFilter.split('-').map(Number);
-    return tasks.filter((t) => {
-      const sd = t.startDate?.toDate?.();
-      const dd = t.dueDate?.toDate?.();
-      if (sd && sd.getFullYear() === y && sd.getMonth() + 1 === m) return true;
-      if (dd && dd.getFullYear() === y && dd.getMonth() + 1 === m) return true;
-      // 상위업무는 날짜 없어도 하위업무가 해당 월에 있으면 포함
-      if (!t.parentTaskId && !sd && !dd) return true;
-      return false;
-    });
-  }, [tasks, monthFilter]);
+    let result = tasks;
+
+    // 담당자 필터: 하위업무 매칭 시 상위업무도 포함
+    if (assigneeFilter) {
+      const matchingChildParentIds = new Set(
+        result.filter((t) => t.parentTaskId && (t.assigneeName === assigneeFilter || t.assignee === assigneeFilter))
+          .map((t) => t.parentTaskId!),
+      );
+      result = result.filter((t) => {
+        if (t.assigneeName === assigneeFilter || t.assignee === assigneeFilter) return true;
+        // 상위업무: 하위업무 중 해당 담당자가 있으면 포함
+        if (!t.parentTaskId && matchingChildParentIds.has(t.taskId)) return true;
+        return false;
+      });
+    }
+
+    // 월별 필터
+    if (monthFilter) {
+      const [y, m] = monthFilter.split('-').map(Number);
+      result = result.filter((t) => {
+        const sd = t.startDate?.toDate?.();
+        const dd = t.dueDate?.toDate?.();
+        if (sd && sd.getFullYear() === y && sd.getMonth() + 1 === m) return true;
+        if (dd && dd.getFullYear() === y && dd.getMonth() + 1 === m) return true;
+        if (!t.parentTaskId && !sd && !dd) return true;
+        return false;
+      });
+    }
+
+    return result;
+  }, [tasks, assigneeFilter, monthFilter]);
 
   // 카테고리 > 상위업무 > 하위업무 트리 구조
   const { categoryGroups, childMap } = useMemo(() => {
