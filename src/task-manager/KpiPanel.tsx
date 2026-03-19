@@ -227,68 +227,49 @@ function KpiCardWithChildren({
       <div className="tm-task" style={{ borderLeft: `3px solid ${statusColor}` }}>
         {/* 접기/펼치기 */}
         {(kpi.childKpiIds?.length > 0 || children.length > 0) && (
-          <button onClick={onToggle} style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 10, color: 'var(--tm-ink-tertiary)', padding: '4px',
-            alignSelf: 'flex-start', marginTop: 4,
-          }}>
+          <button className="tm-cat-arrow" onClick={onToggle} style={{ alignSelf: 'flex-start', marginTop: 6, border: 'none', background: 'none', cursor: 'pointer', fontSize: 10, color: 'var(--c-text-3)' }}>
             {expanded ? '▼' : '▶'}
           </button>
         )}
 
-        <div className="tm-task-body" style={{ flex: 1 }}>
+        <div className="tm-task-body">
           <div className="tm-task-header">
             <span className="tm-task-title">{kpi.title}</span>
-            <span style={{
-              fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
-              background: `${periodColor}15`, color: periodColor,
-            }}>
+            <span className="kpi-badge" style={{ background: `${periodColor}15`, color: periodColor }}>
               {kpi.period}
             </span>
-            <span style={{
-              fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
-              background: `${statusColor}15`, color: statusColor,
-            }}>
+            <span className="kpi-badge" style={{ background: `${statusColor}15`, color: statusColor }}>
               {kpi.status}
             </span>
             {children.length > 0 && (
-              <span style={{ fontSize: 10, color: 'var(--tm-ink-tertiary)' }}>
-                하위 {children.length}
-              </span>
+              <span className="kpi-meta-tag">하위 {children.length}</span>
             )}
             {linkedCount > 0 && (
-              <span style={{ fontSize: 10, color: 'var(--tm-ink-tertiary)' }}>
-                연결업무 {linkedCount}
-              </span>
+              <span className="kpi-meta-tag">연결업무 {linkedCount}</span>
             )}
           </div>
 
           {kpi.description && <div className="tm-task-desc">{kpi.description}</div>}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 6 }}>
-            <span style={{
-              fontSize: 22, fontWeight: 800, fontFamily: 'var(--tm-font-mono)',
-              color: statusColor, lineHeight: 1,
-            }}>
+          <div className="kpi-value-row">
+            <span className="kpi-current" style={{ color: statusColor }}>
               {kpi.currentValue}
             </span>
-            <span style={{ fontSize: 12, color: 'var(--tm-ink-tertiary)' }}>
-              / {kpi.targetValue} {kpi.unit}
-            </span>
-            <div style={{ flex: 1, maxWidth: 120, height: 5, background: 'var(--tm-surface-inset)', borderRadius: 100, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${Math.min(kpi.achievementRate, 100)}%`, background: statusColor, borderRadius: 100 }} />
+            <span className="kpi-target">/ {kpi.targetValue} {kpi.unit}</span>
+            <div className="tm-progress-bar" style={{ maxWidth: 120, height: 5 }}>
+              <div className="tm-progress-fill" style={{ width: `${Math.min(kpi.achievementRate, 100)}%`, background: statusColor }} />
             </div>
-            <span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'var(--tm-font-mono)', color: statusColor }}>
+            <span className="tm-progress-text" style={{ color: statusColor, fontWeight: 700 }}>
               {kpi.achievementRate}%
             </span>
           </div>
 
-          <div className="tm-task-meta" style={{ marginTop: 4 }}>
+          <div className="tm-task-meta">
             {kpi.assigneeName && <span>{kpi.assigneeName}</span>}
           </div>
         </div>
 
-        <div className="tm-task-actions" style={{ opacity: 1 }}>
+        <div className="tm-task-actions">
           <button onClick={onAddChild}>+하위</button>
           <button onClick={onEdit}>수정</button>
           <button className="btn-delete" onClick={onDelete}>삭제</button>
@@ -296,43 +277,40 @@ function KpiCardWithChildren({
       </div>
 
       {/* 하위 KPI */}
-      {expanded && children.map((child) => (
-        <div key={child.childKpiId} className="tm-task" style={{
-          marginLeft: 28,
-          borderLeft: `2px solid ${STATUS_COLOR[child.status] || 'var(--tm-border-default)'}`,
-        }}>
-          <div className="tm-task-body">
-            <div className="tm-task-header">
-              <span style={{ fontSize: 10, color: 'var(--tm-ink-tertiary)', marginRight: 4 }}>└</span>
-              <span className="tm-task-title">{child.title}</span>
-              <span style={{
-                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
-                background: `${STATUS_COLOR[child.status]}15`, color: STATUS_COLOR[child.status],
-              }}>
-                {child.status}
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-              <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--tm-font-mono)', color: STATUS_COLOR[child.status] }}>
-                {child.currentValue}
-              </span>
-              <span style={{ fontSize: 11, color: 'var(--tm-ink-tertiary)' }}>/ {child.targetValue} {child.unit}</span>
-              <div style={{ flex: 1, maxWidth: 80, height: 4, background: 'var(--tm-surface-inset)', borderRadius: 100, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${Math.min(child.achievementRate, 100)}%`, background: STATUS_COLOR[child.status], borderRadius: 100 }} />
+      {expanded && children.map((child) => {
+        const childColor = STATUS_COLOR[child.status] || 'var(--c-line)';
+        return (
+          <div key={child.childKpiId} className="tm-task kpi-child" style={{ borderLeft: `2px solid ${childColor}` }}>
+            <div className="tm-task-body">
+              <div className="tm-task-header">
+                <span className="kpi-child-arrow">└</span>
+                <span className="tm-task-title">{child.title}</span>
+                <span className="kpi-badge" style={{ background: `${childColor}15`, color: childColor }}>
+                  {child.status}
+                </span>
               </div>
-              <span style={{ fontSize: 11, fontWeight: 700, fontFamily: 'var(--tm-font-mono)', color: STATUS_COLOR[child.status] }}>
-                {child.achievementRate}%
-              </span>
+              <div className="kpi-value-row">
+                <span className="kpi-current kpi-current-sm" style={{ color: childColor }}>
+                  {child.currentValue}
+                </span>
+                <span className="kpi-target">/ {child.targetValue} {child.unit}</span>
+                <div className="tm-progress-bar" style={{ maxWidth: 80, height: 4 }}>
+                  <div className="tm-progress-fill" style={{ width: `${Math.min(child.achievementRate, 100)}%`, background: childColor }} />
+                </div>
+                <span className="tm-progress-text" style={{ color: childColor, fontWeight: 700 }}>
+                  {child.achievementRate}%
+                </span>
+              </div>
+              {child.assigneeName && (
+                <div className="tm-task-meta"><span>{child.assigneeName}</span></div>
+              )}
             </div>
-            {child.assigneeName && (
-              <div className="tm-task-meta" style={{ marginTop: 2 }}><span>{child.assigneeName}</span></div>
-            )}
+            <div className="tm-task-actions">
+              <button onClick={() => onEditChild(child)}>수정</button>
+            </div>
           </div>
-          <div className="tm-task-actions" style={{ opacity: 1 }}>
-            <button onClick={() => onEditChild(child)}>수정</button>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

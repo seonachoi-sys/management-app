@@ -1284,3 +1284,50 @@
   font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 8px;
   background: #fce4ec; color: #e03e3e;
 }
+
+/* ═══ KPI Panel — 업무관리 카드 스타일 통일 ═══ */
+.kpi-badge {
+  font-size: 10px; font-weight: 600; padding: 2px 8px;
+  border-radius: 4px; white-space: nowrap;
+}
+.kpi-meta-tag { font-size: 10px; color: var(--c-text-3); }
+.kpi-value-row {
+  display: flex; align-items: center; gap: 10px; margin-top: 6px;
+}
+.kpi-current {
+  font-size: 22px; font-weight: 800; font-family: var(--mono);
+  line-height: 1;
+}
+.kpi-current-sm { font-size: 16px; font-weight: 700; }
+.kpi-target { font-size: 12px; color: var(--c-text-3); }
+.kpi-child { margin-left: 28px; }
+.kpi-child-arrow { font-size: 10px; color: var(--c-text-3); margin-right: 4px; }
+
+/* KPI 업무연결 */
+.kpi-task-link-list {
+  max-height: 240px; overflow: auto;
+  border: 1px solid var(--c-line); border-radius: var(--radius);
+}
+.kpi-task-link-group { padding: 4px 0; }
+.kpi-task-link-group-label {
+  font-size: 10px; font-weight: 700; color: var(--c-text-3);
+  padding: 4px 10px; text-transform: uppercase; letter-spacing: 0.03em;
+}
+.kpi-task-link-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px; font-size: 12px; cursor: pointer;
+  border-radius: 4px; transition: background 0.1s;
+}
+.kpi-task-link-item:hover { background: var(--c-bg-sub); }
+.kpi-task-link-item.selected { background: var(--c-accent-light); }
+.kpi-task-link-meta {
+  margin-left: auto; font-size: 10px; color: var(--c-text-3);
+  display: flex; gap: 6px; white-space: nowrap;
+}
+.kpi-task-search {
+  width: 100%; padding: 6px 10px; font-size: 12px;
+  border: none; border-bottom: 1px solid var(--c-line);
+  font-family: var(--font); outline: none;
+  background: var(--c-bg);
+}
+.kpi-task-search::placeholder { color: var(--c-text-4); }
