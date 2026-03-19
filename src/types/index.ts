@@ -35,6 +35,7 @@ export interface Task {
   lastModifiedBy: string | null;
   lastModifiedAt: Timestamp | null;
   isNewDismissed: boolean;
+  leadTimeDays: number | null; // 완료 시 자동계산: dueDate - completedAt (양수=조기, 음수=지연, 0=정시)
   createdAt: Timestamp;
   updatedAt: Timestamp;
   createdBy: string;

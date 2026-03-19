@@ -420,16 +420,10 @@ export default function TaskDashboard() {
               if (allDone) {
                 const parent = tasks.find((t) => t.taskId === parentId);
                 const { Timestamp: Ts } = await import('firebase/firestore');
-                const now = Ts.now();
-                const startDate = parent?.startDate?.toDate?.();
-                const leadTimeDays = startDate
-                  ? Math.ceil((now.toDate().getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-                  : undefined;
                 const autoData: Partial<Task> = {
                   status: '완료',
-                  completedDate: now,
+                  completedDate: Ts.now(),
                   progressRate: 100,
-                  ...(leadTimeDays !== undefined ? { leadTimeDays } : {}),
                 };
                 await update(parentId, autoData, 'system', '자동완료');
                 if (parent) {

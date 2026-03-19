@@ -133,8 +133,21 @@ export async function updateTask(
     });
   }
 
-  // 우선순위 재계산
+  // 완료 시 leadTimeDays 자동 계산
   const merged = { ...prevData, ...data };
+  if (data.status === '완료' && data.leadTimeDays === undefined) {
+    const dueDate = merged.dueDate;
+    if (dueDate) {
+      const dueMs = dueDate instanceof Timestamp ? dueDate.toDate().getTime() : new Date(dueDate as unknown as string).getTime();
+      const nowMs = Date.now();
+      // 양수 = 마감 전 조기완료, 음수 = 마감 후 지연완료
+      data.leadTimeDays = Math.round((dueMs - nowMs) / (1000 * 60 * 60 * 24));
+    } else {
+      data.leadTimeDays = null;
+    }
+  }
+
+  // 우선순위 재계산
   const { priorityScore, priority } = calculatePriorityScore(merged);
 
   await updateDoc(ref, {
