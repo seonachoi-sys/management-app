@@ -1,11 +1,11 @@
 {
   "files": {
     "main.css": "/management-app/static/css/main.19d163ab.css",
-    "main.js": "/management-app/static/js/main.bd72a963.js",
+    "main.js": "/management-app/static/js/main.7e48dc71.js",
     "static/css/419.dc1ef72c.chunk.css": "/management-app/static/css/419.dc1ef72c.chunk.css",
     "static/js/419.0685fc10.chunk.js": "/management-app/static/js/419.0685fc10.chunk.js",
     "static/css/270.2e327687.chunk.css": "/management-app/static/css/270.2e327687.chunk.css",
-    "static/js/270.0f369e3b.chunk.js": "/management-app/static/js/270.0f369e3b.chunk.js",
+    "static/js/270.49a5a4b4.chunk.js": "/management-app/static/js/270.49a5a4b4.chunk.js",
     "static/css/159.1f596e3d.chunk.css": "/management-app/static/css/159.1f596e3d.chunk.css",
     "static/css/304.12bd253c.chunk.css": "/management-app/static/css/304.12bd253c.chunk.css",
     "static/js/304.5616aeaa.chunk.js": "/management-app/static/js/304.5616aeaa.chunk.js",
@@ -25,11 +25,11 @@
     "static/js/161.1f6af056.chunk.js": "/management-app/static/js/161.1f6af056.chunk.js",
     "index.html": "/management-app/index.html",
     "main.19d163ab.css.map": "/management-app/static/css/main.19d163ab.css.map",
-    "main.bd72a963.js.map": "/management-app/static/js/main.bd72a963.js.map",
+    "main.7e48dc71.js.map": "/management-app/static/js/main.7e48dc71.js.map",
     "419.dc1ef72c.chunk.css.map": "/management-app/static/css/419.dc1ef72c.chunk.css.map",
     "419.0685fc10.chunk.js.map": "/management-app/static/js/419.0685fc10.chunk.js.map",
     "270.2e327687.chunk.css.map": "/management-app/static/css/270.2e327687.chunk.css.map",
-    "270.0f369e3b.chunk.js.map": "/management-app/static/js/270.0f369e3b.chunk.js.map",
+    "270.49a5a4b4.chunk.js.map": "/management-app/static/js/270.49a5a4b4.chunk.js.map",
     "159.1f596e3d.chunk.css.map": "/management-app/static/css/159.1f596e3d.chunk.css.map",
     "304.12bd253c.chunk.css.map": "/management-app/static/css/304.12bd253c.chunk.css.map",
     "304.5616aeaa.chunk.js.map": "/management-app/static/js/304.5616aeaa.chunk.js.map",
@@ -50,6 +50,6 @@
   },
   "entrypoints": [
     "static/css/main.19d163ab.css",
-    "static/js/main.bd72a963.js"
+    "static/js/main.7e48dc71.js"
   ]
 }
