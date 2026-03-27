@@ -202,11 +202,16 @@ function TaskRow({
 
 export default function TaskCard({ task, childTasks, currentUserName, onStatusChange, onEdit, onDelete, onAddSubTask }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
   const hasChildren = childTasks.length > 0;
 
   // 하위업무 통계
   const childDone = childTasks.filter((c) => c.status === '완료').length;
   const childDelayed = childTasks.filter((c) => c.status === '지연').length;
+
+  // 완료/미완료 분리
+  const activeChildren = childTasks.filter((c) => c.status !== '완료');
+  const completedChildren = childTasks.filter((c) => c.status === '완료');
 
   return (
     <div className="tm-card-group">
@@ -242,7 +247,7 @@ export default function TaskCard({ task, childTasks, currentUserName, onStatusCh
       <div className={`tm-children ${expanded ? 'tm-children-open' : 'tm-children-closed'}`}>
         {expanded && (
           <>
-            {childTasks.map((child) => (
+            {activeChildren.map((child) => (
               <TaskRow
                 key={child.taskId}
                 task={child}
@@ -253,6 +258,34 @@ export default function TaskCard({ task, childTasks, currentUserName, onStatusCh
                 onDelete={onDelete}
               />
             ))}
+
+            {/* 완료된 하위업무 토글 */}
+            {completedChildren.length > 0 && (
+              <>
+                <button
+                  className="task-completed-toggle"
+                  onClick={() => setShowCompleted(!showCompleted)}
+                >
+                  {showCompleted
+                    ? `완료된 하위업무 ${completedChildren.length}건 숨기기`
+                    : `✓ 완료된 하위업무 ${completedChildren.length}건 보기`}
+                </button>
+                {showCompleted && completedChildren.map((child) => (
+                  <div key={child.taskId} className="task-completed-row">
+                    <span className="task-completed-check">✓</span>
+                    <TaskRow
+                      task={child}
+                      indent={1}
+                      currentUserName={currentUserName}
+                      onStatusChange={onStatusChange}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                    />
+                  </div>
+                ))}
+              </>
+            )}
+
             <button
               className="tm-subtask-add-btn"
               onClick={() => onAddSubTask(task.taskId)}

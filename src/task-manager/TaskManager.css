@@ -575,6 +575,41 @@
 
 .tm-subtask-add-btn:hover { border-color: var(--c-accent); color: var(--c-accent); background: var(--c-accent-light); }
 
+/* ═══ 완료 하위업무 접기/펼치기 ═══ */
+.task-completed-toggle {
+  display: block;
+  width: calc(100% - 28px);
+  margin: 4px 0 4px 28px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--c-text-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  text-align: left;
+  transition: color 0.15s;
+}
+.task-completed-toggle:hover { color: var(--c-text-2); }
+
+.task-completed-row {
+  position: relative;
+  opacity: 0.6;
+}
+.task-completed-row .tm-task { background: transparent; }
+
+.task-completed-check {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--c-green);
+  font-weight: 600;
+  z-index: 1;
+  pointer-events: none;
+}
+
 /* ═══ SIDEBAR ═══ */
 .tm-workload-card {
   background: var(--c-bg);
