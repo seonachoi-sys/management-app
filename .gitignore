@@ -26,5 +26,9 @@ yarn-error.log*
 # Google OAuth secrets
 client_secret_*.json
 
-# Claude config
-.claude/
+# Claude config (settings은 무시, commands/rules는 추적)
+.claude/settings.json
+.claude/settings.local.json
+.claude/settings.json.tmp.*
+.claude/worktrees/
+CLAUDE.local.md
