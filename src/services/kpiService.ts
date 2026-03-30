@@ -59,8 +59,13 @@ export async function createKpi(data: Partial<Kpi>): Promise<string> {
   return ref.id;
 }
 
-export async function updateKpi(kpiId: string, data: Partial<Kpi>): Promise<void> {
-  const update: Record<string, unknown> = { ...data, updatedAt: serverTimestamp() };
+export async function updateKpi(kpiId: string, data: Partial<Kpi>, userEmail?: string): Promise<void> {
+  const update: Record<string, unknown> = {
+    ...data,
+    updatedAt: serverTimestamp(),
+    lastModifiedBy: userEmail || '시스템',
+    lastModifiedAt: serverTimestamp(),
+  };
   // 값 변경 시 달성률/상태 재계산 (기존 문서 값과 병합)
   if (data.currentValue !== undefined || data.targetValue !== undefined) {
     const existing = (await getDoc(doc(db, KPIS, kpiId))).data() as Kpi;
@@ -128,10 +133,18 @@ export async function updateChildKpi(
   parentKpiId: string,
   childKpiId: string,
   data: Partial<ChildKpi>,
+  userEmail?: string,
 ): Promise<void> {
-  const update: Record<string, unknown> = { ...data, updatedAt: serverTimestamp() };
+  const update: Record<string, unknown> = {
+    ...data,
+    updatedAt: serverTimestamp(),
+    lastModifiedBy: userEmail || '시스템',
+    lastModifiedAt: serverTimestamp(),
+  };
   if (data.currentValue !== undefined || data.targetValue !== undefined) {
-    const existing = (await getDoc(doc(db, KPIS, parentKpiId, 'childKpis', childKpiId))).data() as ChildKpi;
+    const snap = await getDoc(doc(db, KPIS, parentKpiId, 'childKpis', childKpiId));
+    if (!snap.exists()) throw new Error('하위 KPI를 찾을 수 없습니다.');
+    const existing = snap.data() as ChildKpi;
     const rate = calcAchievementRate(
       data.currentValue ?? existing.currentValue,
       data.targetValue ?? existing.targetValue,
@@ -166,6 +179,8 @@ async function recalcParentRate(parentKpiId: string): Promise<void> {
     achievementRate: avgRate,
     status: calcKpiStatus(avgRate),
     updatedAt: serverTimestamp(),
+    lastModifiedBy: '자동계산',
+    lastModifiedAt: serverTimestamp(),
   });
 }
 

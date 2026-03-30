@@ -28,8 +28,8 @@ export function useKpis() {
     return await createKpi(data);
   }, []);
 
-  const update = useCallback(async (kpiId: string, data: Partial<Kpi>) => {
-    await updateKpi(kpiId, data);
+  const update = useCallback(async (kpiId: string, data: Partial<Kpi>, userEmail?: string) => {
+    await updateKpi(kpiId, data, userEmail);
   }, []);
 
   const remove = useCallback(async (kpiId: string) => {
@@ -59,9 +59,9 @@ export function useChildKpis(parentKpiId: string | null) {
     await createChildKpi(parentKpiId, data);
   }, [parentKpiId]);
 
-  const update = useCallback(async (childKpiId: string, data: Partial<ChildKpi>) => {
+  const update = useCallback(async (childKpiId: string, data: Partial<ChildKpi>, userEmail?: string) => {
     if (!parentKpiId) return;
-    await updateChildKpi(parentKpiId, childKpiId, data);
+    await updateChildKpi(parentKpiId, childKpiId, data, userEmail);
   }, [parentKpiId]);
 
   const remove = useCallback(async (childKpiId: string) => {

@@ -3,7 +3,16 @@ import './TaskManager.css';
 
 /* ─── helpers ─── */
 const LS_KEY = 'ts-tasks';
-const today = () => new Date().toISOString().slice(0, 10);
+const todayLocal = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const addDays = (date, days) => {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+};
 
 const loadTasks = () => {
   try {
@@ -47,9 +56,9 @@ const getMonday = (d) => {
   const dt = new Date(d);
   const day = dt.getDay();
   const diff = day === 0 ? -6 : 1 - day;
-  dt.setDate(dt.getDate() + diff);
-  dt.setHours(0, 0, 0, 0);
-  return dt;
+  const monday = addDays(dt, diff);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
 };
 
 const fmt = (dateStr) => {
@@ -101,7 +110,7 @@ export default function TaskManager() {
       setTasks((prev) => {
         const exists = prev.find((t) => t.id === task.id);
         if (exists) return prev.map((t) => (t.id === task.id ? { ...t, ...task } : t));
-        return [...prev, { ...task, id: uid(), createdAt: today() }];
+        return [...prev, { ...task, id: uid(), createdAt: todayLocal() }];
       });
       setShowForm(false);
       setEditingTask(null);
@@ -126,7 +135,7 @@ export default function TaskManager() {
         return {
           ...t,
           status: next,
-          completedAt: next === 'done' ? today() : null,
+          completedAt: next === 'done' ? todayLocal() : null,
         };
       }),
     );
@@ -140,12 +149,9 @@ export default function TaskManager() {
 
     if (reportType === 'weekly') {
       // 주간: 지난주 완료/미완료 + 금주 업무
-      const lastMonday = new Date(monday);
-      lastMonday.setDate(lastMonday.getDate() - 7);
-      const lastSunday = new Date(monday);
-      lastSunday.setDate(lastSunday.getDate() - 1);
-      const thisSunday = new Date(monday);
-      thisSunday.setDate(thisSunday.getDate() + 6);
+      const lastMonday = addDays(monday, -7);
+      const lastSunday = addDays(monday, -1);
+      const thisSunday = addDays(monday, 6);
 
       const lastWeekDone = enriched.filter(
         (t) =>
@@ -188,12 +194,9 @@ export default function TaskManager() {
 
     if (reportType === 'biweekly') {
       // 2주 단위: 대표이사 보고
-      const twoWeeksAgo = new Date(monday);
-      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-      const lastSunday = new Date(monday);
-      lastSunday.setDate(lastSunday.getDate() - 1);
-      const nextSunday = new Date(monday);
-      nextSunday.setDate(nextSunday.getDate() + 13);
+      const twoWeeksAgo = addDays(monday, -14);
+      const lastSunday = addDays(monday, -1);
+      const nextSunday = addDays(monday, 13);
 
       const past2wDone = enriched.filter(
         (t) =>

@@ -77,7 +77,7 @@ function CategorySection({
             <TaskCard
               key={task.taskId}
               task={task}
-              childTasks={childMap[task.taskId] || []}
+              childTasks={childMap[task.taskId] || EMPTY_TASKS}
               currentUserName={currentUserName}
               onStatusChange={onStatusChange}
               onEdit={onEdit}
@@ -125,6 +125,8 @@ const STATUS_OPTIONS: { value: TaskStatus | ''; label: string }[] = [
   { value: '지연', label: '지연' },
   { value: '보류', label: '보류' },
 ];
+
+const EMPTY_TASKS: Task[] = [];
 
 export default function TaskDashboard() {
   const { user, loading: authLoading, signIn, signOut } = useAuth();
@@ -187,6 +189,11 @@ export default function TaskDashboard() {
   const { del } = useDeleteTask();
 
   // 월별 필터 옵션 생성
+  const assigneeNames = useMemo(
+    () => Array.from(new Set(tasks.map((t) => t.assigneeName).filter(Boolean))),
+    [tasks],
+  );
+
   const monthOptions = useMemo(() => {
     const months = new Set<string>();
     for (const t of tasks) {
@@ -625,9 +632,12 @@ export default function TaskDashboard() {
       if (!isGoogleSignedIn()) {
         await requestAccess();
       }
-      // Firestore → Google Tasks
+      // Firestore → Google Tasks (googleTaskId 없는 것만 신규 생성, 있는 것은 업데이트)
       for (const t of tasks) {
-        await syncTaskToGoogleTasks(t);
+        const returnedId = await syncTaskToGoogleTasks(t);
+        if (returnedId && !t.googleTaskId && user) {
+          await update(t.taskId, { googleTaskId: returnedId }, user.uid, user.displayName || user.email || '');
+        }
       }
       // Google Tasks → Firestore (신규 태스크)
       const googleTasks = await fetchGoogleTasks();
@@ -666,7 +676,7 @@ export default function TaskDashboard() {
     } finally {
       setSyncing(false);
     }
-  }, [tasks, user, create, categories]);
+  }, [tasks, user, create, update, categories]);
 
   // 로그인 화면
   if (authLoading) return <div className="tm"><div className="tm-loading">로딩 중...</div></div>;
@@ -799,7 +809,7 @@ export default function TaskDashboard() {
                 <option value="">전체 담당자</option>
                 {members.length > 0
                   ? members.map((m) => <option key={m.memberId} value={m.name}>{m.name}</option>)
-                  : Array.from(new Set(tasks.map((t) => t.assigneeName).filter(Boolean))).map((n) => <option key={n} value={n}>{n}</option>)
+                  : assigneeNames.map((n) => <option key={n} value={n}>{n}</option>)
                 }
               </select>
               <select className="tm-select" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>

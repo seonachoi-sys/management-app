@@ -202,7 +202,11 @@ export async function deleteTask(taskId: string): Promise<void> {
       const linked: string[] = kpiDoc.data().linkedTaskIds || [];
       const cleaned = linked.filter((id) => !idsToDelete.includes(id));
       if (cleaned.length !== linked.length) {
-        await updateDoc(doc(db, 'kpis', kpiDoc.id), { linkedTaskIds: cleaned });
+        await updateDoc(doc(db, 'kpis', kpiDoc.id), {
+          linkedTaskIds: cleaned,
+          lastModifiedBy: '업무삭제정리',
+          lastModifiedAt: serverTimestamp(),
+        });
       }
     }
   } catch { /* KPI 정리 실패해도 삭제는 완료 */ }
