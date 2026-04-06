@@ -1425,6 +1425,56 @@
   color: var(--c-text-3);
 }
 
+/* KPI 진행률 행 */
+.kpi-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* KPI 진행상황 텍스트 */
+.kpi-progress-note {
+  font-size: 12px;
+  color: var(--c-text-2);
+  margin-top: 4px;
+  padding: 3px 0;
+  line-height: 1.4;
+}
+
+/* KPI 마일스톤 체크리스트 */
+.kpi-milestones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 6px;
+}
+.kpi-milestone-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--c-text-2);
+  cursor: pointer;
+}
+.kpi-milestone-item input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  accent-color: var(--c-accent);
+}
+.kpi-milestone-item.done span {
+  text-decoration: line-through;
+  color: var(--c-text-4);
+}
+
+/* KPI 마일스톤 편집 (폼 모달) */
+.kpi-milestone-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+}
+
 /* ═══ Sidebar — 공통 ═══ */
 .sidebar-card {
   background: var(--c-bg);

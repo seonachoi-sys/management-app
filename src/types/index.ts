@@ -65,6 +65,11 @@ export interface Member {
 export type KpiPeriod = '월간' | '분기' | '반기' | '연간';
 export type KpiStatus = '대기' | '진행중' | '완료' | '달성' | '위험';
 
+export interface KpiMilestone {
+  label: string;
+  done: boolean;
+}
+
 export interface Kpi {
   kpiId: string;
   title: string;
@@ -77,6 +82,9 @@ export interface Kpi {
   currentValue: number;
   unit: string;
   achievementRate: number;
+  progressRate: number;
+  progressNote: string;
+  milestones: KpiMilestone[];
   status: KpiStatus;
   childKpiIds: string[];
   linkedTaskIds: string[];
@@ -103,6 +111,9 @@ export interface ChildKpi {
   currentValue: number;
   unit: string;
   achievementRate: number;
+  progressRate: number;
+  progressNote: string;
+  milestones: KpiMilestone[];
   status: KpiStatus;
   linkedTaskIds: string[];
   startDate: Timestamp | null;

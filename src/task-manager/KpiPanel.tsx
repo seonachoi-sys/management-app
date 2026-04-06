@@ -5,7 +5,7 @@ import { useKpis, useChildKpis } from '../hooks/useKpis';
 import { useTasks } from '../hooks/useTasks';
 import { useSettings } from '../hooks/useSettings';
 import { useMembers } from '../hooks/useMembers';
-import { calcAchievementRate, calcKpiStatus } from '../services/kpiService';
+// calcAchievementRate/calcKpiStatus는 kpiService 내부에서 자동계산 시 사용
 import { daysLeft, dDayLabel, formatShort } from '../utils/dateUtils';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -88,50 +88,6 @@ function formatModifiedAt(ts: Timestamp | null | undefined): string {
   return format(d, 'M.d a h:mm', { locale: ko });
 }
 
-/* ─── 현재값 인라인 편집 ─── */
-function InlineValueEditor({ value, color, small, onSave }: {
-  value: number; color: string; small?: boolean;
-  onSave: (newValue: number) => Promise<void>;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState(String(value));
-
-  useEffect(() => { setEditValue(String(value)); }, [value]);
-
-  const save = async () => {
-    const n = Number(editValue);
-    if (!isNaN(n) && n !== value) await onSave(n);
-    setEditing(false);
-  };
-
-  if (editing) {
-    return (
-      <input
-        className={`kpi-inline-input ${small ? 'kpi-inline-input-sm' : ''}`}
-        type="number" value={editValue}
-        onChange={(e) => setEditValue(e.target.value)}
-        onBlur={save}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') save();
-          if (e.key === 'Escape') setEditing(false);
-        }}
-        autoFocus
-        onClick={(e) => e.stopPropagation()}
-      />
-    );
-  }
-  return (
-    <span
-      className={`kpi-current kpi-current-editable ${small ? 'kpi-current-sm' : ''}`}
-      style={{ color }}
-      onClick={(e) => { e.stopPropagation(); setEditValue(String(value)); setEditing(true); }}
-      title="클릭하여 현재값 수정"
-    >
-      {value}
-    </span>
-  );
-}
-
 export default function KpiPanel() {
   const { kpis, loading, create, update, remove } = useKpis();
   const { tasks } = useTasks({});
@@ -150,8 +106,8 @@ export default function KpiPanel() {
   }, []);
 
   const handleKpiStatusChange = useCallback(async (kpiId: string, newStatus: KpiStatus, kpi: Kpi) => {
-    if (newStatus === '완료' && kpi.achievementRate < 100) {
-      if (!window.confirm(`완료 처리하시겠습니까? 현재 달성률 ${kpi.achievementRate}%`)) return;
+    if (newStatus === '완료' && (kpi.progressRate || 0) < 100) {
+      if (!window.confirm(`완료 처리하시겠습니까? 현재 진행률 ${kpi.progressRate || 0}%`)) return;
     }
     const data: Partial<Kpi> = { status: newStatus };
     if (newStatus === '완료') {
@@ -162,8 +118,8 @@ export default function KpiPanel() {
   }, [update, addToast]);
 
   const handleChildStatusChange = useCallback(async (parentKpiId: string, childKpiId: string, newStatus: KpiStatus, child: ChildKpi) => {
-    if (newStatus === '완료' && child.achievementRate < 100) {
-      if (!window.confirm(`완료 처리하시겠습니까? 현재 달성률 ${child.achievementRate}%`)) return;
+    if (newStatus === '완료' && (child.progressRate || 0) < 100) {
+      if (!window.confirm(`완료 처리하시겠습니까? 현재 진행률 ${child.progressRate || 0}%`)) return;
     }
     const { updateChildKpi, fetchChildKpis } = await import('../services/kpiService');
     const data: Partial<ChildKpi> = { status: newStatus };
@@ -207,8 +163,8 @@ export default function KpiPanel() {
     const achieved = kpis.filter((k) => k.status === '달성' || k.status === '완료').length;
     const pct = total > 0 ? Math.round((achieved / total) * 100) : 0;
 
-    // 위험 KPI (달성률 30% 이하)
-    const riskKpis = kpis.filter((k) => k.achievementRate <= 30 && k.status !== '완료' && k.status !== '달성');
+    // 위험 KPI (진행률 30% 이하)
+    const riskKpis = kpis.filter((k) => (k.progressRate || 0) <= 30 && k.status !== '완료' && k.status !== '달성');
 
     // 담당자별 현황
     const memberMap: Record<string, { done: number; progress: number }> = {};
@@ -220,12 +176,12 @@ export default function KpiPanel() {
     });
     const memberStats = Object.entries(memberMap).sort((a, b) => b[1].progress - a[1].progress);
 
-    // 담당자별 평균 달성률
+    // 담당자별 평균 진행률
     const rateMap: Record<string, { sum: number; count: number }> = {};
     kpis.forEach((k) => {
       const name = k.assigneeName || '미배정';
       if (!rateMap[name]) rateMap[name] = { sum: 0, count: 0 };
-      rateMap[name].sum += k.achievementRate;
+      rateMap[name].sum += (k.progressRate || 0);
       rateMap[name].count++;
     });
     const memberRates = Object.entries(rateMap)
@@ -332,7 +288,7 @@ export default function KpiPanel() {
                   <div key={k.kpiId} className="sidebar-list-item">
                     <span className="sidebar-dot" style={{ background: 'var(--c-red)' }} />
                     <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.title}</span>
-                    <span className="sidebar-meta">{k.assigneeName} · {k.achievementRate}%</span>
+                    <span className="sidebar-meta">{k.assigneeName} · {k.progressRate || 0}%</span>
                   </div>
                 ))}
               </div>
@@ -341,7 +297,7 @@ export default function KpiPanel() {
 
           {/* 담당자별 KPI 달성률 */}
           <div className="sidebar-card">
-            <div className="sidebar-title">담당자별 KPI 달성률</div>
+            <div className="sidebar-title">담당자별 KPI 진행률</div>
             {kpiSidebar.memberRates.length === 0 ? (
               <div style={{ fontSize: 12, color: 'var(--c-text-3)', padding: '8px 0' }}>데이터 없음</div>
             ) : kpiSidebar.memberRates.map((a) => {
@@ -472,23 +428,38 @@ function KpiCardWithChildren({
           {kpi.description && <div className="tm-task-desc">{kpi.description}</div>}
           {kpi.notes && <div className="kpi-notes">{kpi.notes}</div>}
 
-          <div className="kpi-value-row">
-            <InlineValueEditor
-              value={kpi.currentValue}
-              color={statusColor}
-              onSave={async (newVal) => {
-                const { updateKpi } = await import('../services/kpiService');
-                await updateKpi(kpi.kpiId, { currentValue: newVal });
-              }}
-            />
-            <span className="kpi-target">/ {kpi.targetValue} {kpi.unit}</span>
-            <div className="tm-progress-bar" style={{ maxWidth: 120, height: 5 }}>
-              <div className="tm-progress-fill" style={{ width: `${Math.min(kpi.achievementRate, 100)}%`, background: statusColor }} />
+          {/* 진행률 바 */}
+          <div className="kpi-progress-row">
+            <div className="tm-progress-bar" style={{ flex: 1, height: 6 }}>
+              <div className="tm-progress-fill" style={{ width: `${Math.min(kpi.progressRate || 0, 100)}%`, background: statusColor }} />
             </div>
             <span className="tm-progress-text" style={{ color: statusColor, fontWeight: 700 }}>
-              {kpi.achievementRate}%
+              {kpi.progressRate || 0}%
             </span>
           </div>
+
+          {/* 진행상황 텍스트 */}
+          {kpi.progressNote && (
+            <div className="kpi-progress-note">{kpi.progressNote}</div>
+          )}
+
+          {/* 마일스톤 체크리스트 */}
+          {(kpi.milestones?.length > 0) && (
+            <div className="kpi-milestones">
+              {kpi.milestones.map((ms, i) => (
+                <label key={i} className={`kpi-milestone-item ${ms.done ? 'done' : ''}`}>
+                  <input type="checkbox" checked={ms.done} onChange={async () => {
+                    const newMs = kpi.milestones.map((m, j) => j === i ? { ...m, done: !m.done } : m);
+                    const doneCount = newMs.filter(m => m.done).length;
+                    const newRate = newMs.length > 0 ? Math.round((doneCount / newMs.length) * 100) : 0;
+                    const { updateKpi } = await import('../services/kpiService');
+                    await updateKpi(kpi.kpiId, { milestones: newMs, progressRate: newRate });
+                  }} />
+                  <span>{ms.label}</span>
+                </label>
+              ))}
+            </div>
+          )}
 
           <div className="tm-task-meta">
             {kpi.assigneeName && <span>{kpi.assigneeName}</span>}
@@ -530,24 +501,37 @@ function KpiCardWithChildren({
                 )}
               </div>
               {child.notes && <div className="kpi-notes">{child.notes}</div>}
-              <div className="kpi-value-row">
-                <InlineValueEditor
-                  value={child.currentValue}
-                  color={childColor}
-                  small
-                  onSave={async (newVal) => {
-                    const { updateChildKpi } = await import('../services/kpiService');
-                    await updateChildKpi(kpi.kpiId, child.childKpiId, { currentValue: newVal });
-                  }}
-                />
-                <span className="kpi-target">/ {child.targetValue} {child.unit}</span>
-                <div className="tm-progress-bar" style={{ maxWidth: 80, height: 4 }}>
-                  <div className="tm-progress-fill" style={{ width: `${Math.min(child.achievementRate, 100)}%`, background: childColor }} />
+
+              {/* 진행률 바 */}
+              <div className="kpi-progress-row">
+                <div className="tm-progress-bar" style={{ flex: 1, height: 5 }}>
+                  <div className="tm-progress-fill" style={{ width: `${Math.min(child.progressRate || 0, 100)}%`, background: childColor }} />
                 </div>
                 <span className="tm-progress-text" style={{ color: childColor, fontWeight: 700 }}>
-                  {child.achievementRate}%
+                  {child.progressRate || 0}%
                 </span>
               </div>
+
+              {child.progressNote && (
+                <div className="kpi-progress-note">{child.progressNote}</div>
+              )}
+
+              {(child.milestones?.length > 0) && (
+                <div className="kpi-milestones">
+                  {child.milestones.map((ms, i) => (
+                    <label key={i} className={`kpi-milestone-item ${ms.done ? 'done' : ''}`}>
+                      <input type="checkbox" checked={ms.done} onChange={async () => {
+                        const newMs = child.milestones.map((m, j) => j === i ? { ...m, done: !m.done } : m);
+                        const doneCount = newMs.filter(m => m.done).length;
+                        const newRate = newMs.length > 0 ? Math.round((doneCount / newMs.length) * 100) : 0;
+                        const { updateChildKpi } = await import('../services/kpiService');
+                        await updateChildKpi(kpi.kpiId, child.childKpiId, { milestones: newMs, progressRate: newRate });
+                      }} />
+                      <span>{ms.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
               <div className="tm-task-meta">
                 {child.assigneeName && <span>{child.assigneeName}</span>}
                 {(child.startDate || child.endDate) && (
@@ -603,6 +587,10 @@ function KpiFormModal({
     targetValue: (existing as any)?.targetValue || 0,
     currentValue: (existing as any)?.currentValue || 0,
     unit: (existing as any)?.unit || '',
+    progressRate: (existing as any)?.progressRate || 0,
+    progressNote: (existing as any)?.progressNote || '',
+    milestones: (existing as any)?.milestones || [] as { label: string; done: boolean }[],
+    newMilestone: '',
     startDate: tsToStr((existing as any)?.startDate),
     endDate: tsToStr((existing as any)?.endDate),
     linkedTaskIds: (existing as any)?.linkedTaskIds || [] as string[],
@@ -611,9 +599,6 @@ function KpiFormModal({
   });
   const [saving, setSaving] = useState(false);
   const [taskSearch, setTaskSearch] = useState('');
-
-  const rate = form.targetValue > 0 ? calcAchievementRate(Number(form.currentValue), Number(form.targetValue)) : 0;
-  const status = calcKpiStatus(rate);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -644,6 +629,9 @@ function KpiFormModal({
         targetValue: Number(form.targetValue),
         currentValue: Number(form.currentValue),
         unit: form.unit,
+        progressRate: Number(form.progressRate),
+        progressNote: form.progressNote.trim(),
+        milestones: form.milestones,
         startDate: form.startDate ? Timestamp.fromDate(new Date(form.startDate + 'T00:00:00')) : null,
         endDate: form.endDate ? Timestamp.fromDate(new Date(form.endDate + 'T00:00:00')) : null,
         linkedTaskIds: form.linkedTaskIds,
@@ -694,16 +682,67 @@ function KpiFormModal({
             <textarea name="notes" value={form.notes} onChange={handleChange} rows={2} placeholder="참고사항, 진행 메모 등" />
           </label>
 
-          <div className="tm-form-row-3">
-            <label>목표값 *
-              <input name="targetValue" type="number" min="0" step="any" value={form.targetValue} onChange={handleChange} />
-            </label>
-            <label>현재값
-              <input name="currentValue" type="number" min="0" step="any" value={form.currentValue} onChange={handleChange} />
-            </label>
-            <label>단위
-              <input name="unit" value={form.unit} onChange={handleChange} placeholder="건, %, 원" />
-            </label>
+          {/* 진행률 슬라이더 */}
+          <label>진행률: {form.progressRate}%
+            <input name="progressRate" type="range" min="0" max="100" step="5"
+              value={form.progressRate} onChange={handleChange}
+              style={{ width: '100%', accentColor: 'var(--c-accent)' }} />
+          </label>
+
+          {/* 진행상황 텍스트 */}
+          <label>현재 진행상황
+            <textarea name="progressNote" value={form.progressNote} onChange={handleChange} rows={2}
+              placeholder="예: 1차 초안 작성 완료, 다음주 검토 예정" />
+          </label>
+
+          {/* 마일스톤 체크리스트 */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--c-text-2)', marginBottom: 6 }}>
+              단계 체크리스트 ({form.milestones.filter((m: { done: boolean }) => m.done).length}/{form.milestones.length})
+            </div>
+            {form.milestones.map((ms: { label: string; done: boolean }, i: number) => (
+              <div key={i} className="kpi-milestone-edit-row">
+                <input type="checkbox" checked={ms.done}
+                  onChange={() => setForm(f => ({
+                    ...f,
+                    milestones: f.milestones.map((m: { label: string; done: boolean }, j: number) => j === i ? { ...m, done: !m.done } : m),
+                  }))}
+                  style={{ width: 14, height: 14 }} />
+                <input value={ms.label}
+                  onChange={(e) => setForm(f => ({
+                    ...f,
+                    milestones: f.milestones.map((m: { label: string; done: boolean }, j: number) => j === i ? { ...m, label: e.target.value } : m),
+                  }))}
+                  style={{ flex: 1, fontSize: 13 }} />
+                <button type="button" onClick={() => setForm(f => ({
+                  ...f,
+                  milestones: f.milestones.filter((_: unknown, j: number) => j !== i),
+                }))} style={{ fontSize: 11, color: 'var(--c-red)', background: 'none', border: 'none', cursor: 'pointer' }}>삭제</button>
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+              <input placeholder="새 단계 추가..." value={form.newMilestone}
+                onChange={(e) => setForm(f => ({ ...f, newMilestone: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && form.newMilestone.trim()) {
+                    e.preventDefault();
+                    setForm(f => ({
+                      ...f,
+                      milestones: [...f.milestones, { label: f.newMilestone.trim(), done: false }],
+                      newMilestone: '',
+                    }));
+                  }
+                }}
+                style={{ flex: 1, fontSize: 13 }} />
+              <button type="button" onClick={() => {
+                if (!form.newMilestone.trim()) return;
+                setForm(f => ({
+                  ...f,
+                  milestones: [...f.milestones, { label: f.newMilestone.trim(), done: false }],
+                  newMilestone: '',
+                }));
+              }} className="tm-btn-add" style={{ padding: '4px 10px', fontSize: 12 }}>추가</button>
+            </div>
           </div>
 
           <div className="tm-form-row-3">
@@ -729,18 +768,17 @@ function KpiFormModal({
             </select>
           </label>
 
-          {/* 달성률 미리보기 */}
-          {Number(form.targetValue) > 0 && (
+          {/* 진행률 미리보기 */}
+          {Number(form.progressRate) > 0 && (
             <div style={{
               margin: '12px 0', padding: 10,
               background: 'var(--tm-surface-inset)', borderRadius: 'var(--tm-radius-sm)',
               display: 'flex', alignItems: 'center', gap: 12, fontSize: 13,
             }}>
-              <span>달성률:</span>
-              <strong style={{ color: STATUS_COLOR[status], fontFamily: 'var(--tm-font-mono)' }}>{rate}%</strong>
-              <span style={{ color: STATUS_COLOR[status], fontWeight: 600 }}>{status}</span>
+              <span>진행률:</span>
+              <strong style={{ fontFamily: 'var(--tm-font-mono)' }}>{form.progressRate}%</strong>
               <div style={{ flex: 1, height: 5, background: 'var(--tm-surface-card)', borderRadius: 100, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${Math.min(rate, 100)}%`, background: STATUS_COLOR[status], borderRadius: 100 }} />
+                <div style={{ height: '100%', width: `${Math.min(Number(form.progressRate), 100)}%`, background: 'var(--c-accent)', borderRadius: 100 }} />
               </div>
             </div>
           )}
