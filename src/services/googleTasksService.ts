@@ -82,6 +82,29 @@ async function getOrCreateTaskList(): Promise<string> {
   return created.result.id!;
 }
 
+/* ─── Google Tasks 목록 캐시 (동기화 세션 내 재사용) ─── */
+let _cachedGoogleTasks: Array<{ id: string; notes: string }> | null = null;
+
+export function clearGoogleTasksCache(): void {
+  _cachedGoogleTasks = null;
+}
+
+async function getExistingGoogleTasks(listId: string): Promise<Array<{ id: string; notes: string }>> {
+  if (_cachedGoogleTasks) return _cachedGoogleTasks;
+
+  const res = await gapi.client.tasks.tasks.list({
+    tasklist: listId,
+    showCompleted: true,
+    showHidden: true,
+    maxResults: 100,
+  });
+  _cachedGoogleTasks = (res.result.items || []).map((item: Record<string, unknown>) => ({
+    id: item.id as string,
+    notes: (item.notes as string) || '',
+  }));
+  return _cachedGoogleTasks;
+}
+
 /* ─── Firestore → Google Tasks 동기화 ─── */
 export async function syncTaskToGoogleTasks(task: Task): Promise<string | null> {
   if (!isSignedIn()) return null;
@@ -110,15 +133,42 @@ export async function syncTaskToGoogleTasks(task: Task): Promise<string | null> 
       });
       return res.result.id || null;
     } catch {
-      // 없으면 새로 생성
+      // Google 측에서 삭제된 경우 → 아래에서 중복 확인 후 생성
     }
   }
 
+  // googleTaskId가 없거나 업데이트 실패 시, 기존 Google Tasks에서 같은 taskId 태그가 있는지 확인
+  const existingTasks = await getExistingGoogleTasks(listId);
+  const marker = `[taskId:${task.taskId}]`;
+  const found = existingTasks.find(gt => gt.notes.includes(marker));
+
+  if (found) {
+    // 이미 존재 → 업데이트
+    try {
+      const res = await gapi.client.tasks.tasks.update({
+        tasklist: listId,
+        task: found.id,
+        resource,
+      });
+      return res.result.id || null;
+    } catch {
+      // 업데이트 실패 시 새로 생성
+    }
+  }
+
+  // 새로 생성
   const res = await gapi.client.tasks.tasks.insert({
     tasklist: listId,
     resource,
   });
-  return res.result.id || null;
+  const newId = res.result.id || null;
+
+  // 캐시에 추가 (같은 세션 내 중복 방지)
+  if (newId && _cachedGoogleTasks) {
+    _cachedGoogleTasks.push({ id: newId, notes });
+  }
+
+  return newId;
 }
 
 /* ─── Google Tasks → Firestore 변경사항 가져오기 ─── */

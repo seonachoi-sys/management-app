@@ -18,6 +18,7 @@ import {
   fetchGoogleTasks,
   getLastSyncTime,
   setLastSyncTime,
+  clearGoogleTasksCache,
 } from '../services/googleTasksService';
 import TaskCard from './TaskCard';
 import TaskForm from './TaskForm';
@@ -632,17 +633,40 @@ export default function TaskDashboard() {
       if (!isGoogleSignedIn()) {
         await requestAccess();
       }
-      // Firestore → Google Tasks (googleTaskId 없는 것만 신규 생성, 있는 것은 업데이트)
+
+      // 캐시 초기화 (새 동기화 세션 시작)
+      clearGoogleTasksCache();
+
+      // Firestore → Google Tasks
+      // googleTaskId가 이미 있으면 업데이트, 없으면 notes의 taskId 태그로 중복 확인 후 생성
+      const syncedIds = new Set<string>(); // 이번 세션에서 처리된 googleTaskId 추적
       for (const t of tasks) {
         const returnedId = await syncTaskToGoogleTasks(t);
-        if (returnedId && !t.googleTaskId && user) {
-          await update(t.taskId, { googleTaskId: returnedId }, user.uid, user.displayName || user.email || '');
+        if (returnedId) {
+          syncedIds.add(returnedId);
+          if (!t.googleTaskId && user) {
+            await update(t.taskId, { googleTaskId: returnedId }, user.uid, user.displayName || user.email || '');
+          }
         }
       }
-      // Google Tasks → Firestore (신규 태스크)
+
+      // Google Tasks → Firestore (역동기화)
+      // firestoreTaskId가 없고, 이번 동기화에서 생성된 것도 아닌 순수 Google 측 태스크만 가져옴
       const googleTasks = await fetchGoogleTasks();
+      // Firestore에 이미 연결된 googleTaskId 목록
+      const existingGoogleIds = new Set(
+        tasks.filter(t => t.googleTaskId).map(t => t.googleTaskId!)
+      );
+
       for (const gt of googleTasks) {
-        if (!gt.firestoreTaskId && gt.title && user) {
+        // 이미 Firestore에 연결된 태스크면 스킵
+        if (gt.firestoreTaskId) continue;
+        // 이번 동기화에서 방금 생성/업데이트된 것이면 스킵
+        if (syncedIds.has(gt.googleTaskId)) continue;
+        // Firestore tasks에 이미 이 googleTaskId가 있으면 스킵
+        if (existingGoogleIds.has(gt.googleTaskId)) continue;
+
+        if (gt.title && user) {
           await create({
             title: gt.title,
             description: '',
@@ -665,10 +689,15 @@ export default function TaskDashboard() {
           }, user.uid);
         }
       }
+
+      // 캐시 정리
+      clearGoogleTasksCache();
+
       setLastSyncTime();
       setLastSync(new Date().toISOString());
       alert('Google Tasks 동기화 완료!');
     } catch (err: unknown) {
+      clearGoogleTasksCache();
       const msg = err instanceof Error ? err.message : String(err);
       const detail = (err as any)?.result?.error?.message || '';
       alert(`동기화 실패:\n${msg}${detail ? '\n\n상세: ' + detail : ''}\n\n[확인사항]\n1. Google Cloud Console에서 Tasks API 활성화\n2. OAuth 승인된 JavaScript 출처에 현재 도메인 추가`);
