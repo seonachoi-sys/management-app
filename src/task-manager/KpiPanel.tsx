@@ -6,6 +6,9 @@ import { useTasks } from '../hooks/useTasks';
 import { useSettings } from '../hooks/useSettings';
 import { useMembers } from '../hooks/useMembers';
 import { calcAchievementRate, calcKpiStatus } from '../services/kpiService';
+import { daysLeft, dDayLabel, formatShort } from '../utils/dateUtils';
+import { format } from 'date-fns';
+import { ko } from 'date-fns/locale';
 
 const PERIOD_COLOR: Record<KpiPeriod, string> = {
   '월간': 'var(--tm-brand)',
@@ -63,6 +66,68 @@ function KpiStatusDropdown({ current, onChange }: { current: KpiStatus; onChange
           ))}
         </div>
       )}
+    </span>
+  );
+}
+
+/* ─── D-Day CSS 클래스 ─── */
+function getKpiDdayClass(endDate: Kpi['endDate']): string {
+  const d = daysLeft(endDate);
+  if (d === null) return '';
+  if (d < 0) return 'dday-overdue';
+  if (d === 0) return 'dday-today';
+  if (d <= 3) return 'dday-soon';
+  return 'dday-normal';
+}
+
+/* ─── 수정 시간 포맷 ─── */
+function formatModifiedAt(ts: Timestamp | null | undefined): string {
+  if (!ts) return '';
+  const d = ts instanceof Timestamp ? ts.toDate() : null;
+  if (!d) return '';
+  return format(d, 'M.d a h:mm', { locale: ko });
+}
+
+/* ─── 현재값 인라인 편집 ─── */
+function InlineValueEditor({ value, color, small, onSave }: {
+  value: number; color: string; small?: boolean;
+  onSave: (newValue: number) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(String(value));
+
+  useEffect(() => { setEditValue(String(value)); }, [value]);
+
+  const save = async () => {
+    const n = Number(editValue);
+    if (!isNaN(n) && n !== value) await onSave(n);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        className={`kpi-inline-input ${small ? 'kpi-inline-input-sm' : ''}`}
+        type="number" value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') save();
+          if (e.key === 'Escape') setEditing(false);
+        }}
+        autoFocus
+        onClick={(e) => e.stopPropagation()}
+      />
+    );
+  }
+  return (
+    <span
+      className={`kpi-current kpi-current-editable ${small ? 'kpi-current-sm' : ''}`}
+      style={{ color }}
+      onClick={(e) => { e.stopPropagation(); setEditValue(String(value)); setEditing(true); }}
+      title="클릭하여 현재값 수정"
+    >
+      {value}
     </span>
   );
 }
@@ -359,9 +424,16 @@ function KpiCardWithChildren({
   onChildStatusChange: (childKpiId: string, status: KpiStatus, child: ChildKpi) => void;
 }) {
   const { children } = useChildKpis(expanded || kpi.childKpiIds?.length > 0 ? kpi.kpiId : null);
-  const linkedCount = kpi.linkedTaskIds?.length || 0;
   const statusColor = STATUS_COLOR[kpi.status];
   const periodColor = PERIOD_COLOR[kpi.period];
+
+  // 연결업무 완료 현황
+  const linkedTaskStats = useMemo(() => {
+    if (!kpi.linkedTaskIds?.length) return null;
+    const linked = tasks.filter(t => kpi.linkedTaskIds.includes(t.taskId));
+    const completed = linked.filter(t => t.status === '완료').length;
+    return { completed, total: linked.length };
+  }, [kpi.linkedTaskIds, tasks]);
 
   return (
     <div>
@@ -380,20 +452,35 @@ function KpiCardWithChildren({
               {kpi.period}
             </span>
             <KpiStatusDropdown current={kpi.status} onChange={onStatusChange} />
+            {/* D-Day 배지 */}
+            {kpi.endDate && kpi.status !== '완료' && kpi.status !== '달성' && (
+              <span className={`tm-dday ${getKpiDdayClass(kpi.endDate)}`}>
+                {dDayLabel(kpi.endDate)}
+              </span>
+            )}
             {children.length > 0 && (
               <span className="kpi-meta-tag">하위 {children.length}</span>
             )}
-            {linkedCount > 0 && (
-              <span className="kpi-meta-tag">연결업무 {linkedCount}</span>
+            {/* 연결업무 완료 현황 */}
+            {linkedTaskStats && (
+              <span className="kpi-meta-tag kpi-linked-progress">
+                연결업무 {linkedTaskStats.completed}/{linkedTaskStats.total} 완료
+              </span>
             )}
           </div>
 
           {kpi.description && <div className="tm-task-desc">{kpi.description}</div>}
+          {kpi.notes && <div className="kpi-notes">{kpi.notes}</div>}
 
           <div className="kpi-value-row">
-            <span className="kpi-current" style={{ color: statusColor }}>
-              {kpi.currentValue}
-            </span>
+            <InlineValueEditor
+              value={kpi.currentValue}
+              color={statusColor}
+              onSave={async (newVal) => {
+                const { updateKpi } = await import('../services/kpiService');
+                await updateKpi(kpi.kpiId, { currentValue: newVal });
+              }}
+            />
             <span className="kpi-target">/ {kpi.targetValue} {kpi.unit}</span>
             <div className="tm-progress-bar" style={{ maxWidth: 120, height: 5 }}>
               <div className="tm-progress-fill" style={{ width: `${Math.min(kpi.achievementRate, 100)}%`, background: statusColor }} />
@@ -405,6 +492,16 @@ function KpiCardWithChildren({
 
           <div className="tm-task-meta">
             {kpi.assigneeName && <span>{kpi.assigneeName}</span>}
+            {(kpi.startDate || kpi.endDate) && (
+              <span className="kpi-date-range">
+                {kpi.startDate ? formatShort(kpi.startDate) : '?'} ~ {kpi.endDate ? formatShort(kpi.endDate) : '?'}
+              </span>
+            )}
+            {kpi.lastModifiedBy && kpi.lastModifiedAt && (
+              <span className="tm-modified-info">
+                {kpi.lastModifiedBy} 수정 · {formatModifiedAt(kpi.lastModifiedAt)}
+              </span>
+            )}
           </div>
         </div>
 
@@ -425,11 +522,24 @@ function KpiCardWithChildren({
                 <span className="kpi-child-arrow">└</span>
                 <span className="tm-task-title">{child.title}</span>
                 <KpiStatusDropdown current={child.status} onChange={(s) => onChildStatusChange(child.childKpiId, s, child)} />
+                {/* 하위 KPI D-Day */}
+                {child.endDate && child.status !== '완료' && child.status !== '달성' && (
+                  <span className={`tm-dday ${getKpiDdayClass(child.endDate)}`}>
+                    {dDayLabel(child.endDate)}
+                  </span>
+                )}
               </div>
+              {child.notes && <div className="kpi-notes">{child.notes}</div>}
               <div className="kpi-value-row">
-                <span className="kpi-current kpi-current-sm" style={{ color: childColor }}>
-                  {child.currentValue}
-                </span>
+                <InlineValueEditor
+                  value={child.currentValue}
+                  color={childColor}
+                  small
+                  onSave={async (newVal) => {
+                    const { updateChildKpi } = await import('../services/kpiService');
+                    await updateChildKpi(kpi.kpiId, child.childKpiId, { currentValue: newVal });
+                  }}
+                />
                 <span className="kpi-target">/ {child.targetValue} {child.unit}</span>
                 <div className="tm-progress-bar" style={{ maxWidth: 80, height: 4 }}>
                   <div className="tm-progress-fill" style={{ width: `${Math.min(child.achievementRate, 100)}%`, background: childColor }} />
@@ -438,9 +548,19 @@ function KpiCardWithChildren({
                   {child.achievementRate}%
                 </span>
               </div>
-              {child.assigneeName && (
-                <div className="tm-task-meta"><span>{child.assigneeName}</span></div>
-              )}
+              <div className="tm-task-meta">
+                {child.assigneeName && <span>{child.assigneeName}</span>}
+                {(child.startDate || child.endDate) && (
+                  <span className="kpi-date-range">
+                    {child.startDate ? formatShort(child.startDate) : '?'} ~ {child.endDate ? formatShort(child.endDate) : '?'}
+                  </span>
+                )}
+                {child.lastModifiedBy && child.lastModifiedAt && (
+                  <span className="tm-modified-info">
+                    {child.lastModifiedBy} 수정 · {formatModifiedAt(child.lastModifiedAt)}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="tm-task-actions">
               <button onClick={() => onEditChild(child)}>수정</button>
@@ -477,6 +597,7 @@ function KpiFormModal({
   const [form, setForm] = useState({
     title: (existing as any)?.title || '',
     description: (existing as any)?.description || '',
+    notes: (existing as any)?.notes || '',
     assigneeName: (existing as any)?.assigneeName || '',
     period: (existing as any)?.period || '분기' as KpiPeriod,
     targetValue: (existing as any)?.targetValue || 0,
@@ -516,6 +637,7 @@ function KpiFormModal({
       const data: Record<string, any> = {
         title: form.title.trim(),
         description: form.description.trim(),
+        notes: form.notes.trim(),
         assignee: form.assigneeName,
         assigneeName: form.assigneeName,
         period: form.period,
@@ -567,6 +689,9 @@ function KpiFormModal({
           </label>
           <label>설명
             <textarea name="description" value={form.description} onChange={handleChange} rows={2} placeholder="KPI 상세 설명" />
+          </label>
+          <label>메모/노트
+            <textarea name="notes" value={form.notes} onChange={handleChange} rows={2} placeholder="참고사항, 진행 메모 등" />
           </label>
 
           <div className="tm-form-row-3">

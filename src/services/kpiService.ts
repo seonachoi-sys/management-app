@@ -48,6 +48,7 @@ export async function createKpi(data: Partial<Kpi>): Promise<string> {
   const rate = calcAchievementRate(data.currentValue || 0, data.targetValue || 0);
   const ref = await addDoc(collection(db, KPIS), {
     ...data,
+    notes: data.notes || '',
     achievementRate: rate,
     status: calcKpiStatus(rate),
     childKpiIds: data.childKpiIds || [],
@@ -110,6 +111,7 @@ export async function createChildKpi(parentKpiId: string, data: Partial<ChildKpi
   const ref = await addDoc(collection(db, KPIS, parentKpiId, 'childKpis'), {
     ...data,
     parentKpiId,
+    notes: data.notes || '',
     achievementRate: rate,
     status: calcKpiStatus(rate),
     linkedTaskIds: data.linkedTaskIds || [],

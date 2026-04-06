@@ -69,6 +69,7 @@ export interface Kpi {
   kpiId: string;
   title: string;
   description: string;
+  notes: string;
   assignee: string;
   assigneeName: string;
   period: KpiPeriod;
@@ -85,6 +86,8 @@ export interface Kpi {
   isParent: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  lastModifiedBy?: string | null;
+  lastModifiedAt?: Timestamp | null;
 }
 
 export interface ChildKpi {
@@ -92,6 +95,7 @@ export interface ChildKpi {
   parentKpiId: string;
   title: string;
   description: string;
+  notes: string;
   assignee: string;
   assigneeName: string;
   period: KpiPeriod;
@@ -106,6 +110,8 @@ export interface ChildKpi {
   completedDate: Timestamp | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  lastModifiedBy?: string | null;
+  lastModifiedAt?: Timestamp | null;
 }
 
 /* ─── 회의록 ─── */
