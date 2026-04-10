@@ -34,6 +34,7 @@ export interface Task {
   googleTaskId: string | null;
   lastModifiedBy: string | null;
   lastModifiedAt: Timestamp | null;
+  memo: string; // 보고서 메모 (대표이사 보고서에 표시)
   isNewDismissed: boolean;
   leadTimeDays: number | null; // 완료 시 자동계산: dueDate - completedAt (양수=조기, 음수=지연, 0=정시)
   createdAt: Timestamp;

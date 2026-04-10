@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import type { Task, TaskStatus, RecurrenceRule, Member } from '../types';
+import { updateTask } from '../services/taskService';
+import { useDebouncedCallback } from '../hooks/useDebounce';
 
 interface Props {
   task: Task | null;
@@ -33,6 +35,7 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
     startDate: tsToString(task?.startDate),
     dueDate: tsToString(task?.dueDate),
     progressRate: task?.progressRate || 0,
+    memo: task?.memo || '',
     notes: task?.notes || '',
     isRecurring: task?.isRecurring || false,
     recurrenceRule: task?.recurrenceRule || null as RecurrenceRule,
@@ -66,6 +69,32 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
     tasks.forEach((t) => { if (t.assigneeName) names.add(t.assigneeName); });
     return Array.from(names);
   })();
+
+  // 메모 디바운스 자동저장
+  const [memoSaveStatus, setMemoSaveStatus] = useState<'' | '저장 중...' | '저장됨'>('');
+  const debouncedMemoSave = useDebouncedCallback(
+    async (memoValue: string) => {
+      if (!task) return; // 신규 업무는 폼 저장 시 함께 저장
+      setMemoSaveStatus('저장 중...');
+      try {
+        await updateTask(task.taskId, { memo: memoValue } as Partial<Task>, userName, userName);
+        setMemoSaveStatus('저장됨');
+        setTimeout(() => setMemoSaveStatus(''), 2000);
+      } catch {
+        setMemoSaveStatus('');
+      }
+    },
+    1000,
+  );
+
+  const handleMemoChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = e.target.value;
+      setForm((f) => ({ ...f, memo: value }));
+      debouncedMemoSave(value);
+    },
+    [debouncedMemoSave],
+  );
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
@@ -103,6 +132,7 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
         : null,
       progressRate: isParentTask ? 0 : (Number(form.progressRate) || 0),
       kpiLinked: null,
+      memo: isParentTask ? '' : form.memo.trim(),
       notes: isParentTask ? '' : form.notes.trim(),
       isRecurring: isParentTask ? false : form.isRecurring,
       recurrenceRule: (!isParentTask && form.isRecurring) ? form.recurrenceRule : null,
@@ -132,6 +162,7 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
       ...f,
       title: '',
       description: '',
+      memo: '',
       status: '대기' as TaskStatus,
       startDate: '',
       dueDate: '',
@@ -204,6 +235,30 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
                   placeholder="업무 상세 내용"
                   rows={2}
                 />
+              </label>
+
+              <label>
+                보고서 메모
+                <div style={{ position: 'relative' }}>
+                  <textarea
+                    name="memo"
+                    value={form.memo}
+                    onChange={handleMemoChange}
+                    placeholder="대표이사 보고서에 표시할 내용 (선택)"
+                    rows={2}
+                  />
+                  {memoSaveStatus && (
+                    <span style={{
+                      position: 'absolute', right: 8, bottom: 8,
+                      fontSize: 11, color: memoSaveStatus === '저장됨' ? 'var(--c-green)' : 'var(--c-text-3)',
+                    }}>
+                      {memoSaveStatus}
+                    </span>
+                  )}
+                </div>
+                <span style={{ fontSize: 11, color: 'var(--c-text-4)', marginTop: 2, display: 'block' }}>
+                  입력 시 회의 자료에 업무명 아래 표시됩니다
+                </span>
               </label>
 
               <div className="tm-form-row-3">
