@@ -441,14 +441,19 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     const nextDate = localDate(biweeklyPeriod.end);
     nextDate.setHours(23, 59, 59, 999);
 
-    // 1. 2주간 완료 업무: 직전미팅일 ~ 선택일 사이 completedAt
-    const completed = reportTasks.filter((t) => {
-      if (t.status !== '완료') return false;
-      const cd = tsToDate(t.completedDate);
-      return cd !== null && cd >= prevDate && cd <= selectedDate;
+    // 1. 지난 2주 계획 업무: dueDate가 직전미팅일~선택일 사이인 업무 (상태 무관)
+    //    = 지난 미팅 때 "다음 2주 예정"에 있었을 업무들의 현재 상태
+    const planned = reportTasks.filter((t) => {
+      const dd = tsToDate(t.dueDate);
+      return dd !== null && dd >= prevDate && dd <= selectedDate;
     });
 
-    // 2. 다음 2주 진행 예정: 선택일 ~ 다음미팅일 사이 dueDate
+    // 계획 업무를 상태별 분류
+    const planCompleted = planned.filter((t) => t.status === '완료');
+    const planInProgress = planned.filter((t) => t.status === '진행중');
+    const planRemaining = planned.filter((t) => t.status !== '완료' && t.status !== '진행중');
+
+    // 2. 앞으로 2주 진행 예정: 선택일 ~ 다음미팅일 사이 dueDate (미완료)
     const upcoming = reportTasks.filter((t) => {
       if (t.status === '완료') return false;
       const dd = tsToDate(t.dueDate);
@@ -461,7 +466,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       return t.ceoFlag || t.status === '보류';
     });
 
-    return { completed, upcoming, ceoDecision };
+    return { planned, planCompleted, planInProgress, planRemaining, upcoming, ceoDecision };
   }, [reportType, reportTasks, biweeklyPeriod]);
 
   /* ─── 월간 리포트 데이터 ─── */
@@ -521,12 +526,11 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       };
     }
     if (reportType === '격주' && biweeklyData) {
-      const total = biweeklyData.upcoming.length + biweeklyData.completed.length;
       return {
-        total,
-        completed: biweeklyData.completed.length,
-        incomplete: biweeklyData.upcoming.length,
-        delayed: biweeklyData.ceoDecision.length,
+        total: biweeklyData.planned.length,
+        completed: biweeklyData.planCompleted.length,
+        incomplete: biweeklyData.planInProgress.length,
+        delayed: biweeklyData.planRemaining.length,
       };
     }
     if (reportType === '월간' && monthlyData) {
@@ -559,13 +563,13 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   /* ─── 카테고리 그룹 (클립보드/Obsidian 용) ─── */
   const completedTasks = useMemo(() => {
     if (reportType === '주간') return weeklyData?.completed || [];
-    if (reportType === '격주') return biweeklyData?.completed || [];
+    if (reportType === '격주') return biweeklyData?.planCompleted || [];
     return monthlyData?.completed || [];
   }, [reportType, weeklyData, biweeklyData, monthlyData]);
 
   const incompleteTasks = useMemo(() => {
     if (reportType === '주간') return weeklyData?.incomplete || [];
-    if (reportType === '격주') return biweeklyData?.upcoming || [];
+    if (reportType === '격주') return [...(biweeklyData?.planInProgress || []), ...(biweeklyData?.planRemaining || [])];
     return monthlyData?.nextMonthTasks || [];
   }, [reportType, weeklyData, biweeklyData, monthlyData]);
 
@@ -758,7 +762,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   /* ─── 격주(CEO) 리포트 렌더 ─── */
   const renderBiweeklyReport = () => {
     if (!biweeklyData) return null;
-    const { completed, upcoming, ceoDecision } = biweeklyData;
+    const { planned, planCompleted, planInProgress, planRemaining, upcoming, ceoDecision } = biweeklyData;
 
     const kpiByAssignee: Record<string, Kpi[]> = {};
     allKpis.forEach((k) => {
@@ -767,30 +771,90 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       kpiByAssignee[name].push(k);
     });
 
+    const statusBadge = (t: Task) => {
+      const color: Record<string, string> = {
+        '완료': 'var(--c-green)', '진행중': 'var(--c-accent)', '대기': 'var(--c-text-3)',
+        '지연': 'var(--c-red)', '보류': 'var(--c-orange)',
+      };
+      const bg: Record<string, string> = {
+        '완료': 'var(--c-green-bg)', '진행중': 'var(--c-accent-light)', '대기': 'var(--c-bg-sub)',
+        '지연': 'var(--c-red-bg)', '보류': 'var(--c-orange-bg)',
+      };
+      return (
+        <span className="rpt-compare-badge" style={{ color: color[t.status], background: bg[t.status] }}>
+          {t.status === '완료' ? '✓ 완료' : t.status}
+        </span>
+      );
+    };
+
+    const statusDetail = (t: Task) => {
+      if (t.status === '완료') return null;
+      const parts: string[] = [];
+      if (t.progressRate > 0) parts.push(`${t.progressRate}%`);
+      if (t.memo) parts.push(t.memo);
+      else if (t.notes) parts.push(t.notes);
+      else if (t.status === '보류') parts.push('보류 중');
+      else if (t.status === '지연') parts.push('마감 초과');
+      return parts.length > 0 ? parts.join(' · ') : null;
+    };
+
     return (
       <>
-        <Block title="2주간 완료 업무" count={completed.length} dotColor="green" defaultOpen>
-          {(() => {
-            const groups = groupByCategory(completed).sort((a, b) => b.tasks.length - a.tasks.length);
-            if (groups.length === 0) return <div className="rpt-empty">해당 없음</div>;
-            return groups.map((g) => (
-              <div key={g.category} className="rpt-cat-group">
-                <div className="rpt-cat-label">{g.category} <span className="rpt-cat-cnt">{g.tasks.length}건</span></div>
-                <div className="rpt-list rpt-list-indent">
-                  {g.tasks.map((t) => (
-                    <div key={t.taskId} className="rpt-item rpt-item-simple">
-                      <span className="rpt-item-title">{t.title}</span>
-                      {t.memo && <div style={{ fontSize: 11, color: '#888', marginLeft: 12, marginTop: 1 }}>└ {t.memo}</div>}
-                    </div>
-                  ))}
-                </div>
+        {/* ── 지난 2주: 계획 vs 결과 비교 ── */}
+        <Block
+          title="지난 2주 업무 현황"
+          count={planned.length}
+          dotColor="green"
+          defaultOpen
+        >
+          {planned.length === 0 ? (
+            <div className="rpt-empty">해당 기간 계획된 업무 없음</div>
+          ) : (
+            <>
+              {/* 요약 바 */}
+              <div className="rpt-compare-summary">
+                <span className="rpt-compare-stat rpt-compare-stat-done">완료 {planCompleted.length}</span>
+                <span className="rpt-compare-stat rpt-compare-stat-prog">진행중 {planInProgress.length}</span>
+                <span className="rpt-compare-stat rpt-compare-stat-left">미완료 {planRemaining.length}</span>
               </div>
-            ));
-          })()}
-          <LeadTimeSummary tasks={completed} />
+
+              {/* 좌우 비교 테이블 */}
+              <div className="rpt-compare-table">
+                <div className="rpt-compare-header">
+                  <div className="rpt-compare-col-plan">계획</div>
+                  <div className="rpt-compare-col-result">결과</div>
+                </div>
+                {planned.map((t) => {
+                  const detail = statusDetail(t);
+                  return (
+                    <div key={t.taskId} className={`rpt-compare-row ${t.status === '완료' ? 'rpt-compare-row-done' : t.status === '지연' || t.status === '보류' ? 'rpt-compare-row-warn' : ''}`}>
+                      <div className="rpt-compare-col-plan">
+                        <span className="rpt-compare-title">{t.title}</span>
+                        <span className="rpt-compare-assignee">{t.assigneeName}</span>
+                      </div>
+                      <div className="rpt-compare-col-result">
+                        {statusBadge(t)}
+                        {t.status === '진행중' && t.progressRate > 0 && (
+                          <div className="rpt-compare-progress">
+                            <div className="rpt-compare-progress-bar">
+                              <div className="rpt-compare-progress-fill" style={{ width: `${t.progressRate}%` }} />
+                            </div>
+                            <span className="rpt-compare-progress-text">{t.progressRate}%</span>
+                          </div>
+                        )}
+                        {detail && <div className="rpt-compare-detail">{detail}</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <LeadTimeSummary tasks={planCompleted} />
+            </>
+          )}
         </Block>
 
-        <Block title="다음 2주 진행 예정" count={upcoming.length} dotColor="blue" defaultOpen>
+        {/* ── 앞으로 2주 진행 업무 ── */}
+        <Block title="앞으로 2주 진행 업무" count={upcoming.length} dotColor="blue" defaultOpen>
           {(() => {
             const sorted = [...upcoming].sort((a, b) => {
               const da = tsToDate(a.dueDate)?.getTime() ?? Infinity;
@@ -1024,22 +1088,22 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
           <div className="tm-perf-grid">
             <div className="tm-perf-item">
               <div className="tm-perf-value">{stats.total}</div>
-              <div className="tm-perf-label">전체</div>
-            </div>
-            <div className="tm-perf-item">
-              <div className="tm-perf-value" style={{ color: 'var(--c-accent)' }}>{stats.incomplete}</div>
-              <div className="tm-perf-label">
-                {reportType === '월간' ? '차월 예정' : reportType === '격주' ? '예정' : '미완료'}
-              </div>
+              <div className="tm-perf-label">{reportType === '격주' ? '계획' : '전체'}</div>
             </div>
             <div className="tm-perf-item">
               <div className="tm-perf-value" style={{ color: 'var(--c-green)' }}>{stats.completed}</div>
               <div className="tm-perf-label">완료</div>
             </div>
             <div className="tm-perf-item">
+              <div className="tm-perf-value" style={{ color: 'var(--c-accent)' }}>{stats.incomplete}</div>
+              <div className="tm-perf-label">
+                {reportType === '월간' ? '차월 예정' : reportType === '격주' ? '진행중' : '미완료'}
+              </div>
+            </div>
+            <div className="tm-perf-item">
               <div className="tm-perf-value" style={{ color: 'var(--c-red)' }}>{stats.delayed}</div>
               <div className="tm-perf-label">
-                {reportType === '격주' ? '결정 필요' : reportType === '월간' ? '이월' : '지연'}
+                {reportType === '격주' ? '미완료' : reportType === '월간' ? '이월' : '지연'}
               </div>
             </div>
           </div>

@@ -1038,6 +1038,65 @@
 .rpt-ms-progress { background: var(--c-accent-light); color: var(--c-accent); }
 .rpt-ms-delayed { background: var(--c-red-bg); color: var(--c-red); }
 
+/* ── 격주 보고서: 계획 vs 결과 비교 ── */
+.rpt-compare-summary {
+  display: flex; gap: 8px; padding: 10px 16px; border-bottom: 0.5px solid var(--c-line-light);
+}
+.rpt-compare-stat {
+  font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 100px;
+}
+.rpt-compare-stat-done { background: var(--c-green-bg); color: var(--c-green); }
+.rpt-compare-stat-prog { background: var(--c-accent-light); color: var(--c-accent); }
+.rpt-compare-stat-left { background: var(--c-red-bg); color: var(--c-red); }
+
+.rpt-compare-table { padding: 0 0 4px; }
+.rpt-compare-header {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  padding: 8px 16px 6px; font-size: 11px; font-weight: 700;
+  color: var(--c-text-3); text-transform: uppercase; letter-spacing: 0.03em;
+  border-bottom: 0.5px solid var(--c-line-light);
+}
+.rpt-compare-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  padding: 8px 16px; border-bottom: 0.5px solid var(--c-line-light);
+  align-items: start;
+}
+.rpt-compare-row:last-child { border-bottom: none; }
+.rpt-compare-row-done { background: var(--c-green-bg); }
+.rpt-compare-row-warn { background: var(--c-red-bg); }
+
+.rpt-compare-col-plan { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rpt-compare-col-result { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+.rpt-compare-title { font-size: 13px; font-weight: 500; color: var(--c-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rpt-compare-assignee { font-size: 11px; color: var(--c-text-3); }
+
+.rpt-compare-badge {
+  display: inline-block; width: fit-content;
+  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 100px;
+}
+.rpt-compare-detail {
+  font-size: 11px; color: var(--c-text-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.rpt-compare-progress { display: flex; align-items: center; gap: 6px; }
+.rpt-compare-progress-bar {
+  flex: 1; height: 4px; max-width: 80px;
+  background: var(--c-bg-inset); border-radius: 100px; overflow: hidden;
+}
+.rpt-compare-progress-fill {
+  height: 100%; background: var(--c-accent); border-radius: 100px;
+}
+.rpt-compare-progress-text {
+  font-size: 10px; font-family: var(--mono); font-weight: 600; color: var(--c-accent);
+}
+
+@media (max-width: 600px) {
+  .rpt-compare-header,
+  .rpt-compare-row { grid-template-columns: 1fr; gap: 4px; }
+  .rpt-compare-col-result { padding-left: 12px; border-left: 2px solid var(--c-line-light); }
+}
+
 /* ═══ EISENHOWER MATRIX ═══ */
 .em-container { display: flex; flex-direction: column; height: 100%; }
 
