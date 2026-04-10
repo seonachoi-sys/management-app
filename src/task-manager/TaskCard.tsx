@@ -162,6 +162,12 @@ function TaskRow({
         {task.description && (
           <div className="tm-task-desc">{task.description}</div>
         )}
+        {task.memo && (
+          <div style={{
+            fontSize: 12, color: '#888', marginTop: 2,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
+          }}>{task.memo}</div>
+        )}
 
         <div className="tm-task-meta">
           {task.assigneeName && <span>{task.assigneeName}</span>}

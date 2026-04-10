@@ -780,6 +780,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
                   {g.tasks.map((t) => (
                     <div key={t.taskId} className="rpt-item rpt-item-simple">
                       <span className="rpt-item-title">{t.title}</span>
+                      {t.memo && <div style={{ fontSize: 11, color: '#888', marginLeft: 12, marginTop: 1 }}>└ {t.memo}</div>}
                     </div>
                   ))}
                 </div>
@@ -805,10 +806,13 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
                   {g.tasks.map((t) => {
                     const dd = tsToDate(t.dueDate);
                     return (
-                      <div key={t.taskId} className="rpt-item">
-                        <span className="rpt-item-title">{t.title}</span>
-                        <span className="rpt-item-assignee">{t.assigneeName}</span>
-                        {dd && <span className="rpt-item-date">{format(dd, 'M.dd')}</span>}
+                      <div key={t.taskId}>
+                        <div className="rpt-item">
+                          <span className="rpt-item-title">{t.title}</span>
+                          <span className="rpt-item-assignee">{t.assigneeName}</span>
+                          {dd && <span className="rpt-item-date">{format(dd, 'M.dd')}</span>}
+                        </div>
+                        {t.memo && <div style={{ fontSize: 11, color: '#888', marginLeft: 12, marginTop: 1 }}>└ {t.memo}</div>}
                       </div>
                     );
                   })}
@@ -824,10 +828,13 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
           ) : (
             <div className="rpt-list">
               {ceoDecision.map((t) => (
-                <div key={t.taskId} className="rpt-item">
-                  <span className="rpt-item-title">{t.title}</span>
-                  <span className="rpt-item-assignee">{t.assigneeName}</span>
-                  <span className="rpt-item-reason">{t.ceoFlagReason || t.notes || (t.status === '보류' ? '보류 중' : '')}</span>
+                <div key={t.taskId}>
+                  <div className="rpt-item">
+                    <span className="rpt-item-title">{t.title}</span>
+                    <span className="rpt-item-assignee">{t.assigneeName}</span>
+                    <span className="rpt-item-reason">{t.ceoFlagReason || t.notes || (t.status === '보류' ? '보류 중' : '')}</span>
+                  </div>
+                  {t.memo && <div style={{ fontSize: 11, color: '#888', marginLeft: 12, marginTop: 1 }}>└ {t.memo}</div>}
                 </div>
               ))}
             </div>
