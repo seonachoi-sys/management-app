@@ -262,6 +262,7 @@ function renderKpiBlock(
   kpis: Kpi[],
   kpiNotes?: Record<string, string>,
   onNoteChange?: (kpiId: string, note: string) => void,
+  onHide?: (kpiId: string) => void,
 ) {
   if (kpis.length === 0) {
     return <div className="rpt-empty">해당 없음</div>;
@@ -291,6 +292,17 @@ function renderKpiBlock(
             >
               {kpi.status}
             </span>
+            {onHide && (
+              <button
+                type="button"
+                className="rpt-hide-btn"
+                onClick={() => onHide(kpi.kpiId)}
+                title="회의록에서 이 KPI 숨기기"
+                style={{ marginLeft: 'auto' }}
+              >
+                ×
+              </button>
+            )}
           </div>
           {onNoteChange && (
             <textarea
@@ -345,6 +357,27 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     setKpiNotes((prev) => ({ ...prev, [kpiId]: note }));
   }, []);
 
+  // 회의록에서 숨긴 업무/KPI ID
+  const [hiddenTaskIds, setHiddenTaskIds] = useState<Set<string>>(new Set());
+  const [hiddenKpiIds, setHiddenKpiIds] = useState<Set<string>>(new Set());
+
+  const hideTask = useCallback((taskId: string) => {
+    setHiddenTaskIds((prev) => {
+      const s = new Set(prev);
+      s.add(taskId);
+      return s;
+    });
+  }, []);
+  const hideKpi = useCallback((kpiId: string) => {
+    setHiddenKpiIds((prev) => {
+      const s = new Set(prev);
+      s.add(kpiId);
+      return s;
+    });
+  }, []);
+  const restoreAllTasks = useCallback(() => setHiddenTaskIds(new Set()), []);
+  const restoreAllKpis = useCallback(() => setHiddenKpiIds(new Set()), []);
+
   /* ─── 저장된 회의록 ─── */
   const [savedLogs, setSavedLogs] = useState<MeetingLogRecord[]>([]);
   const [showLogList, setShowLogList] = useState(false);
@@ -374,6 +407,8 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     setExtraMemo('');
     setTaskNotes({});
     setKpiNotes({});
+    setHiddenTaskIds(new Set());
+    setHiddenKpiIds(new Set());
     setEditingLogId(null);
   }, []);
 
@@ -487,36 +522,34 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     const nextWeekStart = startOfWeek(addWeeks(today, 1), { weekStartsOn: 1 });
     const nextWeekEnd = endOfWeek(addWeeks(today, 1), { weekStartsOn: 1 });
 
-    // 1. 이번 주 완료 업무: completedAt이 이번 주
+    const notHidden = (t: Task) => !hiddenTaskIds.has(t.taskId);
+
     const completed = reportTasks.filter((t) => {
       if (t.status !== '완료') return false;
       const cd = tsToDate(t.completedDate);
       return cd !== null && cd >= weekStart && cd <= weekEnd;
-    });
+    }).filter(notHidden);
 
-    // 2. 이번 주 미완료 업무: 진행중이지만 이번 주 마감 넘긴 것
     const incomplete = reportTasks.filter((t) => {
       if (t.status === '완료') return false;
       const dd = tsToDate(t.dueDate);
       return dd !== null && dd >= weekStart && dd <= weekEnd && dd < today;
-    });
+    }).filter(notHidden);
 
-    // 3. 차주 진행 예정: dueDate가 다음 주, 우선순위 순
     const nextWeek = reportTasks.filter((t) => {
       if (t.status === '완료') return false;
       const dd = tsToDate(t.dueDate);
       return dd !== null && dd >= nextWeekStart && dd <= nextWeekEnd;
-    });
+    }).filter(notHidden);
 
-    // 4. 차주 이월 업무: 미완료 + dueDate < 오늘
     const delayed = reportTasks.filter((t) => {
       if (t.status === '완료') return false;
       const dd = tsToDate(t.dueDate);
       return dd !== null && dd < today;
-    });
+    }).filter(notHidden);
 
     return { completed, incomplete, nextWeek, delayed };
-  }, [reportType, reportTasks]);
+  }, [reportType, reportTasks, hiddenTaskIds]);
 
   /* ─── 격주(CEO) 리포트 데이터 ─── */
   const biweeklyData = useMemo(() => {
@@ -527,33 +560,62 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     const nextDate = localDate(biweeklyPeriod.end);
     nextDate.setHours(23, 59, 59, 999);
 
-    // 1. 지난 2주 계획 업무: dueDate가 직전미팅일~선택일 사이인 업무 (상태 무관)
-    //    = 지난 미팅 때 "다음 2주 예정"에 있었을 업무들의 현재 상태
+    const notHidden = (t: Task) => !hiddenTaskIds.has(t.taskId);
+
     const planned = reportTasks.filter((t) => {
       const dd = tsToDate(t.dueDate);
       return dd !== null && dd >= prevDate && dd <= selectedDate;
-    });
+    }).filter(notHidden);
 
-    // 계획 업무를 상태별 분류
     const planCompleted = planned.filter((t) => t.status === '완료');
     const planInProgress = planned.filter((t) => t.status === '진행중');
     const planRemaining = planned.filter((t) => t.status !== '완료' && t.status !== '진행중');
 
-    // 2. 앞으로 2주 진행 예정: 선택일 ~ 다음미팅일 사이 dueDate (미완료)
     const upcoming = reportTasks.filter((t) => {
       if (t.status === '완료') return false;
       const dd = tsToDate(t.dueDate);
       return dd !== null && dd > selectedDate && dd <= nextDate;
-    });
+    }).filter(notHidden);
 
-    // 3. 결정 필요: ceoFlag === true or status === '보류'
     const ceoDecision = reportTasks.filter((t) => {
       if (t.status === '완료') return false;
       return t.ceoFlag || t.status === '보류';
-    });
+    }).filter(notHidden);
 
     return { planned, planCompleted, planInProgress, planRemaining, upcoming, ceoDecision };
-  }, [reportType, reportTasks, biweeklyPeriod]);
+  }, [reportType, reportTasks, biweeklyPeriod, hiddenTaskIds]);
+
+  /* ─── 격주 섹션별 숨김 건수 (원본 대비) ─── */
+  const biweeklyHiddenCounts = useMemo(() => {
+    if (reportType !== '격주' || !biweeklyPeriod) {
+      return { planned: 0, upcoming: 0, ceoDecision: 0 };
+    }
+    const prevDate = localDate(biweeklyPeriod.start);
+    const selectedDate = localDate(biweeklyPeriod.selected);
+    selectedDate.setHours(23, 59, 59, 999);
+    const nextDate = localDate(biweeklyPeriod.end);
+    nextDate.setHours(23, 59, 59, 999);
+
+    const isHidden = (t: Task) => hiddenTaskIds.has(t.taskId);
+
+    const plannedHidden = reportTasks.filter((t) => {
+      const dd = tsToDate(t.dueDate);
+      return dd !== null && dd >= prevDate && dd <= selectedDate && isHidden(t);
+    }).length;
+
+    const upcomingHidden = reportTasks.filter((t) => {
+      if (t.status === '완료') return false;
+      const dd = tsToDate(t.dueDate);
+      return dd !== null && dd > selectedDate && dd <= nextDate && isHidden(t);
+    }).length;
+
+    const ceoHidden = reportTasks.filter((t) => {
+      if (t.status === '완료') return false;
+      return (t.ceoFlag || t.status === '보류') && isHidden(t);
+    }).length;
+
+    return { planned: plannedHidden, upcoming: upcomingHidden, ceoDecision: ceoHidden };
+  }, [reportType, reportTasks, biweeklyPeriod, hiddenTaskIds]);
 
   /* ─── 월간 리포트 데이터 ─── */
   const monthlyData = useMemo(() => {
@@ -565,27 +627,26 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     const nextEnd = localDate(monthlyPeriod.nextEnd);
     nextEnd.setHours(23, 59, 59, 999);
 
-    // 1. N월 완료 업무: completedAt이 선택월
+    const notHidden = (t: Task) => !hiddenTaskIds.has(t.taskId);
+
     const completed = reportTasks.filter((t) => {
       if (t.status !== '완료') return false;
       const cd = tsToDate(t.completedDate);
       return cd !== null && cd >= rangeStart && cd <= rangeEnd;
-    });
+    }).filter(notHidden);
 
-    // 2. N+1월 이월 업무: 선택월 미완료 (dueDate가 선택월 이내이지만 미완료)
     const carryover = reportTasks.filter((t) => {
       if (t.status === '완료') return false;
       const dd = tsToDate(t.dueDate);
       return dd !== null && dd >= rangeStart && dd <= rangeEnd;
-    });
+    }).filter(notHidden);
 
-    // 3. N+1월 진행 예정: dueDate가 차월, 진행중/대기
     const nextMonthTasks = reportTasks.filter((t) => {
       if (t.status === '완료') return false;
       if (t.status !== '진행중' && t.status !== '대기') return false;
       const dd = tsToDate(t.dueDate);
       return dd !== null && dd >= nextStart && dd <= nextEnd;
-    });
+    }).filter(notHidden);
 
     // 전월 완료 업무 (리드타임 전월 대비 비교용)
     const prevStart = startOfMonth(subMonths(localDate(monthlyPeriod.start), 1));
@@ -598,7 +659,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     });
 
     return { completed, carryover, nextMonthTasks, prevMonthCompleted };
-  }, [reportType, reportTasks, monthlyPeriod]);
+  }, [reportType, reportTasks, monthlyPeriod, hiddenTaskIds]);
 
   /* ─── 통합 stats (요약 카드용) ─── */
   const stats = useMemo(() => {
@@ -875,7 +936,9 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
         decisions,
         nextActions,
         extraAgenda,
-        kpiNotes,
+        kpiNotes: Object.fromEntries(Object.entries(kpiNotes).filter(([id]) => !hiddenKpiIds.has(id))),
+        hiddenTaskIds: Array.from(hiddenTaskIds),
+        hiddenKpiIds: Array.from(hiddenKpiIds),
         createdBy: user.uid,
         createdByName: user.displayName || user.email || '',
       };
@@ -926,6 +989,8 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     });
     setTaskNotes(restoredTaskNotes);
     setKpiNotes(log.kpiNotes || {});
+    setHiddenTaskIds(new Set(log.hiddenTaskIds || []));
+    setHiddenKpiIds(new Set(log.hiddenKpiIds || []));
 
     setViewingLog(null);
     setShowLogList(false);
@@ -950,9 +1015,11 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     if (!weeklyData) return null;
     const { completed, incomplete, nextWeek, delayed } = weeklyData;
 
-    // 담당자별 KPI 그룹
+    // 담당자별 KPI 그룹 (숨긴 KPI 제외)
+    const visibleKpisWeekly = allKpis.filter((k) => !hiddenKpiIds.has(k.kpiId));
+    const kpiHiddenCount = allKpis.length - visibleKpisWeekly.length;
     const kpiByAssignee: Record<string, Kpi[]> = {};
-    allKpis.forEach((k) => {
+    visibleKpisWeekly.forEach((k) => {
       const name = k.assigneeName || '미배정';
       if (!kpiByAssignee[name]) kpiByAssignee[name] = [];
       kpiByAssignee[name].push(k);
@@ -1007,12 +1074,20 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
           )}
         </Block>
 
-        <Block title="KPI 진행 현황" count={allKpis.length} dotColor="yellow" defaultOpen>
+        <Block title="KPI 진행 현황" count={visibleKpisWeekly.length} dotColor="yellow" defaultOpen>
+          {kpiHiddenCount > 0 && (
+            <div className="rpt-hidden-bar">
+              <span>숨긴 KPI {kpiHiddenCount}개</span>
+              <button type="button" className="rpt-restore-btn" onClick={restoreAllKpis}>
+                모두 복원
+              </button>
+            </div>
+          )}
           {Object.keys(kpiByAssignee).length === 0 ? <div className="rpt-empty">해당 없음</div> :
             Object.entries(kpiByAssignee).map(([name, kpis]) => (
               <div key={name} className="rpt-cat-group">
                 <div className="rpt-cat-label">{name} <span className="rpt-cat-cnt">{kpis.length}</span></div>
-                {renderKpiBlock(kpis, kpiNotes, updateKpiNote)}
+                {renderKpiBlock(kpis, kpiNotes, updateKpiNote, hideKpi)}
               </div>
             ))
           }
@@ -1026,8 +1101,11 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     if (!biweeklyData) return null;
     const { planned, planCompleted, planInProgress, planRemaining, upcoming, ceoDecision } = biweeklyData;
 
+    // 담당자별 KPI 그룹 (숨긴 KPI 제외)
+    const visibleKpisBi = allKpis.filter((k) => !hiddenKpiIds.has(k.kpiId));
+    const kpiHiddenCountBi = allKpis.length - visibleKpisBi.length;
     const kpiByAssignee: Record<string, Kpi[]> = {};
-    allKpis.forEach((k) => {
+    visibleKpisBi.forEach((k) => {
       const name = k.assigneeName || '미배정';
       if (!kpiByAssignee[name]) kpiByAssignee[name] = [];
       kpiByAssignee[name].push(k);
@@ -1069,6 +1147,14 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
           dotColor="green"
           defaultOpen
         >
+          {biweeklyHiddenCounts.planned > 0 && (
+            <div className="rpt-hidden-bar">
+              <span>이 섹션에서 숨긴 업무 {biweeklyHiddenCounts.planned}건</span>
+              <button type="button" className="rpt-restore-btn" onClick={restoreAllTasks}>
+                모두 복원
+              </button>
+            </div>
+          )}
           {planned.length === 0 ? (
             <div className="rpt-empty">해당 기간 계획된 업무 없음</div>
           ) : (
@@ -1124,6 +1210,14 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
                                 onChange={(e) => updateTaskNote(t.taskId, e.target.value)}
                                 rows={2}
                               />
+                              <button
+                                type="button"
+                                className="rpt-hide-btn"
+                                onClick={() => hideTask(t.taskId)}
+                                title="회의록에서 이 업무 숨기기"
+                              >
+                                ×
+                              </button>
                             </div>
                           </div>
                         );
@@ -1169,30 +1263,54 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
         </Block>
 
         <Block title="결정 필요 사항" count={ceoDecision.length} dotColor="yellow" defaultOpen>
+          {biweeklyHiddenCounts.ceoDecision > 0 && (
+            <div className="rpt-hidden-bar">
+              <span>숨긴 항목 {biweeklyHiddenCounts.ceoDecision}건</span>
+              <button type="button" className="rpt-restore-btn" onClick={restoreAllTasks}>
+                모두 복원
+              </button>
+            </div>
+          )}
           {ceoDecision.length === 0 ? (
             <div className="rpt-empty">해당 없음</div>
           ) : (
             <div className="rpt-list">
               {ceoDecision.map((t) => (
-                <div key={t.taskId}>
-                  <div className="rpt-item">
+                <div key={t.taskId} className="rpt-item-with-action">
+                  <div className="rpt-item" style={{ flex: 1 }}>
                     <span className="rpt-item-title">{t.title}</span>
                     <span className="rpt-item-assignee">{t.assigneeName}</span>
                     <span className="rpt-item-reason">{t.ceoFlagReason || t.notes || (t.status === '보류' ? '보류 중' : '')}</span>
                   </div>
-                  {t.memo && <div style={{ fontSize: 11, color: '#888', marginLeft: 12, marginTop: 1 }}>└ {t.memo}</div>}
+                  <button
+                    type="button"
+                    className="rpt-hide-btn"
+                    onClick={() => hideTask(t.taskId)}
+                    title="회의록에서 이 항목 숨기기"
+                  >
+                    ×
+                  </button>
+                  {t.memo && <div style={{ fontSize: 11, color: '#888', marginLeft: 12, marginTop: 1, flexBasis: '100%' }}>└ {t.memo}</div>}
                 </div>
               ))}
             </div>
           )}
         </Block>
 
-        <Block title="KPI 달성 현황" count={allKpis.length} dotColor="yellow" defaultOpen>
+        <Block title="KPI 달성 현황" count={visibleKpisBi.length} dotColor="yellow" defaultOpen>
+          {kpiHiddenCountBi > 0 && (
+            <div className="rpt-hidden-bar">
+              <span>숨긴 KPI {kpiHiddenCountBi}개</span>
+              <button type="button" className="rpt-restore-btn" onClick={restoreAllKpis}>
+                모두 복원
+              </button>
+            </div>
+          )}
           {Object.keys(kpiByAssignee).length === 0 ? <div className="rpt-empty">해당 없음</div> :
             Object.entries(kpiByAssignee).map(([name, kpis]) => (
               <div key={name} className="rpt-cat-group">
                 <div className="rpt-cat-label">{name} <span className="rpt-cat-cnt">{kpis.length}</span></div>
-                {renderKpiBlock(kpis, kpiNotes, updateKpiNote)}
+                {renderKpiBlock(kpis, kpiNotes, updateKpiNote, hideKpi)}
               </div>
             ))
           }

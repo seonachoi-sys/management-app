@@ -2062,6 +2062,77 @@
   line-height: 1.5;
   white-space: pre-wrap;
 }
+
+/* ═══ 회의록 항목 숨기기 버튼 ═══ */
+.rpt-hide-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 0.5px solid var(--c-line, #e5e5e5);
+  border-radius: 4px;
+  background: var(--c-bg, #fff);
+  color: var(--c-text-3, #888);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  transition: all 0.1s;
+  flex-shrink: 0;
+}
+.rpt-hide-btn:hover {
+  background: #fceeee;
+  border-color: #ecc0c0;
+  color: var(--c-red, #e53935);
+}
+
+/* 3열 테이블에서 비고 column 내부의 숨기기 버튼 위치 */
+.rpt-compare-col-note {
+  position: relative;
+}
+.rpt-compare-col-note .rpt-hide-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.rpt-item-with-action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 0.5px solid var(--c-line-light, #f0f0f0);
+}
+.rpt-item-with-action:last-child { border-bottom: none; }
+
+.rpt-hidden-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  background: var(--c-bg-sub, #fafafa);
+  border: 0.5px dashed var(--c-line, #e5e5e5);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--c-text-3, #888);
+}
+.rpt-restore-btn {
+  padding: 3px 10px;
+  border: 0.5px solid var(--c-accent, #2f6ce5);
+  border-radius: 4px;
+  background: var(--c-bg, #fff);
+  color: var(--c-accent, #2f6ce5);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+}
+.rpt-restore-btn:hover {
+  background: var(--c-accent-light, #eef3fd);
+}
 .rpt-compare-col-note {
   display: flex;
   align-items: stretch;

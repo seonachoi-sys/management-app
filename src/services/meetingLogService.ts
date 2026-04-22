@@ -59,6 +59,8 @@ export interface MeetingLogRecord {
   nextActions: string[];
   extraAgenda: MeetingTaskSnapshot[];
   kpiNotes?: Record<string, string>;
+  hiddenTaskIds?: string[]; // 회의록에서 숨긴 업무 (참고용 메타)
+  hiddenKpiIds?: string[];  // 회의록에서 숨긴 KPI
 
   createdAt: Timestamp;
   createdBy: string;
