@@ -436,8 +436,9 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     };
   }, [selectedCeoDate]);
 
-  /* ─── 탭 변경 시 기간 자동 설정 ─── */
+  /* ─── 탭 변경 시 기간 자동 설정 (저장된 회의록 편집 중이면 스킵) ─── */
   useEffect(() => {
+    if (editingLogId) return; // 불러온 회의록 편집 중에는 기간/generated 덮어쓰지 않음
     const today = new Date();
     if (reportType === '주간') {
       setStartDate(format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
@@ -455,7 +456,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       setEndDate(monthlyPeriod.end);
     }
     setGenerated(false);
-  }, [reportType, biweeklyPeriod, monthlyPeriod]);
+  }, [reportType, biweeklyPeriod, monthlyPeriod, editingLogId]);
 
   const handleGenerate = useCallback(async () => {
     setLoading(true);
@@ -894,14 +895,27 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     }
   };
 
-  const handleLoadLog = (log: MeetingLogRecord) => {
+  const handleLoadLog = async (log: MeetingLogRecord) => {
+    // 먼저 editingLogId 세팅 (useEffect가 기간 덮어쓰는 것 방지)
+    setEditingLogId(log.id);
     setReportType(log.meetingType);
     setMeetingDate(log.meetingDate);
+    setStartDate(log.periodStart);
+    setEndDate(log.periodEnd);
     setAttendeesText(log.attendees.join(', '));
     setMeetingNotes(log.notes || '');
     setDecisions(log.decisions || []);
     setNextActions(log.nextActions || []);
     setExtraAgenda(log.extraAgenda || []);
+
+    // 2주 보고서인 경우 selectedCeoDate 복원 (biweeklyPeriod 재계산 방지)
+    if (log.meetingType === '격주') {
+      const candidate = log.periodEnd; // 미팅일 = periodEnd (±14일)
+      if (candidate) setSelectedCeoDate(candidate);
+    }
+    if (log.meetingType === '월간') {
+      setSelectedMonth(log.periodStart.slice(0, 7));
+    }
 
     // 업무/KPI 비고 복원
     const restoredTaskNotes: Record<string, string> = {};
@@ -913,9 +927,11 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     setTaskNotes(restoredTaskNotes);
     setKpiNotes(log.kpiNotes || {});
 
-    setEditingLogId(log.id);
-    setViewingLog(log);
+    setViewingLog(null);
     setShowLogList(false);
+
+    // 리포트 자동 재생성 (현재 Firestore 업무 데이터 + 저장된 비고)
+    await handleGenerate();
   };
 
   const handleDeleteLog = async (log: MeetingLogRecord) => {
@@ -1695,40 +1711,71 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
                 </section>
               )}
 
-              {/* 업무 스냅샷: 담당자별 정렬 */}
-              {viewingLog.completedTasks.length > 0 && (
-                <section className="rpt-log-view-section">
-                  <h4>완료 업무 ({viewingLog.completedTasks.length})</h4>
-                  {renderSnapshotByAssignee(viewingLog.completedTasks)}
-                </section>
-              )}
+              {/* 업무 스냅샷: 격주는 계획/결과/비고 3열, 그 외는 상태/제목/비고 2열 */}
+              {viewingLog.meetingType === '격주' ? (
+                <>
+                  {(viewingLog.completedTasks.length + viewingLog.inProgressTasks.length + viewingLog.delayedTasks.length) > 0 && (
+                    <section className="rpt-log-view-section">
+                      <h4>지난 2주 업무 현황 ({viewingLog.completedTasks.length + viewingLog.inProgressTasks.length + viewingLog.delayedTasks.length})</h4>
+                      {renderSnapshotPlanResult([
+                        ...viewingLog.completedTasks,
+                        ...viewingLog.inProgressTasks,
+                        ...viewingLog.delayedTasks,
+                      ])}
+                    </section>
+                  )}
 
-              {viewingLog.inProgressTasks.length > 0 && (
-                <section className="rpt-log-view-section">
-                  <h4>진행 업무 ({viewingLog.inProgressTasks.length})</h4>
-                  {renderSnapshotByAssignee(viewingLog.inProgressTasks)}
-                </section>
-              )}
+                  {viewingLog.upcomingTasks.length > 0 && (
+                    <section className="rpt-log-view-section">
+                      <h4>앞으로 2주 진행 업무 ({viewingLog.upcomingTasks.length})</h4>
+                      {renderSnapshotTitleNote(viewingLog.upcomingTasks)}
+                    </section>
+                  )}
 
-              {viewingLog.upcomingTasks.length > 0 && (
-                <section className="rpt-log-view-section">
-                  <h4>예정 업무 ({viewingLog.upcomingTasks.length})</h4>
-                  {renderSnapshotByAssignee(viewingLog.upcomingTasks)}
-                </section>
-              )}
+                  {viewingLog.ceoItems.length > 0 && (
+                    <section className="rpt-log-view-section">
+                      <h4>결정 필요 ({viewingLog.ceoItems.length})</h4>
+                      {renderSnapshotTitleNote(viewingLog.ceoItems)}
+                    </section>
+                  )}
+                </>
+              ) : (
+                <>
+                  {viewingLog.completedTasks.length > 0 && (
+                    <section className="rpt-log-view-section">
+                      <h4>완료 업무 ({viewingLog.completedTasks.length})</h4>
+                      {renderSnapshotTitleNote(viewingLog.completedTasks)}
+                    </section>
+                  )}
 
-              {viewingLog.delayedTasks.length > 0 && (
-                <section className="rpt-log-view-section">
-                  <h4>지연/이월 업무 ({viewingLog.delayedTasks.length})</h4>
-                  {renderSnapshotByAssignee(viewingLog.delayedTasks)}
-                </section>
-              )}
+                  {viewingLog.inProgressTasks.length > 0 && (
+                    <section className="rpt-log-view-section">
+                      <h4>진행/미완료 업무 ({viewingLog.inProgressTasks.length})</h4>
+                      {renderSnapshotTitleNote(viewingLog.inProgressTasks)}
+                    </section>
+                  )}
 
-              {viewingLog.ceoItems.length > 0 && (
-                <section className="rpt-log-view-section">
-                  <h4>결정 필요 ({viewingLog.ceoItems.length})</h4>
-                  {renderSnapshotByAssignee(viewingLog.ceoItems)}
-                </section>
+                  {viewingLog.upcomingTasks.length > 0 && (
+                    <section className="rpt-log-view-section">
+                      <h4>예정 업무 ({viewingLog.upcomingTasks.length})</h4>
+                      {renderSnapshotTitleNote(viewingLog.upcomingTasks)}
+                    </section>
+                  )}
+
+                  {viewingLog.delayedTasks.length > 0 && (
+                    <section className="rpt-log-view-section">
+                      <h4>지연/이월 업무 ({viewingLog.delayedTasks.length})</h4>
+                      {renderSnapshotTitleNote(viewingLog.delayedTasks)}
+                    </section>
+                  )}
+
+                  {viewingLog.ceoItems.length > 0 && (
+                    <section className="rpt-log-view-section">
+                      <h4>결정 필요 ({viewingLog.ceoItems.length})</h4>
+                      {renderSnapshotTitleNote(viewingLog.ceoItems)}
+                    </section>
+                  )}
+                </>
               )}
 
               {viewingLog.kpiNotes && Object.keys(viewingLog.kpiNotes).length > 0 && (
@@ -1758,47 +1805,121 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   );
 }
 
-/* ─── 스냅샷 담당자별 렌더 (조회 모달용) ─── */
-function renderSnapshotByAssignee(tasks: MeetingTaskSnapshot[]) {
+/* ─── 담당자별 그룹 유틸 ─── */
+function groupSnapshotByAssignee(tasks: MeetingTaskSnapshot[]): { assignee: string; list: MeetingTaskSnapshot[] }[] {
   const map: Record<string, MeetingTaskSnapshot[]> = {};
   tasks.forEach((t) => {
     const k = t.assigneeName || '미배정';
     if (!map[k]) map[k] = [];
     map[k].push(t);
   });
-  const groups = Object.entries(map).sort((a, b) => b[1].length - a[1].length);
+  return Object.entries(map)
+    .sort((a, b) => b[1].length - a[1].length)
+    .map(([assignee, list]) => ({ assignee, list }));
+}
+
+function snapshotStatusBadge(t: MeetingTaskSnapshot) {
+  const s = t.status || '';
+  const color: Record<string, string> = {
+    '완료': 'var(--c-green,#0d9f61)',
+    '진행중': 'var(--c-accent,#2f6ce5)',
+    '대기': 'var(--c-text-3,#888)',
+    '지연': 'var(--c-red,#e53935)',
+    '보류': 'var(--c-orange,#c26009)',
+  };
+  const bg: Record<string, string> = {
+    '완료': 'var(--c-green-bg,#eaf5ef)',
+    '진행중': 'var(--c-accent-light,#eef3fd)',
+    '대기': 'var(--c-bg-sub,#f7f8fa)',
+    '지연': 'var(--c-red-bg,#fdeeee)',
+    '보류': '#fef1e1',
+  };
   return (
-    <div>
-      {groups.map(([name, list]) => (
-        <div key={name} className="rpt-assignee-group">
-          <div className="rpt-assignee-header">
-            <span className="rpt-assignee-name">{name}</span>
-            <span className="rpt-assignee-cnt">{list.length}건</span>
-          </div>
-          <div className="rpt-assignee-body">
-            <ul style={{ margin: 0, paddingLeft: 20 }}>
-              {list.map((t, i) => (
-                <li key={i}>
-                  <span>{t.title}</span>
-                  {t.category && <span style={{ marginLeft: 6, color: '#888', fontSize: 11 }}>[{t.category}]</span>}
-                  {t.status && <span style={{ marginLeft: 6, color: '#666', fontSize: 11 }}>· {t.status}</span>}
-                  {typeof t.progressRate === 'number' && t.progressRate > 0 && t.status !== '완료' && (
-                    <span style={{ marginLeft: 6, color: '#2f6ce5', fontSize: 11 }}>{t.progressRate}%</span>
-                  )}
-                  {t.dueDate && <span style={{ marginLeft: 6, color: '#888', fontSize: 11 }}>· {t.dueDate}</span>}
-                  {t.completedDate && <span style={{ marginLeft: 6, color: '#0d9f61', fontSize: 11 }}>· {t.completedDate} 완료</span>}
-                  {t.memo && <div style={{ fontSize: 11, color: '#666', marginLeft: 10 }}>└ {t.memo}</div>}
-                  {t.meetingNote && (
-                    <div style={{ fontSize: 12, color: 'var(--c-text-2,#555)', marginLeft: 10, marginTop: 2, padding: '4px 8px', background: 'var(--c-bg-sub,#fafafa)', borderLeft: '2px solid var(--c-accent,#2f6ce5)', borderRadius: 3 }}>
-                      📝 {t.meetingNote}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      ))}
-    </div>
+    <span className="rpt-log-view-badge" style={{ color: color[s], background: bg[s] }}>
+      {s === '완료' ? '✓ 완료' : s || '-'}
+    </span>
   );
+}
+
+/* ─── 조회 모달: 격주 계획/결과/비고 3열 ─── */
+function renderSnapshotPlanResult(tasks: MeetingTaskSnapshot[]) {
+  const groups = groupSnapshotByAssignee(tasks);
+  return groups.map(({ assignee, list }) => (
+    <div key={assignee} className="rpt-assignee-group">
+      <div className="rpt-assignee-header">
+        <span className="rpt-assignee-name">{assignee}</span>
+        <span className="rpt-assignee-cnt">{list.length}건</span>
+      </div>
+      <div className="rpt-compare-table rpt-compare-table-3col">
+        <div className="rpt-compare-header">
+          <div className="rpt-compare-col-plan">계획</div>
+          <div className="rpt-compare-col-result">결과</div>
+          <div className="rpt-compare-col-note">비고</div>
+        </div>
+        {list.map((t, i) => (
+          <div key={i} className={`rpt-compare-row ${t.status === '완료' ? 'rpt-compare-row-done' : (t.status === '지연' || t.status === '보류') ? 'rpt-compare-row-warn' : ''}`}>
+            <div className="rpt-compare-col-plan">
+              <span className="rpt-compare-title">{t.title}</span>
+              <span className="rpt-compare-assignee">{t.category || '기타'}</span>
+            </div>
+            <div className="rpt-compare-col-result">
+              {snapshotStatusBadge(t)}
+              {typeof t.progressRate === 'number' && t.progressRate > 0 && t.status !== '완료' && (
+                <span style={{ fontSize: 11, color: 'var(--c-accent,#2f6ce5)' }}>{t.progressRate}%</span>
+              )}
+              {t.completedDate && <span style={{ fontSize: 11, color: 'var(--c-text-3,#888)' }}>{t.completedDate} 완료</span>}
+              {t.memo && <div style={{ fontSize: 11, color: 'var(--c-text-2,#666)' }}>└ {t.memo}</div>}
+            </div>
+            <div className="rpt-compare-col-note">
+              {t.meetingNote ? (
+                <div className="rpt-log-view-note-box">{t.meetingNote}</div>
+              ) : (
+                <span style={{ color: 'var(--c-text-4,#bbb)', fontSize: 11 }}>—</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  ));
+}
+
+/* ─── 조회 모달: 업무 | 비고 2열 (주간/월간용) ─── */
+function renderSnapshotTitleNote(tasks: MeetingTaskSnapshot[]) {
+  const groups = groupSnapshotByAssignee(tasks);
+  return groups.map(({ assignee, list }) => (
+    <div key={assignee} className="rpt-assignee-group">
+      <div className="rpt-assignee-header">
+        <span className="rpt-assignee-name">{assignee}</span>
+        <span className="rpt-assignee-cnt">{list.length}건</span>
+      </div>
+      <div className="rpt-compare-table rpt-compare-table-2col">
+        <div className="rpt-compare-header">
+          <div>업무</div>
+          <div>비고</div>
+        </div>
+        {list.map((t, i) => (
+          <div key={i} className="rpt-compare-row">
+            <div className="rpt-compare-col-plan">
+              <span className="rpt-compare-title">{t.title}</span>
+              <span className="rpt-compare-assignee">
+                {t.category || '기타'}
+                {t.status && <span style={{ marginLeft: 6 }}>· {t.status}</span>}
+                {t.dueDate && <span style={{ marginLeft: 6 }}>· {t.dueDate}</span>}
+                {t.completedDate && <span style={{ marginLeft: 6, color: 'var(--c-green,#0d9f61)' }}>· {t.completedDate} 완료</span>}
+              </span>
+              {t.memo && <div style={{ fontSize: 11, color: 'var(--c-text-2,#666)' }}>└ {t.memo}</div>}
+            </div>
+            <div className="rpt-compare-col-note">
+              {t.meetingNote ? (
+                <div className="rpt-log-view-note-box">{t.meetingNote}</div>
+              ) : (
+                <span style={{ color: 'var(--c-text-4,#bbb)', fontSize: 11 }}>—</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  ));
 }

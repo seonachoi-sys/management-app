@@ -2039,6 +2039,29 @@
 .rpt-compare-table-3col .rpt-compare-row {
   grid-template-columns: 1.2fr 1.2fr 1fr;
 }
+.rpt-compare-table-2col .rpt-compare-header,
+.rpt-compare-table-2col .rpt-compare-row {
+  grid-template-columns: 1.5fr 1fr;
+}
+
+.rpt-log-view-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 100px;
+  width: fit-content;
+}
+.rpt-log-view-note-box {
+  font-size: 12px;
+  color: var(--c-text, #1a1a1a);
+  padding: 6px 10px;
+  background: var(--c-bg-sub, #fafafa);
+  border-left: 2px solid var(--c-accent, #2f6ce5);
+  border-radius: 3px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
 .rpt-compare-col-note {
   display: flex;
   align-items: stretch;
