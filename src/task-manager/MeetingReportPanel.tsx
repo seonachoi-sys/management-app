@@ -16,6 +16,16 @@ import type { Task, MeetingType, Kpi } from '../types';
 import { fetchAllTasks } from '../services/taskService';
 import { fetchAllKpis } from '../services/kpiService';
 import { saveReportToObsidian, formatReportMarkdown } from '../services/obsidianService';
+import {
+  subscribeMeetingLogs,
+  saveMeetingLog,
+  updateMeetingLog,
+  deleteMeetingLog,
+  type MeetingLogRecord,
+  type MeetingLogInput,
+  type MeetingTaskSnapshot,
+} from '../services/meetingLogService';
+import { useAuth } from '../hooks/useAuth';
 
 /* ─── 아코디언 블록 ─── */
 function Block({
@@ -220,59 +230,77 @@ function renderCompletedList(tasks: Task[]) {
   });
 }
 
-function renderCategoryBlocks(groups: CategoryGroup[], renderFn: (tasks: Task[]) => React.ReactNode) {
-  if (groups.length === 0) {
-    return <div className="rpt-empty">해당 없음</div>;
-  }
-  return groups.map((group) => (
-    <div key={group.category} className="rpt-cat-group">
-      <div className="rpt-cat-label">
-        {group.category} <span className="rpt-cat-cnt">{group.tasks.length}</span>
+/** 담당자 → 카테고리 2단 그룹 렌더링 */
+function renderAssigneeCategoryBlocks(tasks: Task[], renderFn: (tasks: Task[]) => React.ReactNode) {
+  const byAssignee = groupByAssignee(tasks);
+  if (byAssignee.length === 0) return <div className="rpt-empty">해당 없음</div>;
+  // 담당자별 개수 많은 순으로 정렬
+  byAssignee.sort((a, b) => b.tasks.length - a.tasks.length);
+  return byAssignee.map((ag) => {
+    const catGroups = groupByCategory(ag.tasks);
+    return (
+      <div key={ag.assignee} className="rpt-assignee-group">
+        <div className="rpt-assignee-header">
+          <span className="rpt-assignee-name">{ag.assignee}</span>
+          <span className="rpt-assignee-cnt">{ag.tasks.length}건</span>
+        </div>
+        <div className="rpt-assignee-body">
+          {catGroups.map((cg) => (
+            <div key={cg.category} className="rpt-subcat">
+              <div className="rpt-subcat-label">{cg.category}</div>
+              <div className="rpt-list">{renderFn(cg.tasks)}</div>
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="rpt-list">{renderFn(group.tasks)}</div>
-    </div>
-  ));
-}
-
-function renderAssigneeBlocks(groups: AssigneeGroup[], renderFn: (tasks: Task[]) => React.ReactNode) {
-  if (groups.length === 0) return <div className="rpt-empty">해당 없음</div>;
-  return groups.map((g) => (
-    <div key={g.assignee} className="rpt-cat-group">
-      <div className="rpt-cat-label">{g.assignee} <span className="rpt-cat-cnt">{g.tasks.length}</span></div>
-      <div className="rpt-list">{renderFn(g.tasks)}</div>
-    </div>
-  ));
+    );
+  });
 }
 
 /* ─── KPI 블록 렌더링 ─── */
-function renderKpiBlock(kpis: Kpi[]) {
+function renderKpiBlock(
+  kpis: Kpi[],
+  kpiNotes?: Record<string, string>,
+  onNoteChange?: (kpiId: string, note: string) => void,
+) {
   if (kpis.length === 0) {
     return <div className="rpt-empty">해당 없음</div>;
   }
   return (
     <div className="rpt-list">
       {kpis.map((kpi) => (
-        <div key={kpi.kpiId} className="rpt-item">
-          <span className="rpt-item-title">{kpi.title}</span>
-          <div className="rpt-progress">
-            <div className="rpt-progress-bar">
-              <div className="rpt-progress-fill" style={{ width: `${kpi.achievementRate}%` }} />
+        <div key={kpi.kpiId} className="rpt-item-with-note">
+          <div className="rpt-item">
+            <span className="rpt-item-title">{kpi.title}</span>
+            <div className="rpt-progress">
+              <div className="rpt-progress-bar">
+                <div className="rpt-progress-fill" style={{ width: `${kpi.achievementRate}%` }} />
+              </div>
+              <span className="rpt-progress-text">
+                {kpi.currentValue}/{kpi.targetValue} {kpi.unit} ({kpi.achievementRate}%)
+              </span>
             </div>
-            <span className="rpt-progress-text">
-              {kpi.currentValue}/{kpi.targetValue} {kpi.unit} ({kpi.achievementRate}%)
+            <span
+              className={`rpt-item-tag ${
+                kpi.status === '달성'
+                  ? 'rpt-tag-green'
+                  : kpi.status === '진행중'
+                    ? 'rpt-tag-orange'
+                    : 'rpt-tag-red'
+              }`}
+            >
+              {kpi.status}
             </span>
           </div>
-          <span
-            className={`rpt-item-tag ${
-              kpi.status === '달성'
-                ? 'rpt-tag-green'
-                : kpi.status === '진행중'
-                  ? 'rpt-tag-orange'
-                  : 'rpt-tag-red'
-            }`}
-          >
-            {kpi.status}
-          </span>
+          {onNoteChange && (
+            <textarea
+              className="rpt-row-note"
+              placeholder="비고 (달성/미달 사유, 후속 계획 등)"
+              value={kpiNotes?.[kpi.kpiId] || ''}
+              onChange={(e) => onNoteChange(kpi.kpiId, e.target.value)}
+              rows={1}
+            />
+          )}
         </div>
       ))}
     </div>
@@ -285,12 +313,69 @@ interface Props {
 }
 
 export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
+  const { user } = useAuth();
   const [reportType, setReportType] = useState<MeetingType>('주간');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [allKpis, setAllKpis] = useState<Kpi[]>([]);
   const [generated, setGenerated] = useState(false);
+
+  /* ─── 회의록 입력 ─── */
+  const [meetingDate, setMeetingDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const [attendeesText, setAttendeesText] = useState('');
+  const [meetingNotes, setMeetingNotes] = useState('');
+  const [decisions, setDecisions] = useState<string[]>([]);
+  const [decisionInput, setDecisionInput] = useState('');
+  const [nextActions, setNextActions] = useState<string[]>([]);
+  const [nextActionInput, setNextActionInput] = useState('');
+  const [extraAgenda, setExtraAgenda] = useState<MeetingTaskSnapshot[]>([]);
+  const [extraTitle, setExtraTitle] = useState('');
+  const [extraAssignee, setExtraAssignee] = useState('');
+  const [extraMemo, setExtraMemo] = useState('');
+
+  // 업무/KPI 비고 (회의 중 입력)
+  const [taskNotes, setTaskNotes] = useState<Record<string, string>>({});
+  const [kpiNotes, setKpiNotes] = useState<Record<string, string>>({});
+
+  const updateTaskNote = useCallback((taskId: string, note: string) => {
+    setTaskNotes((prev) => ({ ...prev, [taskId]: note }));
+  }, []);
+  const updateKpiNote = useCallback((kpiId: string, note: string) => {
+    setKpiNotes((prev) => ({ ...prev, [kpiId]: note }));
+  }, []);
+
+  /* ─── 저장된 회의록 ─── */
+  const [savedLogs, setSavedLogs] = useState<MeetingLogRecord[]>([]);
+  const [showLogList, setShowLogList] = useState(false);
+  const [viewingLog, setViewingLog] = useState<MeetingLogRecord | null>(null);
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const unsub = subscribeMeetingLogs(
+      (records) => setSavedLogs(records),
+      (err) => console.error('회의록 구독 실패:', err),
+    );
+    return () => unsub();
+  }, []);
+
+  const resetMeetingForm = useCallback(() => {
+    setMeetingDate(format(new Date(), 'yyyy-MM-dd'));
+    setAttendeesText('');
+    setMeetingNotes('');
+    setDecisions([]);
+    setDecisionInput('');
+    setNextActions([]);
+    setNextActionInput('');
+    setExtraAgenda([]);
+    setExtraTitle('');
+    setExtraAssignee('');
+    setExtraMemo('');
+    setTaskNotes({});
+    setKpiNotes({});
+    setEditingLogId(null);
+  }, []);
 
   const now = new Date();
   const [startDate, setStartDate] = useState(format(startOfMonth(now), 'yyyy-MM-dd'));
@@ -683,6 +768,167 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     }
   };
 
+  /* ─── 회의록 저장 ─── */
+  const taskToSnapshot = useCallback((t: Task, mode: 'completed' | 'inProgress' | 'upcoming' | 'delayed' | 'ceo'): MeetingTaskSnapshot => {
+    const dd = tsToDate(t.dueDate);
+    const cd = tsToDate(t.completedDate);
+    return {
+      taskId: t.taskId,
+      title: t.title,
+      assigneeName: t.assigneeName || '미배정',
+      category: t.category || '기타',
+      status: t.status,
+      progressRate: t.progressRate || 0,
+      dueDate: dd ? format(dd, 'yyyy.MM.dd') : '',
+      completedDate: cd ? format(cd, 'yyyy.MM.dd') : '',
+      memo: t.memo || '',
+      notes: mode === 'ceo' ? (t.ceoFlagReason || t.notes || '') : (t.notes || ''),
+      meetingNote: taskNotes[t.taskId] || '',
+    };
+  }, [taskNotes]);
+
+  const currentSnapshotSets = useMemo(() => {
+    let completed: Task[] = [];
+    let inProgress: Task[] = [];
+    let upcoming: Task[] = [];
+    let delayed: Task[] = [];
+    let ceo: Task[] = [];
+
+    if (reportType === '주간' && weeklyData) {
+      completed = weeklyData.completed;
+      inProgress = weeklyData.incomplete;
+      upcoming = weeklyData.nextWeek;
+      delayed = weeklyData.delayed;
+    } else if (reportType === '격주' && biweeklyData) {
+      completed = biweeklyData.planCompleted;
+      inProgress = biweeklyData.planInProgress;
+      upcoming = biweeklyData.upcoming;
+      delayed = biweeklyData.planRemaining;
+      ceo = biweeklyData.ceoDecision;
+    } else if (reportType === '월간' && monthlyData) {
+      completed = monthlyData.completed;
+      inProgress = monthlyData.nextMonthTasks;
+      upcoming = monthlyData.nextMonthTasks;
+      delayed = monthlyData.carryover;
+    }
+
+    return { completed, inProgress, upcoming, delayed, ceo };
+  }, [reportType, weeklyData, biweeklyData, monthlyData]);
+
+  const addDecision = () => {
+    const v = decisionInput.trim();
+    if (!v) return;
+    setDecisions([...decisions, v]);
+    setDecisionInput('');
+  };
+
+  const addNextAction = () => {
+    const v = nextActionInput.trim();
+    if (!v) return;
+    setNextActions([...nextActions, v]);
+    setNextActionInput('');
+  };
+
+  const addExtraAgenda = () => {
+    const title = extraTitle.trim();
+    if (!title) return;
+    setExtraAgenda([
+      ...extraAgenda,
+      {
+        title,
+        assigneeName: extraAssignee.trim() || '미배정',
+        memo: extraMemo.trim(),
+        isManual: true,
+      },
+    ]);
+    setExtraTitle('');
+    setExtraAssignee('');
+    setExtraMemo('');
+  };
+
+  const handleSaveMeetingLog = async () => {
+    if (!user) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+    if (!generated) {
+      alert('먼저 리포트를 생성해주세요.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const input: MeetingLogInput = {
+        meetingType: reportType,
+        periodLabel,
+        periodStart: startDate,
+        periodEnd: endDate,
+        meetingDate,
+        stats,
+        completedTasks: currentSnapshotSets.completed.map((t) => taskToSnapshot(t, 'completed')),
+        inProgressTasks: currentSnapshotSets.inProgress.map((t) => taskToSnapshot(t, 'inProgress')),
+        upcomingTasks: currentSnapshotSets.upcoming.map((t) => taskToSnapshot(t, 'upcoming')),
+        delayedTasks: currentSnapshotSets.delayed.map((t) => taskToSnapshot(t, 'delayed')),
+        ceoItems: currentSnapshotSets.ceo.map((t) => taskToSnapshot(t, 'ceo')),
+        attendees: attendeesText.split(',').map((s) => s.trim()).filter(Boolean),
+        notes: meetingNotes,
+        decisions,
+        nextActions,
+        extraAgenda,
+        kpiNotes,
+        createdBy: user.uid,
+        createdByName: user.displayName || user.email || '',
+      };
+
+      if (editingLogId) {
+        await updateMeetingLog(editingLogId, input, user.uid, user.displayName || user.email || '');
+        alert('회의록이 수정되었습니다.');
+      } else {
+        await saveMeetingLog(input);
+        alert('회의록이 저장되었습니다.');
+        resetMeetingForm();
+      }
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : '회의록 저장 실패');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLoadLog = (log: MeetingLogRecord) => {
+    setReportType(log.meetingType);
+    setMeetingDate(log.meetingDate);
+    setAttendeesText(log.attendees.join(', '));
+    setMeetingNotes(log.notes || '');
+    setDecisions(log.decisions || []);
+    setNextActions(log.nextActions || []);
+    setExtraAgenda(log.extraAgenda || []);
+
+    // 업무/KPI 비고 복원
+    const restoredTaskNotes: Record<string, string> = {};
+    [log.completedTasks, log.inProgressTasks, log.upcomingTasks, log.delayedTasks, log.ceoItems].forEach((list) => {
+      (list || []).forEach((t) => {
+        if (t.taskId && t.meetingNote) restoredTaskNotes[t.taskId] = t.meetingNote;
+      });
+    });
+    setTaskNotes(restoredTaskNotes);
+    setKpiNotes(log.kpiNotes || {});
+
+    setEditingLogId(log.id);
+    setViewingLog(log);
+    setShowLogList(false);
+  };
+
+  const handleDeleteLog = async (log: MeetingLogRecord) => {
+    if (!window.confirm(`"${log.periodLabel}" 회의록을 삭제하시겠습니까?`)) return;
+    try {
+      await deleteMeetingLog(log.id);
+      if (editingLogId === log.id) resetMeetingForm();
+      if (viewingLog?.id === log.id) setViewingLog(null);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : '삭제 실패');
+    }
+  };
+
   /* ─── 주간 리포트 렌더 ─── */
   const renderWeeklyReport = () => {
     if (!weeklyData) return null;
@@ -699,7 +945,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     return (
       <>
         <Block title="이번 주 완료 업무" count={completed.length} dotColor="green" defaultOpen>
-          {renderCategoryBlocks(groupByCategory(completed), (tasks) => renderCompletedList(tasks))}
+          {renderAssigneeCategoryBlocks(completed, (tasks) => renderCompletedList(tasks))}
           <LeadTimeSummary tasks={completed} />
         </Block>
 
@@ -723,7 +969,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
         </Block>
 
         <Block title="차주 진행 예정" count={nextWeek.length} dotColor="blue" defaultOpen={false}>
-          {renderAssigneeBlocks(groupByAssignee(sortByPriority(nextWeek)), (tasks) => renderTaskList(tasks))}
+          {renderAssigneeCategoryBlocks(sortByPriority(nextWeek), (tasks) => renderTaskList(tasks))}
         </Block>
 
         <Block title="차주 이월 업무" count={delayed.length} dotColor="red" danger defaultOpen>
@@ -750,7 +996,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
             Object.entries(kpiByAssignee).map(([name, kpis]) => (
               <div key={name} className="rpt-cat-group">
                 <div className="rpt-cat-label">{name} <span className="rpt-cat-cnt">{kpis.length}</span></div>
-                {renderKpiBlock(kpis)}
+                {renderKpiBlock(kpis, kpiNotes, updateKpiNote)}
               </div>
             ))
           }
@@ -800,7 +1046,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
 
     return (
       <>
-        {/* ── 지난 2주: 계획 vs 결과 비교 ── */}
+        {/* ── 지난 2주: 담당자별 계획 vs 결과 비교 + 비고 ── */}
         <Block
           title="지난 2주 업무 현황"
           count={planned.length}
@@ -818,42 +1064,64 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
                 <span className="rpt-compare-stat rpt-compare-stat-left">미완료 {planRemaining.length}</span>
               </div>
 
-              {/* 좌우 비교 테이블 */}
-              <div className="rpt-compare-table">
-                <div className="rpt-compare-header">
-                  <div className="rpt-compare-col-plan">계획</div>
-                  <div className="rpt-compare-col-result">결과</div>
-                </div>
-                {planned.map((t) => {
-                  const detail = statusDetail(t);
-                  return (
-                    <div key={t.taskId} className={`rpt-compare-row ${t.status === '완료' ? 'rpt-compare-row-done' : t.status === '지연' || t.status === '보류' ? 'rpt-compare-row-warn' : ''}`}>
-                      <div className="rpt-compare-col-plan">
-                        <span className="rpt-compare-title">{t.title}</span>
-                        <span className="rpt-compare-assignee">{t.assigneeName}</span>
-                      </div>
-                      <div className="rpt-compare-col-result">
-                        {statusBadge(t)}
-                        {t.status === '진행중' && t.progressRate > 0 && (
-                          <div className="rpt-compare-progress">
-                            <div className="rpt-compare-progress-bar">
-                              <div className="rpt-compare-progress-fill" style={{ width: `${t.progressRate}%` }} />
-                            </div>
-                            <span className="rpt-compare-progress-text">{t.progressRate}%</span>
-                          </div>
-                        )}
-                        {detail && <div className="rpt-compare-detail">{detail}</div>}
-                      </div>
+              {/* 담당자별 계획/결과/비고 */}
+              {(() => {
+                const byAssignee = groupByAssignee(planned);
+                byAssignee.sort((a, b) => b.tasks.length - a.tasks.length);
+                return byAssignee.map((ag) => (
+                  <div key={ag.assignee} className="rpt-assignee-group">
+                    <div className="rpt-assignee-header">
+                      <span className="rpt-assignee-name">{ag.assignee}</span>
+                      <span className="rpt-assignee-cnt">{ag.tasks.length}건</span>
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="rpt-compare-table rpt-compare-table-3col">
+                      <div className="rpt-compare-header">
+                        <div className="rpt-compare-col-plan">계획</div>
+                        <div className="rpt-compare-col-result">결과</div>
+                        <div className="rpt-compare-col-note">비고</div>
+                      </div>
+                      {ag.tasks.map((t) => {
+                        const detail = statusDetail(t);
+                        return (
+                          <div key={t.taskId} className={`rpt-compare-row ${t.status === '완료' ? 'rpt-compare-row-done' : t.status === '지연' || t.status === '보류' ? 'rpt-compare-row-warn' : ''}`}>
+                            <div className="rpt-compare-col-plan">
+                              <span className="rpt-compare-title">{t.title}</span>
+                              <span className="rpt-compare-assignee">{t.category || '기타'}</span>
+                            </div>
+                            <div className="rpt-compare-col-result">
+                              {statusBadge(t)}
+                              {t.status === '진행중' && t.progressRate > 0 && (
+                                <div className="rpt-compare-progress">
+                                  <div className="rpt-compare-progress-bar">
+                                    <div className="rpt-compare-progress-fill" style={{ width: `${t.progressRate}%` }} />
+                                  </div>
+                                  <span className="rpt-compare-progress-text">{t.progressRate}%</span>
+                                </div>
+                              )}
+                              {detail && <div className="rpt-compare-detail">{detail}</div>}
+                            </div>
+                            <div className="rpt-compare-col-note">
+                              <textarea
+                                className="rpt-row-note"
+                                placeholder="비고"
+                                value={taskNotes[t.taskId] || ''}
+                                onChange={(e) => updateTaskNote(t.taskId, e.target.value)}
+                                rows={2}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ));
+              })()}
               <LeadTimeSummary tasks={planCompleted} />
             </>
           )}
         </Block>
 
-        {/* ── 앞으로 2주 진행 업무 ── */}
+        {/* ── 앞으로 2주 진행 업무 (담당자별 + 비고) ── */}
         <Block title="앞으로 2주 진행 업무" count={upcoming.length} dotColor="blue" defaultOpen>
           {(() => {
             const sorted = [...upcoming].sort((a, b) => {
@@ -861,28 +1129,26 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
               const db = tsToDate(b.dueDate)?.getTime() ?? Infinity;
               return da - db;
             });
-            const groups = groupByCategory(sorted).sort((a, b) => b.tasks.length - a.tasks.length);
-            if (groups.length === 0) return <div className="rpt-empty">해당 없음</div>;
-            return groups.map((g) => (
-              <div key={g.category} className="rpt-cat-group">
-                <div className="rpt-cat-label">{g.category} <span className="rpt-cat-cnt">{g.tasks.length}건</span></div>
-                <div className="rpt-list rpt-list-indent">
-                  {g.tasks.map((t) => {
-                    const dd = tsToDate(t.dueDate);
-                    return (
-                      <div key={t.taskId}>
-                        <div className="rpt-item">
-                          <span className="rpt-item-title">{t.title}</span>
-                          <span className="rpt-item-assignee">{t.assigneeName}</span>
-                          {dd && <span className="rpt-item-date">{format(dd, 'M.dd')}</span>}
-                        </div>
-                        {t.memo && <div style={{ fontSize: 11, color: '#888', marginLeft: 12, marginTop: 1 }}>└ {t.memo}</div>}
-                      </div>
-                    );
-                  })}
+            const renderFn = (tasks: Task[]) => tasks.map((t) => {
+              const dd = tsToDate(t.dueDate);
+              return (
+                <div key={t.taskId} className="rpt-item-with-note">
+                  <div className="rpt-item">
+                    <span className="rpt-item-title">{t.title}</span>
+                    {dd && <span className="rpt-item-date">{format(dd, 'M.dd')}</span>}
+                  </div>
+                  {t.memo && <div style={{ fontSize: 11, color: '#888', marginLeft: 12, marginTop: 1 }}>└ {t.memo}</div>}
+                  <textarea
+                    className="rpt-row-note"
+                    placeholder="비고"
+                    value={taskNotes[t.taskId] || ''}
+                    onChange={(e) => updateTaskNote(t.taskId, e.target.value)}
+                    rows={1}
+                  />
                 </div>
-              </div>
-            ));
+              );
+            });
+            return renderAssigneeCategoryBlocks(sorted, renderFn);
           })()}
         </Block>
 
@@ -910,7 +1176,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
             Object.entries(kpiByAssignee).map(([name, kpis]) => (
               <div key={name} className="rpt-cat-group">
                 <div className="rpt-cat-label">{name} <span className="rpt-cat-cnt">{kpis.length}</span></div>
-                {renderKpiBlock(kpis)}
+                {renderKpiBlock(kpis, kpiNotes, updateKpiNote)}
               </div>
             ))
           }
@@ -941,62 +1207,61 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       if (t.status === '완료') catCompletionRate[cat].done++;
     });
 
+    // 월간 카테고리별 완료율을 표시하는 요약 블록
+    const monthlyCategorySummary = completedGroups.length > 0 ? (
+      <div className="rpt-cat-summary">
+        <div className="rpt-cat-summary-label">카테고리별 완료율</div>
+        <div className="rpt-cat-summary-list">
+          {completedGroups.map((g) => {
+            const rate = catCompletionRate[g.category];
+            const pct = rate ? Math.round((rate.done / rate.total) * 100) : 0;
+            return (
+              <span key={g.category} className="rpt-cat-summary-chip">
+                {g.category} <strong>{g.tasks.length}건</strong>
+                <span style={{ marginLeft: 6, color: pct >= 80 ? 'var(--c-green,#0d9f61)' : 'var(--c-text-3,#999)' }}>
+                  {pct}%
+                </span>
+              </span>
+            );
+          })}
+        </div>
+      </div>
+    ) : null;
+
     return (
       <>
         <Block title={`${monthlyPeriod.label} 완료 업무`} count={completed.length} dotColor="green" defaultOpen>
-          {completedGroups.length === 0 ? <div className="rpt-empty">해당 없음</div> :
-            completedGroups.map((g) => {
-              const rate = catCompletionRate[g.category];
-              const pct = rate ? Math.round((rate.done / rate.total) * 100) : 0;
-              return (
-                <div key={g.category} className="rpt-cat-group">
-                  <div className="rpt-cat-label">
-                    {g.category}
-                    <span className="rpt-cat-cnt">{g.tasks.length}건</span>
-                    <span style={{ marginLeft: 8, fontSize: 11, color: pct >= 80 ? 'var(--c-green,#0d9f61)' : 'var(--c-text-3,#999)' }}>
-                      완료율 {pct}%
-                    </span>
-                  </div>
-                  <div className="rpt-list">{renderCompletedList(g.tasks)}</div>
-                </div>
-              );
-            })
-          }
+          {monthlyCategorySummary}
+          {renderAssigneeCategoryBlocks(completed, (tasks) => renderCompletedList(tasks))}
           <LeadTimeByCategoryMonthly tasks={completed} prevMonthTasks={prevMonthCompleted} />
         </Block>
 
         <Block title={`${nMonth}월 이월 업무`} count={carryover.length} dotColor="red" danger defaultOpen>
           {carryover.length === 0 ? <div className="rpt-empty">해당 없음</div> : (
-            <div className="rpt-list">
-              {carryover.map((t) => {
-                const statusLabel = t.status === '보류' ? '보류' : t.status === '지연' ? '지연' : '미완료';
-                return (
-                  <div key={t.taskId} className="rpt-item rpt-item-delayed">
-                    <span className="rpt-item-title">{t.title}</span>
-                    <span className="rpt-item-assignee">{t.assigneeName}</span>
-                    <span className="rpt-item-tag rpt-tag-red">{statusLabel}</span>
-                    <span className="rpt-item-reason">{t.notes || '사유 미입력'}</span>
-                  </div>
-                );
-              })}
-            </div>
+            renderAssigneeCategoryBlocks(carryover, (tasks) => tasks.map((t) => {
+              const statusLabel = t.status === '보류' ? '보류' : t.status === '지연' ? '지연' : '미완료';
+              return (
+                <div key={t.taskId} className="rpt-item rpt-item-delayed">
+                  <span className="rpt-item-title">{t.title}</span>
+                  <span className="rpt-item-tag rpt-tag-red">{statusLabel}</span>
+                  <span className="rpt-item-reason">{t.notes || '사유 미입력'}</span>
+                </div>
+              );
+            }))
           )}
         </Block>
 
         <Block title={`${nMonth}월 진행 예정 업무`} count={nextMonthTasks.length} dotColor="blue" defaultOpen>
           {nextMonthTasks.length === 0 ? <div className="rpt-empty">해당 없음</div> : (
-            <div className="rpt-list">
-              {nextMonthTasks.map((t) => {
-                const dd = tsToDate(t.dueDate);
-                return (
-                  <div key={t.taskId} className="rpt-item">
-                    <span className="rpt-item-title">{t.title}</span>
-                    <span className="rpt-item-assignee">{t.assigneeName}</span>
-                    {dd && <span className="rpt-item-date">{format(dd, 'M.dd')} 마감</span>}
-                  </div>
-                );
-              })}
-            </div>
+            renderAssigneeCategoryBlocks(nextMonthTasks, (tasks) => tasks.map((t) => {
+              const dd = tsToDate(t.dueDate);
+              return (
+                <div key={t.taskId} className="rpt-item">
+                  <span className="rpt-item-title">{t.title}</span>
+                  {dd && <span className="rpt-item-date">{format(dd, 'M.dd')} 마감</span>}
+                </div>
+              );
+            }))
           )}
         </Block>
       </>
@@ -1076,6 +1341,13 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
             </button>
           </>
         )}
+        <button
+          className="tm-btn-log-list"
+          onClick={() => setShowLogList(true)}
+          style={{ marginLeft: 'auto' }}
+        >
+          📂 저장된 회의록 ({savedLogs.length})
+        </button>
       </div>
 
       {error && <div className="tm-error">{error}</div>}
@@ -1112,6 +1384,191 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
           {reportType === '주간' && renderWeeklyReport()}
           {reportType === '격주' && renderBiweeklyReport()}
           {reportType === '월간' && renderMonthlyReport()}
+
+          {/* ── 회의록 작성/편집 ── */}
+          <div className="rpt-log-form">
+            <div className="rpt-log-form-header">
+              <h3>📝 회의록 {editingLogId ? '수정' : '작성'}</h3>
+              {editingLogId && (
+                <button
+                  className="rpt-log-form-new"
+                  onClick={resetMeetingForm}
+                  type="button"
+                >
+                  새 회의록 작성
+                </button>
+              )}
+            </div>
+
+            <div className="rpt-log-row">
+              <label className="rpt-log-label">회의일</label>
+              <input
+                type="date"
+                className="rpt-log-input"
+                value={meetingDate}
+                onChange={(e) => setMeetingDate(e.target.value)}
+              />
+            </div>
+
+            <div className="rpt-log-row">
+              <label className="rpt-log-label">참석자</label>
+              <input
+                type="text"
+                className="rpt-log-input"
+                placeholder="쉼표로 구분 (예: 최선아, 송은정, 이웅해)"
+                value={attendeesText}
+                onChange={(e) => setAttendeesText(e.target.value)}
+              />
+            </div>
+
+            <div className="rpt-log-row rpt-log-row-col">
+              <label className="rpt-log-label">회의 메모</label>
+              <textarea
+                className="rpt-log-textarea"
+                placeholder="회의 중 논의 내용, 배경, 맥락 등"
+                value={meetingNotes}
+                onChange={(e) => setMeetingNotes(e.target.value)}
+                rows={4}
+              />
+            </div>
+
+            {/* 결정사항 */}
+            <div className="rpt-log-row rpt-log-row-col">
+              <label className="rpt-log-label">결정사항</label>
+              <div className="rpt-log-chip-input">
+                <input
+                  type="text"
+                  className="rpt-log-input"
+                  placeholder="엔터로 추가"
+                  value={decisionInput}
+                  onChange={(e) => setDecisionInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addDecision();
+                    }
+                  }}
+                />
+                <button type="button" className="rpt-log-add-btn" onClick={addDecision}>+</button>
+              </div>
+              {decisions.length > 0 && (
+                <ul className="rpt-log-chip-list">
+                  {decisions.map((d, i) => (
+                    <li key={i}>
+                      <span>{d}</span>
+                      <button
+                        type="button"
+                        className="rpt-log-chip-remove"
+                        onClick={() => setDecisions(decisions.filter((_, idx) => idx !== i))}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* 후속 조치 */}
+            <div className="rpt-log-row rpt-log-row-col">
+              <label className="rpt-log-label">후속 조치</label>
+              <div className="rpt-log-chip-input">
+                <input
+                  type="text"
+                  className="rpt-log-input"
+                  placeholder="엔터로 추가"
+                  value={nextActionInput}
+                  onChange={(e) => setNextActionInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addNextAction();
+                    }
+                  }}
+                />
+                <button type="button" className="rpt-log-add-btn" onClick={addNextAction}>+</button>
+              </div>
+              {nextActions.length > 0 && (
+                <ul className="rpt-log-chip-list">
+                  {nextActions.map((d, i) => (
+                    <li key={i}>
+                      <span>{d}</span>
+                      <button
+                        type="button"
+                        className="rpt-log-chip-remove"
+                        onClick={() => setNextActions(nextActions.filter((_, idx) => idx !== i))}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* 추가 안건 (회의 중 새 업무/이슈) */}
+            <div className="rpt-log-row rpt-log-row-col">
+              <label className="rpt-log-label">추가 안건/업무</label>
+              <div className="rpt-log-agenda-input">
+                <input
+                  type="text"
+                  className="rpt-log-input"
+                  placeholder="제목"
+                  value={extraTitle}
+                  onChange={(e) => setExtraTitle(e.target.value)}
+                  style={{ flex: 2 }}
+                />
+                <input
+                  type="text"
+                  className="rpt-log-input"
+                  placeholder="담당자"
+                  value={extraAssignee}
+                  onChange={(e) => setExtraAssignee(e.target.value)}
+                  style={{ flex: 1 }}
+                />
+                <input
+                  type="text"
+                  className="rpt-log-input"
+                  placeholder="메모"
+                  value={extraMemo}
+                  onChange={(e) => setExtraMemo(e.target.value)}
+                  style={{ flex: 2 }}
+                />
+                <button type="button" className="rpt-log-add-btn" onClick={addExtraAgenda}>+</button>
+              </div>
+              {extraAgenda.length > 0 && (
+                <ul className="rpt-log-chip-list">
+                  {extraAgenda.map((a, i) => (
+                    <li key={i}>
+                      <span>
+                        <strong>{a.title}</strong>
+                        {a.assigneeName && a.assigneeName !== '미배정' && <span style={{ marginLeft: 6, color: '#666' }}>· {a.assigneeName}</span>}
+                        {a.memo && <span style={{ marginLeft: 6, color: '#888' }}>· {a.memo}</span>}
+                      </span>
+                      <button
+                        type="button"
+                        className="rpt-log-chip-remove"
+                        onClick={() => setExtraAgenda(extraAgenda.filter((_, idx) => idx !== i))}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="rpt-log-actions">
+              <button
+                className="rpt-log-save-btn"
+                onClick={handleSaveMeetingLog}
+                disabled={saving}
+                type="button"
+              >
+                {saving ? '저장 중...' : editingLogId ? '회의록 수정' : '회의록 저장'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1120,6 +1577,228 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
           기간을 설정하고 "리포트 생성" 버튼을 눌러주세요.
         </div>
       )}
+
+      {/* ── 저장된 회의록 목록 모달 ── */}
+      {showLogList && (
+        <div className="rpt-modal-backdrop" onClick={() => setShowLogList(false)}>
+          <div className="rpt-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="rpt-modal-header">
+              <h3>저장된 회의록 ({savedLogs.length})</h3>
+              <button className="rpt-modal-close" onClick={() => setShowLogList(false)}>×</button>
+            </div>
+            <div className="rpt-modal-body">
+              {savedLogs.length === 0 ? (
+                <div className="rpt-empty">저장된 회의록이 없습니다.</div>
+              ) : (
+                <ul className="rpt-log-list">
+                  {savedLogs.map((log) => (
+                    <li key={log.id} className="rpt-log-list-item">
+                      <div className="rpt-log-list-main" onClick={() => setViewingLog(log)}>
+                        <div className="rpt-log-list-type">
+                          <span className={`rpt-log-type-badge rpt-log-type-${log.meetingType}`}>
+                            {log.meetingType}
+                          </span>
+                          <span className="rpt-log-list-date">{log.meetingDate}</span>
+                        </div>
+                        <div className="rpt-log-list-title">{log.periodLabel}</div>
+                        <div className="rpt-log-list-meta">
+                          {log.attendees.length > 0 && <span>참석 {log.attendees.length}명</span>}
+                          <span>완료 {log.stats.completed}</span>
+                          <span>진행 {log.stats.incomplete}</span>
+                          {log.decisions.length > 0 && <span>결정사항 {log.decisions.length}</span>}
+                          {log.nextActions.length > 0 && <span>후속조치 {log.nextActions.length}</span>}
+                          <span style={{ marginLeft: 'auto', color: '#999' }}>{log.createdByName}</span>
+                        </div>
+                      </div>
+                      <div className="rpt-log-list-actions">
+                        <button
+                          type="button"
+                          className="rpt-log-list-btn"
+                          onClick={() => handleLoadLog(log)}
+                        >
+                          불러오기
+                        </button>
+                        <button
+                          type="button"
+                          className="rpt-log-list-btn rpt-log-list-btn-danger"
+                          onClick={() => handleDeleteLog(log)}
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 회의록 상세 조회 모달 ── */}
+      {viewingLog && (
+        <div className="rpt-modal-backdrop" onClick={() => setViewingLog(null)}>
+          <div className="rpt-modal rpt-modal-wide" onClick={(e) => e.stopPropagation()}>
+            <div className="rpt-modal-header">
+              <h3>
+                <span className={`rpt-log-type-badge rpt-log-type-${viewingLog.meetingType}`}>
+                  {viewingLog.meetingType}
+                </span>
+                {' '}{viewingLog.periodLabel}
+              </h3>
+              <button className="rpt-modal-close" onClick={() => setViewingLog(null)}>×</button>
+            </div>
+            <div className="rpt-modal-body">
+              <div className="rpt-log-view-meta">
+                <div><strong>회의일</strong> {viewingLog.meetingDate}</div>
+                <div><strong>참석자</strong> {viewingLog.attendees.join(', ') || '-'}</div>
+                <div><strong>작성자</strong> {viewingLog.createdByName}</div>
+              </div>
+
+              {viewingLog.notes && (
+                <section className="rpt-log-view-section">
+                  <h4>회의 메모</h4>
+                  <p style={{ whiteSpace: 'pre-wrap' }}>{viewingLog.notes}</p>
+                </section>
+              )}
+
+              {viewingLog.decisions.length > 0 && (
+                <section className="rpt-log-view-section">
+                  <h4>결정사항</h4>
+                  <ul>
+                    {viewingLog.decisions.map((d, i) => <li key={i}>{d}</li>)}
+                  </ul>
+                </section>
+              )}
+
+              {viewingLog.nextActions.length > 0 && (
+                <section className="rpt-log-view-section">
+                  <h4>후속 조치</h4>
+                  <ul>
+                    {viewingLog.nextActions.map((a, i) => <li key={i}>{a}</li>)}
+                  </ul>
+                </section>
+              )}
+
+              {viewingLog.extraAgenda.length > 0 && (
+                <section className="rpt-log-view-section">
+                  <h4>추가 안건</h4>
+                  <ul>
+                    {viewingLog.extraAgenda.map((a, i) => (
+                      <li key={i}>
+                        <strong>{a.title}</strong>
+                        {a.assigneeName && a.assigneeName !== '미배정' && <span style={{ marginLeft: 6, color: '#666' }}>· {a.assigneeName}</span>}
+                        {a.memo && <div style={{ marginLeft: 12, color: '#666', fontSize: 12 }}>{a.memo}</div>}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {/* 업무 스냅샷: 담당자별 정렬 */}
+              {viewingLog.completedTasks.length > 0 && (
+                <section className="rpt-log-view-section">
+                  <h4>완료 업무 ({viewingLog.completedTasks.length})</h4>
+                  {renderSnapshotByAssignee(viewingLog.completedTasks)}
+                </section>
+              )}
+
+              {viewingLog.inProgressTasks.length > 0 && (
+                <section className="rpt-log-view-section">
+                  <h4>진행 업무 ({viewingLog.inProgressTasks.length})</h4>
+                  {renderSnapshotByAssignee(viewingLog.inProgressTasks)}
+                </section>
+              )}
+
+              {viewingLog.upcomingTasks.length > 0 && (
+                <section className="rpt-log-view-section">
+                  <h4>예정 업무 ({viewingLog.upcomingTasks.length})</h4>
+                  {renderSnapshotByAssignee(viewingLog.upcomingTasks)}
+                </section>
+              )}
+
+              {viewingLog.delayedTasks.length > 0 && (
+                <section className="rpt-log-view-section">
+                  <h4>지연/이월 업무 ({viewingLog.delayedTasks.length})</h4>
+                  {renderSnapshotByAssignee(viewingLog.delayedTasks)}
+                </section>
+              )}
+
+              {viewingLog.ceoItems.length > 0 && (
+                <section className="rpt-log-view-section">
+                  <h4>결정 필요 ({viewingLog.ceoItems.length})</h4>
+                  {renderSnapshotByAssignee(viewingLog.ceoItems)}
+                </section>
+              )}
+
+              {viewingLog.kpiNotes && Object.keys(viewingLog.kpiNotes).length > 0 && (
+                <section className="rpt-log-view-section">
+                  <h4>KPI 비고</h4>
+                  <ul>
+                    {Object.entries(viewingLog.kpiNotes).map(([kpiId, note]) => (
+                      note ? <li key={kpiId}>{note}</li> : null
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </div>
+            <div className="rpt-modal-footer">
+              <button className="rpt-log-list-btn" onClick={() => handleLoadLog(viewingLog)}>
+                편집용으로 불러오기
+              </button>
+              <button className="rpt-log-list-btn rpt-log-list-btn-danger" onClick={() => handleDeleteLog(viewingLog)}>
+                삭제
+              </button>
+              <button className="rpt-log-list-btn" onClick={() => setViewingLog(null)}>닫기</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── 스냅샷 담당자별 렌더 (조회 모달용) ─── */
+function renderSnapshotByAssignee(tasks: MeetingTaskSnapshot[]) {
+  const map: Record<string, MeetingTaskSnapshot[]> = {};
+  tasks.forEach((t) => {
+    const k = t.assigneeName || '미배정';
+    if (!map[k]) map[k] = [];
+    map[k].push(t);
+  });
+  const groups = Object.entries(map).sort((a, b) => b[1].length - a[1].length);
+  return (
+    <div>
+      {groups.map(([name, list]) => (
+        <div key={name} className="rpt-assignee-group">
+          <div className="rpt-assignee-header">
+            <span className="rpt-assignee-name">{name}</span>
+            <span className="rpt-assignee-cnt">{list.length}건</span>
+          </div>
+          <div className="rpt-assignee-body">
+            <ul style={{ margin: 0, paddingLeft: 20 }}>
+              {list.map((t, i) => (
+                <li key={i}>
+                  <span>{t.title}</span>
+                  {t.category && <span style={{ marginLeft: 6, color: '#888', fontSize: 11 }}>[{t.category}]</span>}
+                  {t.status && <span style={{ marginLeft: 6, color: '#666', fontSize: 11 }}>· {t.status}</span>}
+                  {typeof t.progressRate === 'number' && t.progressRate > 0 && t.status !== '완료' && (
+                    <span style={{ marginLeft: 6, color: '#2f6ce5', fontSize: 11 }}>{t.progressRate}%</span>
+                  )}
+                  {t.dueDate && <span style={{ marginLeft: 6, color: '#888', fontSize: 11 }}>· {t.dueDate}</span>}
+                  {t.completedDate && <span style={{ marginLeft: 6, color: '#0d9f61', fontSize: 11 }}>· {t.completedDate} 완료</span>}
+                  {t.memo && <div style={{ fontSize: 11, color: '#666', marginLeft: 10 }}>└ {t.memo}</div>}
+                  {t.meetingNote && (
+                    <div style={{ fontSize: 12, color: 'var(--c-text-2,#555)', marginLeft: 10, marginTop: 2, padding: '4px 8px', background: 'var(--c-bg-sub,#fafafa)', borderLeft: '2px solid var(--c-accent,#2f6ce5)', borderRadius: 3 }}>
+                      📝 {t.meetingNote}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
