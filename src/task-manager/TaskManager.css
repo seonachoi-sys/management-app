@@ -1049,24 +1049,68 @@
 .rpt-compare-stat-prog { background: var(--c-accent-light); color: var(--c-accent); }
 .rpt-compare-stat-left { background: var(--c-red-bg); color: var(--c-red); }
 
-.rpt-compare-table { padding: 0 0 4px; }
+.rpt-compare-table {
+  margin: 6px 0 4px;
+  border: 0.5px solid var(--c-line);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--c-bg);
+}
 .rpt-compare-header {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-  padding: 8px 16px 6px; font-size: 11px; font-weight: 700;
-  color: var(--c-text-3); text-transform: uppercase; letter-spacing: 0.03em;
-  border-bottom: 0.5px solid var(--c-line-light);
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  padding: 0;
+  font-size: 13px; font-weight: 700;
+  color: var(--c-text);
+  background: var(--c-bg-sub);
+  border-bottom: 1px solid var(--c-line);
 }
+.rpt-compare-header > div {
+  padding: 10px 14px;
+  border-right: 0.5px solid var(--c-line);
+}
+.rpt-compare-header > div:last-child { border-right: none; }
 .rpt-compare-row {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-  padding: 8px 16px; border-bottom: 0.5px solid var(--c-line-light);
-  align-items: start;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  padding: 0;
+  border-bottom: 0.5px solid var(--c-line-light);
+  align-items: stretch;
 }
+.rpt-compare-row > div {
+  padding: 10px 14px;
+  border-right: 0.5px solid var(--c-line-light);
+}
+.rpt-compare-row > div:last-child { border-right: none; }
 .rpt-compare-row:last-child { border-bottom: none; }
 .rpt-compare-row-done { background: var(--c-green-bg); }
 .rpt-compare-row-warn { background: var(--c-red-bg); }
 
 .rpt-compare-col-plan { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .rpt-compare-col-result { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+/* 담당자 그룹 내 카테고리 subheader */
+.rpt-compare-subcat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  background: var(--c-bg-inset, #f0f0f0);
+  border-top: 0.5px solid var(--c-line);
+  border-bottom: 0.5px solid var(--c-line-light);
+  font-size: 11px;
+}
+.rpt-compare-subcat-label {
+  font-weight: 700;
+  color: var(--c-text-2, #555);
+  letter-spacing: 0.02em;
+}
+.rpt-compare-subcat-cnt {
+  font-size: 10px;
+  color: var(--c-text-3, #888);
+  padding: 1px 7px;
+  background: var(--c-bg, #fff);
+  border: 0.5px solid var(--c-line, #e5e5e5);
+  border-radius: 9px;
+}
 
 .rpt-compare-title { font-size: 13px; font-weight: 500; color: var(--c-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rpt-compare-assignee { font-size: 11px; color: var(--c-text-3); }

@@ -1166,65 +1166,78 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
                 <span className="rpt-compare-stat rpt-compare-stat-left">미완료 {planRemaining.length}</span>
               </div>
 
-              {/* 담당자별 계획/결과/비고 */}
+              {/* 담당자별 → 카테고리별 → 계획/결과/비고 */}
               {(() => {
                 const byAssignee = groupByAssignee(planned);
                 byAssignee.sort((a, b) => b.tasks.length - a.tasks.length);
-                return byAssignee.map((ag) => (
-                  <div key={ag.assignee} className="rpt-assignee-group">
-                    <div className="rpt-assignee-header">
-                      <span className="rpt-assignee-name">{ag.assignee}</span>
-                      <span className="rpt-assignee-cnt">{ag.tasks.length}건</span>
-                    </div>
-                    <div className="rpt-compare-table rpt-compare-table-3col">
-                      <div className="rpt-compare-header">
-                        <div className="rpt-compare-col-plan">계획</div>
-                        <div className="rpt-compare-col-result">결과</div>
-                        <div className="rpt-compare-col-note">비고</div>
+                return byAssignee.map((ag) => {
+                  const byCategory = groupByCategory(ag.tasks);
+                  byCategory.sort((a, b) => a.category.localeCompare(b.category));
+                  return (
+                    <div key={ag.assignee} className="rpt-assignee-group">
+                      <div className="rpt-assignee-header">
+                        <span className="rpt-assignee-name">{ag.assignee}</span>
+                        <span className="rpt-assignee-cnt">{ag.tasks.length}건</span>
                       </div>
-                      {ag.tasks.map((t) => {
-                        const detail = statusDetail(t);
-                        return (
-                          <div key={t.taskId} className={`rpt-compare-row ${t.status === '완료' ? 'rpt-compare-row-done' : t.status === '지연' || t.status === '보류' ? 'rpt-compare-row-warn' : ''}`}>
-                            <div className="rpt-compare-col-plan">
-                              <span className="rpt-compare-title">{t.title}</span>
-                              <span className="rpt-compare-assignee">{t.category || '기타'}</span>
+                      <div className="rpt-compare-table rpt-compare-table-3col">
+                        <div className="rpt-compare-header">
+                          <div className="rpt-compare-col-plan">계획</div>
+                          <div className="rpt-compare-col-result">결과</div>
+                          <div className="rpt-compare-col-note">비고</div>
+                        </div>
+                        {byCategory.map((cg) => (
+                          <React.Fragment key={cg.category}>
+                            <div className="rpt-compare-subcat">
+                              <span className="rpt-compare-subcat-label">{cg.category}</span>
+                              <span className="rpt-compare-subcat-cnt">{cg.tasks.length}건</span>
                             </div>
-                            <div className="rpt-compare-col-result">
-                              {statusBadge(t)}
-                              {t.status === '진행중' && t.progressRate > 0 && (
-                                <div className="rpt-compare-progress">
-                                  <div className="rpt-compare-progress-bar">
-                                    <div className="rpt-compare-progress-fill" style={{ width: `${t.progressRate}%` }} />
+                            {cg.tasks.map((t) => {
+                              const detail = statusDetail(t);
+                              const dd = tsToDate(t.dueDate);
+                              return (
+                                <div key={t.taskId} className={`rpt-compare-row ${t.status === '완료' ? 'rpt-compare-row-done' : t.status === '지연' || t.status === '보류' ? 'rpt-compare-row-warn' : ''}`}>
+                                  <div className="rpt-compare-col-plan">
+                                    <span className="rpt-compare-title">{t.title}</span>
+                                    {dd && <span className="rpt-compare-assignee">마감 {format(dd, 'M.dd')}</span>}
                                   </div>
-                                  <span className="rpt-compare-progress-text">{t.progressRate}%</span>
+                                  <div className="rpt-compare-col-result">
+                                    {statusBadge(t)}
+                                    {t.status === '진행중' && t.progressRate > 0 && (
+                                      <div className="rpt-compare-progress">
+                                        <div className="rpt-compare-progress-bar">
+                                          <div className="rpt-compare-progress-fill" style={{ width: `${t.progressRate}%` }} />
+                                        </div>
+                                        <span className="rpt-compare-progress-text">{t.progressRate}%</span>
+                                      </div>
+                                    )}
+                                    {detail && <div className="rpt-compare-detail">{detail}</div>}
+                                  </div>
+                                  <div className="rpt-compare-col-note">
+                                    <textarea
+                                      className="rpt-row-note"
+                                      placeholder="비고"
+                                      value={taskNotes[t.taskId] || ''}
+                                      onChange={(e) => updateTaskNote(t.taskId, e.target.value)}
+                                      rows={2}
+                                    />
+                                    <button
+                                      type="button"
+                                      className="rpt-hide-btn"
+                                      onClick={() => hideTask(t.taskId)}
+                                      title="회의록에서 이 업무 숨기기"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
                                 </div>
-                              )}
-                              {detail && <div className="rpt-compare-detail">{detail}</div>}
-                            </div>
-                            <div className="rpt-compare-col-note">
-                              <textarea
-                                className="rpt-row-note"
-                                placeholder="비고"
-                                value={taskNotes[t.taskId] || ''}
-                                onChange={(e) => updateTaskNote(t.taskId, e.target.value)}
-                                rows={2}
-                              />
-                              <button
-                                type="button"
-                                className="rpt-hide-btn"
-                                onClick={() => hideTask(t.taskId)}
-                                title="회의록에서 이 업무 숨기기"
-                              >
-                                ×
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
+                              );
+                            })}
+                          </React.Fragment>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ));
+                  );
+                });
               })()}
               <LeadTimeSummary tasks={planCompleted} />
             </>
