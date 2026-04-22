@@ -1,16 +1,16 @@
 {
   "files": {
     "main.css": "/management-app/static/css/main.19d163ab.css",
-    "main.js": "/management-app/static/js/main.787df85e.js",
+    "main.js": "/management-app/static/js/main.02a2f27d.js",
     "static/css/419.dc1ef72c.chunk.css": "/management-app/static/css/419.dc1ef72c.chunk.css",
     "static/js/419.0685fc10.chunk.js": "/management-app/static/js/419.0685fc10.chunk.js",
-    "static/css/270.2e327687.chunk.css": "/management-app/static/css/270.2e327687.chunk.css",
-    "static/js/270.017e517b.chunk.js": "/management-app/static/js/270.017e517b.chunk.js",
-    "static/css/159.1f596e3d.chunk.css": "/management-app/static/css/159.1f596e3d.chunk.css",
+    "static/css/287.cf01b44f.chunk.css": "/management-app/static/css/287.cf01b44f.chunk.css",
+    "static/js/287.3c3f1941.chunk.js": "/management-app/static/js/287.3c3f1941.chunk.js",
+    "static/css/159.05e66f39.chunk.css": "/management-app/static/css/159.05e66f39.chunk.css",
     "static/css/304.12bd253c.chunk.css": "/management-app/static/css/304.12bd253c.chunk.css",
-    "static/js/304.5616aeaa.chunk.js": "/management-app/static/js/304.5616aeaa.chunk.js",
+    "static/js/304.e72029e6.chunk.js": "/management-app/static/js/304.e72029e6.chunk.js",
     "static/css/830.4df00cd4.chunk.css": "/management-app/static/css/830.4df00cd4.chunk.css",
-    "static/js/830.57a2beb6.chunk.js": "/management-app/static/js/830.57a2beb6.chunk.js",
+    "static/js/830.681ea2a8.chunk.js": "/management-app/static/js/830.681ea2a8.chunk.js",
     "static/css/39.1fd66278.chunk.css": "/management-app/static/css/39.1fd66278.chunk.css",
     "static/js/39.f576b916.chunk.js": "/management-app/static/js/39.f576b916.chunk.js",
     "static/js/37.2fd9ad24.chunk.js": "/management-app/static/js/37.2fd9ad24.chunk.js",
@@ -22,19 +22,19 @@
     "static/js/239.6a4f816c.chunk.js": "/management-app/static/js/239.6a4f816c.chunk.js",
     "static/js/693.1346e336.chunk.js": "/management-app/static/js/693.1346e336.chunk.js",
     "static/js/934.99967f3e.chunk.js": "/management-app/static/js/934.99967f3e.chunk.js",
-    "static/js/161.1f6af056.chunk.js": "/management-app/static/js/161.1f6af056.chunk.js",
+    "static/js/486.990f5329.chunk.js": "/management-app/static/js/486.990f5329.chunk.js",
     "index.html": "/management-app/index.html",
     "main.19d163ab.css.map": "/management-app/static/css/main.19d163ab.css.map",
-    "main.787df85e.js.map": "/management-app/static/js/main.787df85e.js.map",
+    "main.02a2f27d.js.map": "/management-app/static/js/main.02a2f27d.js.map",
     "419.dc1ef72c.chunk.css.map": "/management-app/static/css/419.dc1ef72c.chunk.css.map",
     "419.0685fc10.chunk.js.map": "/management-app/static/js/419.0685fc10.chunk.js.map",
-    "270.2e327687.chunk.css.map": "/management-app/static/css/270.2e327687.chunk.css.map",
-    "270.017e517b.chunk.js.map": "/management-app/static/js/270.017e517b.chunk.js.map",
-    "159.1f596e3d.chunk.css.map": "/management-app/static/css/159.1f596e3d.chunk.css.map",
+    "287.cf01b44f.chunk.css.map": "/management-app/static/css/287.cf01b44f.chunk.css.map",
+    "287.3c3f1941.chunk.js.map": "/management-app/static/js/287.3c3f1941.chunk.js.map",
+    "159.05e66f39.chunk.css.map": "/management-app/static/css/159.05e66f39.chunk.css.map",
     "304.12bd253c.chunk.css.map": "/management-app/static/css/304.12bd253c.chunk.css.map",
-    "304.5616aeaa.chunk.js.map": "/management-app/static/js/304.5616aeaa.chunk.js.map",
+    "304.e72029e6.chunk.js.map": "/management-app/static/js/304.e72029e6.chunk.js.map",
     "830.4df00cd4.chunk.css.map": "/management-app/static/css/830.4df00cd4.chunk.css.map",
-    "830.57a2beb6.chunk.js.map": "/management-app/static/js/830.57a2beb6.chunk.js.map",
+    "830.681ea2a8.chunk.js.map": "/management-app/static/js/830.681ea2a8.chunk.js.map",
     "39.1fd66278.chunk.css.map": "/management-app/static/css/39.1fd66278.chunk.css.map",
     "39.f576b916.chunk.js.map": "/management-app/static/js/39.f576b916.chunk.js.map",
     "37.2fd9ad24.chunk.js.map": "/management-app/static/js/37.2fd9ad24.chunk.js.map",
@@ -46,10 +46,10 @@
     "239.6a4f816c.chunk.js.map": "/management-app/static/js/239.6a4f816c.chunk.js.map",
     "693.1346e336.chunk.js.map": "/management-app/static/js/693.1346e336.chunk.js.map",
     "934.99967f3e.chunk.js.map": "/management-app/static/js/934.99967f3e.chunk.js.map",
-    "161.1f6af056.chunk.js.map": "/management-app/static/js/161.1f6af056.chunk.js.map"
+    "486.990f5329.chunk.js.map": "/management-app/static/js/486.990f5329.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.19d163ab.css",
-    "static/js/main.787df85e.js"
+    "static/js/main.02a2f27d.js"
   ]
 }
