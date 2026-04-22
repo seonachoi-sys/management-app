@@ -9,11 +9,25 @@ import {
   subscribeYearlyParticipations, updateMonthlyRate, applyRateRange,
   saveParticipation, deleteParticipation,
 } from '../../services/yearlyParticipationService';
-import { YearlyParticipation, Project, Employee } from '../../types/project';
+import { addEmployee } from '../../services/employeeService';
+import { YearlyParticipation, Project, Employee, EmployeeSalary, EmployeeInsurance } from '../../types/project';
 import { useAuth } from '../../hooks/useAuth';
 import './ParticipationManager.css';
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+/* ─── 신규 직원 기본값 (급여/보험은 월별 급여대장 업로드 시 채워짐) ─── */
+const EMPTY_SALARY: EmployeeSalary = {
+  basePay: 0, mealAllowance: 0, vehicleAllowance: 0,
+  researchAllowance: 0, childcareAllowance: 0, totalPay: 0,
+};
+const EMPTY_INSURANCE: EmployeeInsurance = {
+  nationalPension: 0, nationalPensionCompany: 0,
+  healthInsurance: 0, healthInsuranceCompany: 0,
+  longTermCare: 0, longTermCareCompany: 0,
+  employmentInsurance: 0, employmentInsCompany: 0,
+  industrialAccident: 0, totalCompanyBurden: 0,
+};
 
 // ═══ 과제 연차 기간 내 월인지 판별 ═══
 function isMonthInProject(project: Project, year: number, month: number): boolean {
@@ -354,6 +368,15 @@ function DetailView({
   const [addName, setAddName] = useState('');
   const [addRole, setAddRole] = useState<'책임연구원' | '연구원'>('연구원');
 
+  // 신규 직원 등록 폼
+  const [showNewEmpForm, setShowNewEmpForm] = useState(false);
+  const [newEmpName, setNewEmpName] = useState('');
+  const [newEmpNumber, setNewEmpNumber] = useState('');
+  const [newEmpDept, setNewEmpDept] = useState('');
+  const [newEmpPosition, setNewEmpPosition] = useState('');
+  const [newEmpHireDate, setNewEmpHireDate] = useState('');
+  const [savingNewEmp, setSavingNewEmp] = useState(false);
+
   const projData = useMemo(
     () => data.filter(d => d.projectId === project.projectId),
     [data, project.projectId],
@@ -434,6 +457,51 @@ function DetailView({
     }, email);
   };
 
+  // 신규 직원을 /employees 마스터에 등록
+  const handleCreateNewEmployee = async () => {
+    const name = newEmpName.trim();
+    const empNo = newEmpNumber.trim();
+    if (!name || !empNo) {
+      alert('이름과 사번은 필수입니다.');
+      return;
+    }
+    if (employees.some(e => e.name === name)) {
+      alert(`"${name}" 이름의 직원이 이미 존재합니다.`);
+      return;
+    }
+    if (employees.some(e => e.employeeNumber === empNo)) {
+      alert(`사번 "${empNo}"이 이미 존재합니다.`);
+      return;
+    }
+    setSavingNewEmp(true);
+    try {
+      await addEmployee({
+        name,
+        employeeNumber: empNo,
+        department: newEmpDept.trim(),
+        position: newEmpPosition.trim(),
+        hireDate: newEmpHireDate || '',
+        salary: { ...EMPTY_SALARY },
+        insurance: { ...EMPTY_INSURANCE },
+        netPay: 0,
+      });
+      // 방금 등록한 직원을 참여 드롭다운에 자동 선택 (실시간 구독이 반영되면 나타남)
+      setAddName(name);
+      // 폼 리셋 + 닫기
+      setNewEmpName('');
+      setNewEmpNumber('');
+      setNewEmpDept('');
+      setNewEmpPosition('');
+      setNewEmpHireDate('');
+      setShowNewEmpForm(false);
+      alert(`신규 직원 "${name}" 등록 완료. 역할 선택 후 "추가" 버튼을 눌러 참여시키세요.`);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : '직원 등록 실패');
+    } finally {
+      setSavingNewEmp(false);
+    }
+  };
+
   return (
     <div className="pm-detail-view">
       <div className="pm-detail-header">
@@ -488,6 +556,87 @@ function DetailView({
           </div>
           {notParticipating.length === 0 && (
             <div className="pm-add-hint">모든 직원이 이미 이 과제에 등록되어 있습니다.</div>
+          )}
+
+          {/* 신규 직원 등록 토글 */}
+          <div className="pm-new-emp-toggle">
+            <button
+              type="button"
+              className="pm-new-emp-link"
+              onClick={() => setShowNewEmpForm(!showNewEmpForm)}
+            >
+              {showNewEmpForm ? '− 신규 직원 등록 닫기' : '＋ 목록에 없는 신규 직원인가요? 등록하기'}
+            </button>
+          </div>
+
+          {showNewEmpForm && (
+            <div className="pm-new-emp-panel">
+              <div className="pm-new-emp-title">신규 직원 등록</div>
+              <div className="pm-new-emp-grid">
+                <div className="pm-new-emp-field">
+                  <label>이름 *</label>
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="홍길동"
+                    value={newEmpName}
+                    onChange={e => setNewEmpName(e.target.value)}
+                  />
+                </div>
+                <div className="pm-new-emp-field">
+                  <label>사번 *</label>
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="예: 2026-0012"
+                    value={newEmpNumber}
+                    onChange={e => setNewEmpNumber(e.target.value)}
+                  />
+                </div>
+                <div className="pm-new-emp-field">
+                  <label>부서</label>
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="예: 연구개발팀"
+                    value={newEmpDept}
+                    onChange={e => setNewEmpDept(e.target.value)}
+                  />
+                </div>
+                <div className="pm-new-emp-field">
+                  <label>직급</label>
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="예: 선임연구원"
+                    value={newEmpPosition}
+                    onChange={e => setNewEmpPosition(e.target.value)}
+                  />
+                </div>
+                <div className="pm-new-emp-field">
+                  <label>입사일</label>
+                  <input
+                    type="date"
+                    className="input"
+                    value={newEmpHireDate}
+                    onChange={e => setNewEmpHireDate(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="pm-new-emp-actions">
+                <div className="pm-new-emp-hint">
+                  급여·4대보험은 월별 급여대장 업로드 시 자동으로 매칭됩니다.
+                </div>
+                <button
+                  className="pm-apply-btn"
+                  onClick={handleCreateNewEmployee}
+                  disabled={savingNewEmp || !newEmpName.trim() || !newEmpNumber.trim()}
+                  style={{ height: 32, padding: '0 16px' }}
+                >
+                  {savingNewEmp ? '등록 중...' : '직원 등록'}
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}

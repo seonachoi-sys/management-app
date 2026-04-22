@@ -288,3 +288,69 @@
 .pm-role-toggle.pm-role-co:hover {
   background: #dae6f9;
 }
+
+/* ═══ 신규 직원 등록 하위 폼 ═══ */
+.pm-new-emp-toggle {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 0.5px dashed var(--c-line, #d0d0d0);
+}
+.pm-new-emp-link {
+  background: transparent;
+  border: none;
+  color: var(--c-accent, #2f6ce5);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 0;
+  font-weight: 500;
+}
+.pm-new-emp-link:hover {
+  text-decoration: underline;
+}
+
+.pm-new-emp-panel {
+  margin-top: 10px;
+  padding: 14px 16px;
+  background: var(--c-bg, #fff);
+  border: 0.5px solid var(--c-line, #e5e5e5);
+  border-radius: 8px;
+}
+.pm-new-emp-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text, #1a1a1a);
+  margin-bottom: 10px;
+}
+.pm-new-emp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+.pm-new-emp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.pm-new-emp-field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-text-2, #555);
+}
+.pm-new-emp-field .input {
+  height: 30px;
+  font-size: 12px;
+}
+.pm-new-emp-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 0.5px solid var(--c-line-light, #f0f0f0);
+}
+.pm-new-emp-hint {
+  font-size: 11px;
+  color: var(--c-text-3, #888);
+  flex: 1;
+}
