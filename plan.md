@@ -370,12 +370,33 @@ interface Task {
 
 ### Step 3: 카드/매트릭스 표시부 정리
 
-- `TaskCard.tsx`: `task.memo` → `task.reportNote`, `task.ceoFlag` → `task.reportTo === 'ceo'`
-- `EisenhowerMatrix.tsx`: 동일 (line 53, 93, 106-107)
-- `TaskDashboard.tsx`: 매트릭스 드래그 시 `ceoFlag` 업데이트 → `reportTo` 업데이트로 (line 1030 수정)
-- `services/obsidianService.ts`, `googleTasksService.ts`: 메모 매핑 변경
+- `TaskCard.tsx`:
+  - `task.memo` → `task.reportNote` (line 165, 169)
+  - `task.ceoFlag` → `task.reportTo === 'ceo' || task.reportTo === 'both'` (line 159)
+  - **확장점 props 미리 마련** (Step 8.5 체크리스트 펼침용):
+    - `expandedContent?: React.ReactNode` 슬롯 추가 (구현은 Step 8.5에서)
+    - 또는 `onExpand?: (taskId: string) => void` 핸들러
+    - 시그니처만 정의, 본 작업에서는 미사용
+- `EisenhowerMatrix.tsx`:
+  - line 53: `task.importance === 'high' || task.ceoFlag` → `... || task.reportTo === 'ceo' || task.reportTo === 'both'`
+  - line 93: `task.ceoFlag` → 동일 매핑
+  - line 106-107: `task.notes` (tooltip) → `task.reportNote`
+- `TaskDashboard.tsx`:
+  - line 681-685: Google Tasks 동기화 createTask 호출에 `reportNote: ''`, `reportTo: 'team'` 명시 (taskService 디폴트가 있지만 호출 측 명시가 명확)
+  - line 1030 매트릭스 드래그 시 `ceoFlag` 업데이트 — **결정 필요**: reportTo 자동 변경 여부 (3안 §7-Step3에서 사용자 확인)
+- `MeetingReportPanel.tsx`:
+  - CEO 필터: `t.ceoFlag === true` → `t.reportTo === 'ceo' || t.reportTo === 'both'` (line 729 등)
+  - 메모 표시: `t.memo` / `t.notes` / `t.ceoFlagReason` 모두 → `t.reportNote` (line 847, 1046, 1069, 1263, 1296, 1306, 1394, 1693, 2002)
+- `useMeetingReport.ts`:
+  - DelayedTaskItem.reason: `t.notes` → `t.reportNote` (line 84)
+  - CEO 필터 + reason: `t.ceoFlag` / `t.ceoFlagReason` → `reportTo` 기반 + `reportNote` (line 194, 213-214)
+- `services/obsidianService.ts`:
+  - 타입 시그니처(line 90, 92) `notes/ceoFlagReason` → `reportNote`
+  - 본문 `t.notes`(line 125), `t.ceoFlagReason`(line 136) → `t.reportNote`
+- `services/googleTasksService.ts`: **변경 없음** — Google Tasks API의 외부 `notes` 필드라 우리 Task.notes와 무관
+- 이중 쓰기 제거: `[TEMP]` 주석으로 표시한 4곳(taskService/TaskForm 2곳/useMigration) 모두 제거
 
-**커밋 3**: refactor(ui): reportNote/reportTo 표시부 정리
+**커밋 3**: refactor(ui): 표시부 reportNote/reportTo 전환 + 이중 쓰기 제거
 
 ### Step 4: CEO 격주 좌우 분할 + 탭 (통계 제외)
 
@@ -418,6 +439,62 @@ interface Task {
 - 모든 참조 파일에서 잔존 코드 제거 확인 (TypeScript 빌드로 검증)
 
 **커밋 8**: chore(task): 레거시 메모/CEO 필드 삭제
+
+### Step 8.5: 체크리스트 기반 진행률 자동 산출 (별도 epic)
+
+**진행 시점**: Step 7 완료 후 (Step 8 일정과 무관하게 병렬 가능)
+**범위**: 데이터 모델 + 입력폼 + 카드UI + 자동계산 + KPI 어댑터 5개 영역
+**분리 이유**: 회의록 개편(Step 1~7) 흐름과 인지/롤백/테스트 부담을 섞지 않기 위함. 5월 첫 격주 회의 전 회의록 완주가 우선.
+
+#### 결정 사항 (보존 — 향후 진행 시 재논의 불필요)
+
+**① 데이터 모델 (A안 채택)**
+```ts
+interface ChecklistItem {
+  id: string;          // crypto.randomUUID(), dnd 순서변경용
+  text: string;
+  done: boolean;
+}
+interface Task {
+  // ...
+  checklist: ChecklistItem[];  // 빈 배열이 디폴트
+  progressRate: number;        // checklist.length > 0 → 자동값(read-only)
+                               // checklist.length === 0 → 기존처럼 수동 입력
+}
+```
+
+**② 입력 위치**: `상세 내용` ↓ **체크리스트** ↓ `회의록 노출 영역`
+- "+ 항목 추가" 버튼 (Enter 키로도 추가)
+- 행 우측 ✕ 삭제 버튼 (호버 시 표시)
+- 순서변경: dnd-kit (이미 매트릭스에 사용 중, 추가 의존성 0)
+- 빈 텍스트 항목은 저장 시 자동 제외
+
+**③ 카드 표시**: 진행률 바 + 분수 카운트(3/5) + 펼침 토글 시 체크리스트 본문
+- Step 3에서 미리 마련한 `expandedContent` 슬롯 활용 (카드 컴포넌트 추가 수정 없이 Step 8.5에서 체크리스트 펼침 추가 가능)
+- 보고서(MeetingReportPanel)에서는 진행률 바 + 분수만 (체크리스트 본문 미노출 — reportNote가 그 역할)
+
+**④ 마이그레이션**: dry-run + apply 패턴
+- 신규 스크립트 `scripts/migrate-task-checklist.js`
+- 171건에 `checklist: []` 추가, progress 값 그대로 보존
+- 위험도 낮음 (필드 추가만)
+
+**⑤ KPI 통합 (C안 채택)**
+- `src/components/common/ChecklistEditor.tsx` 신규 공유 컴포넌트
+  - props: `items, onChange, allowReorder?, allowAddRemove?`
+  - 내부 모델: `{ id, text, done }`
+- KpiPanel: 어댑터로 변환 (`milestone.label` ↔ `item.text`, id는 인덱스 fallback)
+  - KpiMilestone 데이터 모델 자체는 변경하지 않음 (KPI 쪽 위험 부담 회피)
+- TaskForm: 직접 ChecklistItem 사용
+
+#### Step 8.5 작업 단계 (epic 분할)
+
+| 단계 | 내용 |
+|---|---|
+| 8.5-1 | 마이그레이션 스크립트 + dry-run + apply (171건 빈 배열 추가) |
+| 8.5-2 | Task 타입 + ChecklistEditor 공유 컴포넌트 작성 |
+| 8.5-3 | TaskForm 통합 (입력 위치 + 자동 진행률 계산) |
+| 8.5-4 | TaskCard에 체크리스트 펼침 (Step 3 expandedContent 슬롯 사용) |
+| 8.5-5 | KpiPanel 어댑터 적용 (선택 — 별도 진행 가능) |
 
 ---
 

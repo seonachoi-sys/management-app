@@ -87,9 +87,9 @@ export function formatReportMarkdown(
   reportType: string,
   periodLabel: string,
   stats: { total: number; incomplete: number; completed: number; delayed: number },
-  incompleteByCategory: { category: string; tasks: Array<{ title: string; assigneeName: string; progressRate: number; dueDate?: Date | null; daysLeft?: number | null; notes?: string }> }[],
+  incompleteByCategory: { category: string; tasks: Array<{ title: string; assigneeName: string; progressRate: number; dueDate?: Date | null; daysLeft?: number | null; reportNote?: string }> }[],
   completedByCategory: { category: string; tasks: Array<{ title: string; assigneeName: string; completedDate?: string }> }[],
-  ceoItems: Array<{ title: string; assigneeName: string; ceoFlagReason?: string; notes?: string }>,
+  ceoItems: Array<{ title: string; assigneeName: string; reportNote?: string }>,
 ): string {
   const now = new Date();
   const lines: string[] = [];
@@ -122,7 +122,7 @@ export function formatReportMarkdown(
           ? (t.daysLeft < 0 ? `⚠️ D+${Math.abs(t.daysLeft)}` : `D-${t.daysLeft}`)
           : '';
         lines.push(`- [ ] **${t.title}** — ${t.assigneeName} · ${t.progressRate}% ${dday}`);
-        if (t.notes) lines.push(`  - 메모: ${t.notes}`);
+        if (t.reportNote) lines.push(`  - 메모: ${t.reportNote}`);
       }
       lines.push('');
     }
@@ -133,7 +133,7 @@ export function formatReportMarkdown(
     lines.push('## CEO 결재/검토 필요');
     for (const t of ceoItems) {
       lines.push(`- **${t.title}** — ${t.assigneeName}`);
-      if (t.ceoFlagReason) lines.push(`  - 사유: ${t.ceoFlagReason}`);
+      if (t.reportNote) lines.push(`  - 사유: ${t.reportNote}`);
     }
     lines.push('');
   }

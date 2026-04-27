@@ -49,8 +49,8 @@ function classifyTask(task: Task): Quadrant {
     isUrgent = daysLeft <= 3;
   }
 
-  // 중요도: importance 필드 기준, ceoFlag true면 자동 중요
-  const isImportant = task.importance === 'high' || task.ceoFlag;
+  // 중요도: importance 필드 기준, CEO 보고 대상이면 자동 중요
+  const isImportant = task.importance === 'high' || task.reportTo === 'ceo' || task.reportTo === 'both';
 
   if (isUrgent && isImportant) return 'q1';
   if (!isUrgent && isImportant) return 'q2';
@@ -90,7 +90,7 @@ function DraggableCard({
     >
       <div className="em-card-header">
         <span className="em-card-title">{task.title}</span>
-        {task.ceoFlag && <span className="em-card-ceo">CEO</span>}
+        {(task.reportTo === 'ceo' || task.reportTo === 'both') && <span className="em-card-ceo">CEO</span>}
       </div>
       <div className="em-card-meta">
         <span className="em-card-assignee" style={{ color: color.text }}>{task.assigneeName || '미배정'}</span>
@@ -103,8 +103,8 @@ function DraggableCard({
           <span className="em-card-progress">{task.progressRate}%</span>
         )}
       </div>
-      {task.notes && (
-        <div className="em-card-tooltip" title={task.notes}>📋</div>
+      {task.reportNote && (
+        <div className="em-card-tooltip" title={task.reportNote}>📋</div>
       )}
     </div>
   );

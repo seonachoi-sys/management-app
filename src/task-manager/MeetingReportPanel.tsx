@@ -211,7 +211,7 @@ function renderTaskList(tasks: Task[], showProgress = true) {
             {isDelayed ? `D+${Math.abs(daysLeft)}` : `D-${daysLeft}`}
           </span>
         )}
-        {t.notes && <span className="rpt-item-note" title={t.notes}>📋</span>}
+        {t.reportNote && <span className="rpt-item-note" title={t.reportNote}>📋</span>}
       </div>
     );
   });
@@ -579,7 +579,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
 
     const ceoDecision = reportTasks.filter((t) => {
       if (t.status === '완료') return false;
-      return t.ceoFlag || t.status === '보류';
+      return (t.reportTo === 'ceo' || t.reportTo === 'both') || t.status === '보류';
     }).filter(notHidden);
 
     return { planned, planCompleted, planInProgress, planRemaining, upcoming, ceoDecision };
@@ -611,7 +611,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
 
     const ceoHidden = reportTasks.filter((t) => {
       if (t.status === '완료') return false;
-      return (t.ceoFlag || t.status === '보류') && isHidden(t);
+      return ((t.reportTo === 'ceo' || t.reportTo === 'both') || t.status === '보류') && isHidden(t);
     }).length;
 
     return { planned: plannedHidden, upcoming: upcomingHidden, ceoDecision: ceoHidden };
@@ -726,7 +726,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   // CEO 결재 필요 업무
   const ceoItems = useMemo(() => {
     if (reportType === '격주') return biweeklyData?.ceoDecision || [];
-    return incompleteTasks.filter((t) => t.ceoFlag);
+    return incompleteTasks.filter((t) => t.reportTo === 'ceo' || t.reportTo === 'both');
   }, [reportType, biweeklyData, incompleteTasks]);
 
   // 클립보드 복사
@@ -762,7 +762,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     if (ceoItems.length > 0) {
       text += '\n■ CEO 결재/검토 필요\n';
       ceoItems.forEach((t) => {
-        text += `  - ${t.title} (${t.assigneeName || ''}) - ${t.ceoFlagReason}\n`;
+        text += `  - ${t.title} (${t.assigneeName || ''}) - ${t.reportNote || ''}\n`;
       });
     }
 
@@ -788,7 +788,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
             assigneeName: t.assigneeName || '',
             progressRate: t.progressRate || 0,
             daysLeft,
-            notes: t.notes || '',
+            reportNote: t.reportNote || '',
           };
         }),
       }));
@@ -808,8 +808,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       const ceoForMd = ceoItems.map((t) => ({
         title: t.title,
         assigneeName: t.assigneeName || '',
-        ceoFlagReason: t.ceoFlagReason || '',
-        notes: t.notes || '',
+        reportNote: t.reportNote || '',
       }));
 
       const markdown = formatReportMarkdown(
@@ -843,8 +842,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       progressRate: t.progressRate || 0,
       dueDate: dd ? format(dd, 'yyyy.MM.dd') : '',
       completedDate: cd ? format(cd, 'yyyy.MM.dd') : '',
-      memo: t.memo || '',
-      notes: mode === 'ceo' ? (t.ceoFlagReason || t.notes || '') : (t.notes || ''),
+      reportNote: t.reportNote || '',
       meetingNote: taskNotes[t.taskId] || '',
     };
   }, [taskNotes]);
@@ -1043,7 +1041,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
                     <span className="rpt-item-title">{t.title}</span>
                     <span className="rpt-item-assignee">{t.assigneeName}</span>
                     <span className="rpt-item-tag rpt-tag-red">{delayDays}일 지연</span>
-                    {t.notes && <span className="rpt-item-note" title={t.notes}>📋</span>}
+                    {t.reportNote && <span className="rpt-item-note" title={t.reportNote}>📋</span>}
                   </div>
                 );
               })}
@@ -1066,7 +1064,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
                     <span className="rpt-item-title">{t.title}</span>
                     <span className="rpt-item-assignee">{t.assigneeName}</span>
                     <span className="rpt-item-tag rpt-tag-red">{delayDays}일 지연</span>
-                    {t.notes && <span className="rpt-item-note" title={t.notes}>📋</span>}
+                    {t.reportNote && <span className="rpt-item-note" title={t.reportNote}>📋</span>}
                   </div>
                 );
               })}
@@ -1131,8 +1129,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       if (t.status === '완료') return null;
       const parts: string[] = [];
       if (t.progressRate > 0) parts.push(`${t.progressRate}%`);
-      if (t.memo) parts.push(t.memo);
-      else if (t.notes) parts.push(t.notes);
+      if (t.reportNote) parts.push(t.reportNote);
       else if (t.status === '보류') parts.push('보류 중');
       else if (t.status === '지연') parts.push('마감 초과');
       return parts.length > 0 ? parts.join(' · ') : null;
@@ -1260,7 +1257,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
                     <span className="rpt-item-title">{t.title}</span>
                     {dd && <span className="rpt-item-date">{format(dd, 'M.dd')}</span>}
                   </div>
-                  {t.memo && <div style={{ fontSize: 11, color: '#888', marginLeft: 12, marginTop: 1 }}>└ {t.memo}</div>}
+                  {t.reportNote && <div style={{ fontSize: 11, color: '#888', marginLeft: 12, marginTop: 1 }}>└ {t.reportNote}</div>}
                   <textarea
                     className="rpt-row-note"
                     placeholder="비고"
@@ -1293,7 +1290,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
                   <div className="rpt-item" style={{ flex: 1 }}>
                     <span className="rpt-item-title">{t.title}</span>
                     <span className="rpt-item-assignee">{t.assigneeName}</span>
-                    <span className="rpt-item-reason">{t.ceoFlagReason || t.notes || (t.status === '보류' ? '보류 중' : '')}</span>
+                    <span className="rpt-item-reason">{t.reportNote || (t.status === '보류' ? '보류 중' : '')}</span>
                   </div>
                   <button
                     type="button"
@@ -1303,7 +1300,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
                   >
                     ×
                   </button>
-                  {t.memo && <div style={{ fontSize: 11, color: '#888', marginLeft: 12, marginTop: 1, flexBasis: '100%' }}>└ {t.memo}</div>}
+                  {t.reportNote && <div style={{ fontSize: 11, color: '#888', marginLeft: 12, marginTop: 1, flexBasis: '100%' }}>└ {t.reportNote}</div>}
                 </div>
               ))}
             </div>
@@ -1391,7 +1388,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
                 <div key={t.taskId} className="rpt-item rpt-item-delayed">
                   <span className="rpt-item-title">{t.title}</span>
                   <span className="rpt-item-tag rpt-tag-red">{statusLabel}</span>
-                  <span className="rpt-item-reason">{t.notes || '사유 미입력'}</span>
+                  <span className="rpt-item-reason">{t.reportNote || '사유 미입력'}</span>
                 </div>
               );
             }))
@@ -1999,7 +1996,7 @@ function renderSnapshotPlanResult(tasks: MeetingTaskSnapshot[]) {
                 <span style={{ fontSize: 11, color: 'var(--c-accent,#2f6ce5)' }}>{t.progressRate}%</span>
               )}
               {t.completedDate && <span style={{ fontSize: 11, color: 'var(--c-text-3,#888)' }}>{t.completedDate} 완료</span>}
-              {t.memo && <div style={{ fontSize: 11, color: 'var(--c-text-2,#666)' }}>└ {t.memo}</div>}
+              {t.reportNote && <div style={{ fontSize: 11, color: 'var(--c-text-2,#666)' }}>└ {t.reportNote}</div>}
             </div>
             <div className="rpt-compare-col-note">
               {t.meetingNote ? (
@@ -2039,7 +2036,7 @@ function renderSnapshotTitleNote(tasks: MeetingTaskSnapshot[]) {
                 {t.dueDate && <span style={{ marginLeft: 6 }}>· {t.dueDate}</span>}
                 {t.completedDate && <span style={{ marginLeft: 6, color: 'var(--c-green,#0d9f61)' }}>· {t.completedDate} 완료</span>}
               </span>
-              {t.memo && <div style={{ fontSize: 11, color: 'var(--c-text-2,#666)' }}>└ {t.memo}</div>}
+              {t.reportNote && <div style={{ fontSize: 11, color: 'var(--c-text-2,#666)' }}>└ {t.reportNote}</div>}
             </div>
             <div className="rpt-compare-col-note">
               {t.meetingNote ? (

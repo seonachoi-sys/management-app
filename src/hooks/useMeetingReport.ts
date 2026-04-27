@@ -81,7 +81,7 @@ function toDelayed(tasks: Task[]): DelayedTaskItem[] {
       assigneeName: t.assigneeName || '미배정',
       originalDueDate: due ? format(due, 'yyyy.MM.dd') : '-',
       delayDays: due ? Math.abs(differenceInDays(due, new Date())) : 0,
-      reason: t.notes || '',
+      reason: t.reportNote || '',
     };
   });
 }
@@ -191,7 +191,7 @@ export function useMeetingReport() {
         return due && due < now && t.status !== '완료';
       });
       const upcoming = tasks.filter((t) => inRange(t.dueDate, rangeEnd, nextEnd) && t.status !== '완료');
-      const ceoItems = tasks.filter((t) => t.ceoFlag && t.status !== '완료');
+      const ceoItems = tasks.filter((t) => (t.reportTo === 'ceo' || t.reportTo === 'both') && t.status !== '완료');
 
       const weeklyBase: WeeklyReport = {
         period: `${format(rangeStart, 'yyyy.MM.dd')} ~ ${format(rangeEnd, 'yyyy.MM.dd')}`,
@@ -210,8 +210,8 @@ export function useMeetingReport() {
         ceoDecisionItems: ceoItems.map((t): CeoDecisionItem => ({
           title: t.title,
           assigneeName: t.assigneeName || '미배정',
-          reason: t.notes || '',
-          ceoFlagReason: t.ceoFlagReason || '',
+          reason: t.reportNote || '',
+          ceoFlagReason: t.reportNote || '',  // 인터페이스 키 보존, 값은 reportNote 일원화 (Step 8에서 키 정리)
         })),
         riskItems: toDelayed(delayed),
       };

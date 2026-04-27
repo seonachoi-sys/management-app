@@ -24,7 +24,10 @@ export interface MeetingTaskSnapshot {
   progressRate?: number;
   dueDate?: string; // yyyy.MM.dd
   completedDate?: string;
+  reportNote?: string; // 회의록 노출용 통합 메모
+  /** @deprecated Step 8 시점에 reportNote로 정리 — 이전 회의록 호환용 */
   memo?: string;
+  /** @deprecated Step 8 시점에 reportNote로 정리 — 이전 회의록 호환용 */
   notes?: string;
   meetingNote?: string; // 회의 중 추가 기재한 비고
   isManual?: boolean; // 회의 중 수동 추가된 안건

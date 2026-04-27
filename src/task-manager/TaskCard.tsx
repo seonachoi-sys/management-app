@@ -12,6 +12,8 @@ interface Props {
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onAddSubTask: (parentId: string) => void;
+  /** Step 8.5 체크리스트 펼침 슬롯 — 카드 본문 아래 추가 콘텐츠 렌더 */
+  expandedContent?: React.ReactNode;
 }
 
 const ALL_STATUSES: TaskStatus[] = ['대기', '진행중', '완료', '지연', '보류'];
@@ -156,17 +158,17 @@ function TaskRow({
             {task.priority}
           </span>
           <span className="tm-badge tm-badge-category">{task.category}</span>
-          {task.ceoFlag && <span className="tm-badge tm-badge-ceo">CEO</span>}
+          {(task.reportTo === 'ceo' || task.reportTo === 'both') && <span className="tm-badge tm-badge-ceo">CEO</span>}
         </div>
 
         {task.description && (
           <div className="tm-task-desc">{task.description}</div>
         )}
-        {task.memo && (
+        {task.reportNote && (
           <div style={{
             fontSize: 12, color: '#888', marginTop: 2,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
-          }}>{task.memo}</div>
+          }}>{task.reportNote}</div>
         )}
 
         <div className="tm-task-meta">
@@ -206,7 +208,7 @@ function TaskRow({
   );
 }
 
-export default function TaskCard({ task, childTasks, currentUserName, onStatusChange, onEdit, onDelete, onAddSubTask }: Props) {
+export default function TaskCard({ task, childTasks, currentUserName, onStatusChange, onEdit, onDelete, onAddSubTask, expandedContent }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const hasChildren = childTasks.length > 0;
@@ -231,6 +233,9 @@ export default function TaskCard({ task, childTasks, currentUserName, onStatusCh
           onEdit={onEdit}
           onDelete={onDelete}
         />
+
+        {/* Step 8.5 체크리스트 등 확장 콘텐츠 슬롯 */}
+        {expandedContent}
 
         {/* 아코디언 토글 버튼 */}
         {hasChildren && (

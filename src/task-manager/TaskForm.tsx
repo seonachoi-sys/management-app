@@ -76,14 +76,8 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
       if (!task) return; // 신규 업무는 폼 저장 시 함께 저장
       setReportNoteSaveStatus('저장 중...');
       try {
-        // [TEMP] Bridge: Step 3에서 표시부 reportNote로 전환 후 제거
-        // 제거 시점: Step 3 완료 시
-        // 관련 이슈: plan.md §7 Step 3
-        const isCeo = form.reportTo === 'ceo' || form.reportTo === 'both';
         await updateTask(task.taskId, {
           reportNote: value,
-          memo: value,
-          ceoFlagReason: isCeo ? value : '',
         } as Partial<Task>, userName, userName);
         setReportNoteSaveStatus('저장됨');
         setTimeout(() => setReportNoteSaveStatus(''), 2000);
@@ -125,7 +119,6 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
     }
 
     const reportNoteTrim = form.reportNote.trim();
-    const isCeo = !isParentTask && (form.reportTo === 'ceo' || form.reportTo === 'both');
 
     const data: Partial<Task> = {
       title: form.title.trim(),
@@ -142,16 +135,8 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
         : null,
       progressRate: isParentTask ? 0 : (Number(form.progressRate) || 0),
       kpiLinked: null,
-      // 신규 필드
       reportNote: isParentTask ? '' : reportNoteTrim,
       reportTo: isParentTask ? null : form.reportTo,
-      // [TEMP] Bridge: Step 3에서 표시부 reportNote로 전환 후 제거
-      // 제거 시점: Step 3 완료 시
-      // 관련 이슈: plan.md §7 Step 3
-      memo: isParentTask ? '' : reportNoteTrim,
-      notes: '',
-      ceoFlag: isCeo,
-      ceoFlagReason: isCeo ? reportNoteTrim : '',
       isRecurring: isParentTask ? false : form.isRecurring,
       recurrenceRule: (!isParentTask && form.isRecurring) ? form.recurrenceRule : null,
       importance: isParentTask ? 'normal' : form.importance,

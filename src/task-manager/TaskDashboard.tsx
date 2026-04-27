@@ -678,11 +678,10 @@ export default function TaskDashboard() {
             dueDate: gt.due ? (await import('firebase/firestore')).Timestamp.fromDate(new Date(gt.due)) : null,
             completedDate: null,
             progressRate: gt.status === 'completed' ? 100 : 0,
-            notes: '',
+            reportNote: '',
+            reportTo: 'team',
             isRecurring: false,
             recurrenceRule: null,
-            ceoFlag: false,
-            ceoFlagReason: '',
             googleTaskId: gt.googleTaskId,
             startDate: null,
             kpiLinked: null,
@@ -1024,10 +1023,9 @@ export default function TaskDashboard() {
                 updates.dueDate = Timestamp.fromDate(newDue);
               }
 
-              // 중요도
+              // 중요도 — 매트릭스 드래그는 reportTo를 변경하지 않음 (A안: 회의록 노출은 명시적 폼 선택으로만)
               const isImportant = quadrant === 'q1' || quadrant === 'q2';
               updates.importance = isImportant ? 'high' : 'normal';
-              updates.ceoFlag = quadrant === 'q1' && (task?.ceoFlag || false);
               updates.priority = isImportant ? '높음' : '보통';
 
               try {
