@@ -49,6 +49,7 @@ export function useMigration(userId: string | undefined) {
       let count = 0;
       for (const t of tasks) {
         try {
+          const collabNote = t.collaborationTeam ? `협업: ${t.collaborationTeam}` : '';
           await createTask(
             {
               title: t.title,
@@ -63,11 +64,18 @@ export function useMigration(userId: string | undefined) {
               completedDate: t.completedAt ? Timestamp.fromDate(new Date(t.completedAt)) : null,
               progressRate: t.status === 'done' ? 100 : 0,
               kpiLinked: null,
-              notes: t.collaborationTeam ? `협업: ${t.collaborationTeam}` : '',
-              isRecurring: false,
-              recurrenceRule: null,
+              // 신규 필드
+              reportNote: collabNote,
+              reportTo: t.isCeoDecision ? 'ceo' as const : null,
+              // [TEMP] Bridge: Step 3에서 표시부 reportNote로 전환 후 제거
+              // 제거 시점: Step 3 완료 시
+              // 관련 이슈: plan.md §7 Step 3
+              notes: '',
+              memo: collabNote,
               ceoFlag: t.isCeoDecision || false,
               ceoFlagReason: '',
+              isRecurring: false,
+              recurrenceRule: null,
               googleTaskId: null,
             },
             userId,

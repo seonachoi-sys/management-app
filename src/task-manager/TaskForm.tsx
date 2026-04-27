@@ -35,12 +35,11 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
     startDate: tsToString(task?.startDate),
     dueDate: tsToString(task?.dueDate),
     progressRate: task?.progressRate || 0,
-    memo: task?.memo || '',
-    notes: task?.notes || '',
+    reportNote: task?.reportNote || '',
+    // 신규 등록은 'team' 디폴트, 수정 시 기존 값(마이그레이션된 168건은 null) 그대로
+    reportTo: (task?.reportTo ?? (task ? null : 'team')) as 'ceo' | 'team' | 'both' | null,
     isRecurring: task?.isRecurring || false,
     recurrenceRule: task?.recurrenceRule || null as RecurrenceRule,
-    ceoFlag: task?.ceoFlag || false,
-    ceoFlagReason: task?.ceoFlagReason || '',
     importance: task?.importance || 'normal',
   });
 
@@ -70,30 +69,38 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
     return Array.from(names);
   })();
 
-  // 메모 디바운스 자동저장
-  const [memoSaveStatus, setMemoSaveStatus] = useState<'' | '저장 중...' | '저장됨'>('');
-  const debouncedMemoSave = useDebouncedCallback(
-    async (memoValue: string) => {
+  // 회의록 메모 디바운스 자동저장
+  const [reportNoteSaveStatus, setReportNoteSaveStatus] = useState<'' | '저장 중...' | '저장됨'>('');
+  const debouncedReportNoteSave = useDebouncedCallback(
+    async (value: string) => {
       if (!task) return; // 신규 업무는 폼 저장 시 함께 저장
-      setMemoSaveStatus('저장 중...');
+      setReportNoteSaveStatus('저장 중...');
       try {
-        await updateTask(task.taskId, { memo: memoValue } as Partial<Task>, userName, userName);
-        setMemoSaveStatus('저장됨');
-        setTimeout(() => setMemoSaveStatus(''), 2000);
+        // [TEMP] Bridge: Step 3에서 표시부 reportNote로 전환 후 제거
+        // 제거 시점: Step 3 완료 시
+        // 관련 이슈: plan.md §7 Step 3
+        const isCeo = form.reportTo === 'ceo' || form.reportTo === 'both';
+        await updateTask(task.taskId, {
+          reportNote: value,
+          memo: value,
+          ceoFlagReason: isCeo ? value : '',
+        } as Partial<Task>, userName, userName);
+        setReportNoteSaveStatus('저장됨');
+        setTimeout(() => setReportNoteSaveStatus(''), 2000);
       } catch {
-        setMemoSaveStatus('');
+        setReportNoteSaveStatus('');
       }
     },
     1000,
   );
 
-  const handleMemoChange = useCallback(
+  const handleReportNoteChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const value = e.target.value;
-      setForm((f) => ({ ...f, memo: value }));
-      debouncedMemoSave(value);
+      setForm((f) => ({ ...f, reportNote: value }));
+      debouncedReportNoteSave(value);
     },
-    [debouncedMemoSave],
+    [debouncedReportNoteSave],
   );
 
   const handleChange = (
@@ -117,6 +124,9 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
       return null;
     }
 
+    const reportNoteTrim = form.reportNote.trim();
+    const isCeo = !isParentTask && (form.reportTo === 'ceo' || form.reportTo === 'both');
+
     const data: Partial<Task> = {
       title: form.title.trim(),
       description: isParentTask ? '' : form.description.trim(),
@@ -132,12 +142,18 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
         : null,
       progressRate: isParentTask ? 0 : (Number(form.progressRate) || 0),
       kpiLinked: null,
-      memo: isParentTask ? '' : form.memo.trim(),
-      notes: isParentTask ? '' : form.notes.trim(),
+      // 신규 필드
+      reportNote: isParentTask ? '' : reportNoteTrim,
+      reportTo: isParentTask ? null : form.reportTo,
+      // [TEMP] Bridge: Step 3에서 표시부 reportNote로 전환 후 제거
+      // 제거 시점: Step 3 완료 시
+      // 관련 이슈: plan.md §7 Step 3
+      memo: isParentTask ? '' : reportNoteTrim,
+      notes: '',
+      ceoFlag: isCeo,
+      ceoFlagReason: isCeo ? reportNoteTrim : '',
       isRecurring: isParentTask ? false : form.isRecurring,
       recurrenceRule: (!isParentTask && form.isRecurring) ? form.recurrenceRule : null,
-      ceoFlag: isParentTask ? false : form.ceoFlag,
-      ceoFlagReason: (!isParentTask && form.ceoFlag) ? form.ceoFlagReason : '',
       importance: isParentTask ? 'normal' : form.importance,
     };
 
@@ -162,16 +178,14 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
       ...f,
       title: '',
       description: '',
-      memo: '',
+      reportNote: '',
+      reportTo: 'team',
       status: '대기' as TaskStatus,
       startDate: '',
       dueDate: '',
       progressRate: 0,
-      notes: '',
       isRecurring: false,
       recurrenceRule: null,
-      ceoFlag: false,
-      ceoFlagReason: '',
       importance: 'normal',
     }));
   };
@@ -237,30 +251,6 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
                 />
               </label>
 
-              <label>
-                보고서 메모
-                <div style={{ position: 'relative' }}>
-                  <textarea
-                    name="memo"
-                    value={form.memo}
-                    onChange={handleMemoChange}
-                    placeholder="대표이사 보고서에 표시할 내용 (선택)"
-                    rows={2}
-                  />
-                  {memoSaveStatus && (
-                    <span style={{
-                      position: 'absolute', right: 8, bottom: 8,
-                      fontSize: 11, color: memoSaveStatus === '저장됨' ? 'var(--c-green)' : 'var(--c-text-3)',
-                    }}>
-                      {memoSaveStatus}
-                    </span>
-                  )}
-                </div>
-                <span style={{ fontSize: 11, color: 'var(--c-text-4)', marginTop: 2, display: 'block' }}>
-                  입력 시 회의 자료에 업무명 아래 표시됩니다
-                </span>
-              </label>
-
               <div className="tm-form-row-3">
                 <label>
                   담당자
@@ -318,17 +308,6 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
                 </label>
               </div>
 
-              <label>
-                메모
-                <textarea
-                  name="notes"
-                  value={form.notes}
-                  onChange={handleChange}
-                  placeholder="참고 사항, 비고"
-                  rows={2}
-                />
-              </label>
-
               <div className="tm-form-row">
                 <label className="tm-checkbox">
                   <input
@@ -355,27 +334,87 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
                 )}
               </div>
 
-              <label className="tm-checkbox">
-                <input
-                  name="ceoFlag"
-                  type="checkbox"
-                  checked={form.ceoFlag}
-                  onChange={handleChange}
-                />
-                CEO 보고/결재 필요
-              </label>
+              {/* ─── 회의록 노출 영역 ─── */}
+              <div style={{
+                marginTop: 14,
+                padding: 12,
+                border: '0.5px solid #e5e5e5',
+                borderRadius: 10,
+                background: '#fafafa',
+              }}>
+                <div style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: 'var(--c-text-2)',
+                  marginBottom: 10,
+                  paddingBottom: 8,
+                  borderBottom: '0.5px solid #e5e5e5',
+                }}>
+                  📋 회의록 노출 영역
+                </div>
 
-              {form.ceoFlag && (
                 <label>
-                  CEO 플래그 사유
-                  <input
-                    name="ceoFlagReason"
-                    value={form.ceoFlagReason}
-                    onChange={handleChange}
-                    placeholder="보고/결재가 필요한 이유"
-                  />
+                  어느 회의에 보고?
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+                    {[
+                      { value: '', label: '보고 안 함', hint: '노출 안 됨' },
+                      { value: 'team', label: '팀 월간', hint: '매월 팀 회의 (디폴트)' },
+                      { value: 'ceo', label: 'CEO 격주', hint: '대표이사 격주 보고' },
+                      { value: 'both', label: '둘 다', hint: '팀 + CEO 모두' },
+                    ].map((opt) => {
+                      const checked = (form.reportTo ?? '') === opt.value;
+                      return (
+                        <label key={opt.value} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          padding: '6px 8px',
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                          background: checked ? '#E6F1FB' : 'transparent',
+                          fontSize: 13,
+                        }}>
+                          <input
+                            type="radio"
+                            name="reportTo"
+                            checked={checked}
+                            onChange={() => setForm((f) => ({
+                              ...f,
+                              reportTo: (opt.value === '' ? null : opt.value) as 'ceo' | 'team' | 'both' | null,
+                            }))}
+                          />
+                          <strong>{opt.label}</strong>
+                          <span style={{ color: 'var(--c-text-4)', fontSize: 12 }}>— {opt.hint}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </label>
-              )}
+
+                <label style={{ marginTop: 10, display: 'block' }}>
+                  회의록 메모
+                  <div style={{ position: 'relative' }}>
+                    <textarea
+                      name="reportNote"
+                      value={form.reportNote}
+                      onChange={handleReportNoteChange}
+                      placeholder="진행상황 / 이슈 / 결정 필요 / CEO 보고 사유"
+                      rows={3}
+                    />
+                    {reportNoteSaveStatus && (
+                      <span style={{
+                        position: 'absolute', right: 8, bottom: 8,
+                        fontSize: 11, color: reportNoteSaveStatus === '저장됨' ? 'var(--c-green)' : 'var(--c-text-3)',
+                      }}>
+                        {reportNoteSaveStatus}
+                      </span>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--c-text-4)', marginTop: 2, display: 'block' }}>
+                    💡 여기 작성한 내용이 회의록에 노출됩니다
+                  </span>
+                </label>
+              </div>
 
             </>
           )}

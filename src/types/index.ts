@@ -25,16 +25,24 @@ export interface Task {
   completedDate: Timestamp | null;
   progressRate: number;
   kpiLinked: string | null;
+  /** @deprecated Step 8(2주 후)에 제거 예정. 신규 코드는 reportNote 사용 */
   notes: string;
   isRecurring: boolean;
   recurrenceRule: RecurrenceRule;
+  /** @deprecated Step 8(2주 후)에 제거 예정. 신규 코드는 reportTo 사용 */
   ceoFlag: boolean;
+  /** @deprecated Step 8(2주 후)에 제거 예정. 신규 코드는 reportNote 사용 */
   ceoFlagReason: string;
   importance: 'high' | 'normal';
   googleTaskId: string | null;
   lastModifiedBy: string | null;
   lastModifiedAt: Timestamp | null;
-  memo: string; // 보고서 메모 (대표이사 보고서에 표시)
+  /** @deprecated Step 8(2주 후)에 제거 예정. 신규 코드는 reportNote 사용 */
+  memo: string;
+  /** 회의록 노출용 통합 메모 — memo/notes/ceoFlagReason 통합 후속 필드 */
+  reportNote: string;
+  /** 어느 회의에 노출할지: 'ceo'=격주, 'team'=월간, 'both'=둘 다, null=노출 안 함 */
+  reportTo: 'ceo' | 'team' | 'both' | null;
   isNewDismissed: boolean;
   leadTimeDays: number | null; // 완료 시 자동계산: dueDate - completedAt (양수=조기, 음수=지연, 0=정시)
   createdAt: Timestamp;

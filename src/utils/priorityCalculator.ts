@@ -50,8 +50,8 @@ export function calculatePriorityScore(task: Partial<Task>): {
     score += 20;
   }
 
-  // CEO 플래그 보너스
-  if (task.ceoFlag) {
+  // CEO 보고 대상 보너스
+  if (task.reportTo === 'ceo' || task.reportTo === 'both') {
     score += 10;
   }
 

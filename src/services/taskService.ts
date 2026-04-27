@@ -91,6 +91,16 @@ export async function createTask(
 
   const now = serverTimestamp();
   const docRef = await addDoc(collection(db, TASKS), {
+    // 신규 필드 기본값 (호출 측이 누락해도 안전)
+    reportNote: '',
+    reportTo: 'team' as const,
+    // [TEMP] Bridge: Step 3에서 표시부 reportNote로 전환 후 제거
+    // 제거 시점: Step 3 완료 시
+    // 관련 이슈: plan.md §7 Step 3
+    memo: '',
+    notes: '',
+    ceoFlag: false,
+    ceoFlagReason: '',
     ...data,
     priorityScore,
     priority,
