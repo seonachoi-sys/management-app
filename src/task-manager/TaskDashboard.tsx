@@ -1077,6 +1077,7 @@ export default function TaskDashboard() {
         <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
           <EisenhowerMatrix
             tasks={tasks}
+            onCardClick={(t: Task) => { setEditingTask(t); setParentForNewTask(null); setShowForm(true); }}
             onQuadrantChange={async (taskId: string, quadrant: Quadrant) => {
               if (!user) return;
               const task = tasks.find(t => t.taskId === taskId);

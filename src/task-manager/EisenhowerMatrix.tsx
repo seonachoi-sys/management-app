@@ -62,9 +62,11 @@ function classifyTask(task: Task): Quadrant {
 function DraggableCard({
   task,
   dimmed,
+  onClick,
 }: {
   task: Task;
   dimmed: boolean;
+  onClick?: (task: Task) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task.taskId,
@@ -76,16 +78,24 @@ function DraggableCard({
   const daysLeft = dueDate ? differenceInDays(dueDate, new Date()) : null;
   const isDelayed = daysLeft !== null && daysLeft < 0 && task.status !== '완료';
 
+  // 드래그 중이 아닌 단순 클릭일 때만 onClick 발동
+  const handleClick = (e: React.MouseEvent) => {
+    if (isDragging) return;
+    e.stopPropagation();
+    onClick?.(task);
+  };
+
   return (
     <div
       ref={setNodeRef}
       {...attributes}
       {...listeners}
+      onClick={handleClick}
       className={`em-card ${isDelayed ? 'em-card-delayed' : ''} ${isDragging ? 'em-card-dragging' : ''}`}
       style={{
         borderLeftColor: color.border,
         opacity: dimmed ? 0.25 : 1,
-        cursor: 'grab',
+        cursor: isDragging ? 'grabbing' : 'pointer',
       }}
     >
       <div className="em-card-header">
@@ -134,11 +144,13 @@ function QuadrantZone({
   tasks,
   filterMember,
   totalCount,
+  onCardClick,
 }: {
   quadrant: Quadrant;
   tasks: Task[];
   filterMember: string;
   totalCount: number;
+  onCardClick?: (task: Task) => void;
 }) {
   const info = QUADRANT_INFO[quadrant];
   const { setNodeRef, isOver } = useDroppable({ id: quadrant });
@@ -163,6 +175,7 @@ function QuadrantZone({
             key={t.taskId}
             task={t}
             dimmed={!!filterMember && t.assigneeName !== filterMember}
+            onClick={onCardClick}
           />
         ))}
         {tasks.length === 0 && <div className="em-quad-empty">업무 없음</div>}
@@ -175,9 +188,10 @@ function QuadrantZone({
 interface Props {
   tasks: Task[];
   onQuadrantChange: (taskId: string, quadrant: Quadrant) => void;
+  onCardClick?: (task: Task) => void;
 }
 
-export default function EisenhowerMatrix({ tasks, onQuadrantChange }: Props) {
+export default function EisenhowerMatrix({ tasks, onQuadrantChange, onCardClick }: Props) {
   const [filterMember, setFilterMember] = useState('');
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [capturing, setCapturing] = useState(false);
@@ -328,10 +342,10 @@ export default function EisenhowerMatrix({ tasks, onQuadrantChange }: Props) {
       {/* 사사분면 그리드 */}
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="em-grid" ref={gridRef}>
-          <QuadrantZone quadrant="q1" tasks={quadrants.q1} filterMember={filterMember} totalCount={quadrants.q1.length} />
-          <QuadrantZone quadrant="q2" tasks={quadrants.q2} filterMember={filterMember} totalCount={quadrants.q2.length} />
-          <QuadrantZone quadrant="q3" tasks={quadrants.q3} filterMember={filterMember} totalCount={quadrants.q3.length} />
-          <QuadrantZone quadrant="q4" tasks={quadrants.q4} filterMember={filterMember} totalCount={quadrants.q4.length} />
+          <QuadrantZone quadrant="q1" tasks={quadrants.q1} filterMember={filterMember} totalCount={quadrants.q1.length} onCardClick={onCardClick} />
+          <QuadrantZone quadrant="q2" tasks={quadrants.q2} filterMember={filterMember} totalCount={quadrants.q2.length} onCardClick={onCardClick} />
+          <QuadrantZone quadrant="q3" tasks={quadrants.q3} filterMember={filterMember} totalCount={quadrants.q3.length} onCardClick={onCardClick} />
+          <QuadrantZone quadrant="q4" tasks={quadrants.q4} filterMember={filterMember} totalCount={quadrants.q4.length} onCardClick={onCardClick} />
         </div>
 
         <DragOverlay>
