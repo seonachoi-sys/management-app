@@ -94,6 +94,7 @@ export async function createTask(
     // 신규 필드 기본값 (호출 측이 누락해도 안전)
     reportNote: '',
     reportTo: 'team' as const,
+    actionItems: [],
     ...data,
     priorityScore,
     priority,

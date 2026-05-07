@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { Task, TaskStatus } from '../types';
+import type { Task, TaskStatus, ActionItem } from '../types';
 import { formatShort, dDayLabel, daysLeft, toDate } from '../utils/dateUtils';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -12,6 +12,7 @@ interface Props {
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onAddSubTask: (parentId: string) => void;
+  onActionItemToggle?: (taskId: string, itemId: string, done: boolean) => void;
   /** Step 8.5 체크리스트 펼침 슬롯 — 카드 본문 아래 추가 콘텐츠 렌더 */
   expandedContent?: React.ReactNode;
 }
@@ -123,6 +124,7 @@ function TaskRow({
   onStatusChange,
   onEdit,
   onDelete,
+  onActionItemToggle,
 }: {
   task: Task;
   indent: number;
@@ -130,7 +132,12 @@ function TaskRow({
   onStatusChange: (taskId: string, status: TaskStatus) => void;
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
+  onActionItemToggle?: (taskId: string, itemId: string, done: boolean) => void;
 }) {
+  const [checklistOpen, setChecklistOpen] = useState(false);
+  const actionItems: ActionItem[] = task.actionItems || [];
+  const hasChecklist = actionItems.length > 0;
+  const doneCount = actionItems.filter((a) => a.done).length;
   const handleDelete = () => {
     const msg = indent === 0
       ? '이 상위업무와 하위업무 모두 삭제됩니다. 삭제하시겠습니까?'
@@ -161,9 +168,37 @@ function TaskRow({
           {(task.reportTo === 'ceo' || task.reportTo === 'both') && <span className="tm-badge tm-badge-ceo">CEO</span>}
         </div>
 
-        {task.description && (
+        {task.description && !hasChecklist && (
           <div className="tm-task-desc">{task.description}</div>
         )}
+
+        {hasChecklist && (
+          <div className="tm-task-checklist-wrap">
+            <button
+              type="button"
+              className="tm-task-checklist-toggle"
+              onClick={() => setChecklistOpen((v) => !v)}
+            >
+              <span className={`tm-checklist-arrow ${checklistOpen ? 'expanded' : ''}`}>▶</span>
+              <span>체크리스트 {doneCount}/{actionItems.length}</span>
+            </button>
+            {checklistOpen && (
+              <ul className="tm-task-checklist">
+                {actionItems.map((item) => (
+                  <li key={item.id} className={`tm-task-checklist-item ${item.done ? 'done' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={item.done}
+                      onChange={(e) => onActionItemToggle?.(task.taskId, item.id, e.target.checked)}
+                    />
+                    <span>{item.text}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         {task.reportNote && (
           <div style={{
             fontSize: 12, color: '#888', marginTop: 2,
@@ -208,7 +243,7 @@ function TaskRow({
   );
 }
 
-export default function TaskCard({ task, childTasks, currentUserName, onStatusChange, onEdit, onDelete, onAddSubTask, expandedContent }: Props) {
+export default function TaskCard({ task, childTasks, currentUserName, onStatusChange, onEdit, onDelete, onAddSubTask, onActionItemToggle, expandedContent }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const hasChildren = childTasks.length > 0;
@@ -232,6 +267,7 @@ export default function TaskCard({ task, childTasks, currentUserName, onStatusCh
           onStatusChange={onStatusChange}
           onEdit={onEdit}
           onDelete={onDelete}
+          onActionItemToggle={onActionItemToggle}
         />
 
         {/* Step 8.5 체크리스트 등 확장 콘텐츠 슬롯 */}
@@ -267,6 +303,7 @@ export default function TaskCard({ task, childTasks, currentUserName, onStatusCh
                 onStatusChange={onStatusChange}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                onActionItemToggle={onActionItemToggle}
               />
             ))}
 
@@ -291,6 +328,7 @@ export default function TaskCard({ task, childTasks, currentUserName, onStatusCh
                       onStatusChange={onStatusChange}
                       onEdit={onEdit}
                       onDelete={onDelete}
+                      onActionItemToggle={onActionItemToggle}
                     />
                   </div>
                 ))}

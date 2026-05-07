@@ -9,6 +9,12 @@ export type RecurrenceRule = 'weekly' | 'monthly' | null;
 export const DEFAULT_TASK_CATEGORIES = ['경영관리', '재무', '인사', '기획', '일반업무'];
 export const DEFAULT_KPI_CATEGORIES = ['재무', '인사', '운영', '기획', '기타'];
 
+export interface ActionItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
 export interface Task {
   taskId: string;
   title: string;
@@ -20,6 +26,8 @@ export interface Task {
   priority: TaskPriority;
   priorityScore: number;
   parentTaskId: string | null; // 상위 업무 연결
+  /** 액션아이템 체크리스트 — 체크 시 progressRate 자동 계산 */
+  actionItems: ActionItem[];
   startDate: Timestamp | null;
   dueDate: Timestamp | null;
   completedDate: Timestamp | null;

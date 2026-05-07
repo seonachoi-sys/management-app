@@ -1,8 +1,30 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Timestamp } from 'firebase/firestore';
-import type { Task, TaskStatus, RecurrenceRule, Member } from '../types';
+import type { Task, TaskStatus, RecurrenceRule, Member, ActionItem } from '../types';
 import { updateTask } from '../services/taskService';
 import { useDebouncedCallback } from '../hooks/useDebounce';
+
+function newActionItemId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `ai_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function migrateDescriptionToActionItems(description: string): ActionItem[] {
+  if (!description.trim()) return [];
+  return description
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^[\s\-•·*\d.)]+/, '').trim())
+    .filter(Boolean)
+    .map((text) => ({ id: newActionItemId(), text, done: false }));
+}
+
+function calcProgressFromItems(items: ActionItem[]): number {
+  if (items.length === 0) return 0;
+  const done = items.filter((i) => i.done).length;
+  return Math.round((done / items.length) * 100);
+}
 
 interface Props {
   task: Task | null;
@@ -25,9 +47,17 @@ function tsToString(ts: Timestamp | null | undefined): string {
 export default function TaskForm({ task, tasks, members, categories, userName, onSave, onClose }: Props) {
   const defaultAssigneeName = task?.assigneeName || userName || '';
 
+  // 기존 description만 있는 업무는 진입 시 자동으로 actionItems로 변환
+  const initialActionItems: ActionItem[] = (() => {
+    if (task?.actionItems && task.actionItems.length > 0) return task.actionItems;
+    if (task?.description) return migrateDescriptionToActionItems(task.description);
+    return [];
+  })();
+
   const [form, setForm] = useState({
     title: task?.title || '',
     description: task?.description || '',
+    actionItems: initialActionItems,
     assigneeName: defaultAssigneeName,
     category: task?.category || (categories[0] || '일반업무'),
     status: task?.status || '대기' as TaskStatus,
@@ -42,6 +72,63 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
     recurrenceRule: task?.recurrenceRule || null as RecurrenceRule,
     importance: task?.importance || 'normal',
   });
+
+  const hasActionItems = form.actionItems.length > 0;
+  const autoProgress = calcProgressFromItems(form.actionItems);
+  const effectiveProgress = hasActionItems ? autoProgress : Number(form.progressRate) || 0;
+
+  const addActionItem = () => {
+    setForm((f) => ({
+      ...f,
+      actionItems: [...f.actionItems, { id: newActionItemId(), text: '', done: false }],
+    }));
+  };
+
+  const updateActionItem = (id: string, patch: Partial<ActionItem>) => {
+    setForm((f) => ({
+      ...f,
+      actionItems: f.actionItems.map((it) => (it.id === id ? { ...it, ...patch } : it)),
+    }));
+  };
+
+  const removeActionItem = (id: string) => {
+    setForm((f) => ({
+      ...f,
+      actionItems: f.actionItems.filter((it) => it.id !== id),
+    }));
+  };
+
+  const handleActionItemKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, id: string, index: number) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const newItem: ActionItem = { id: newActionItemId(), text: '', done: false };
+      setForm((f) => {
+        const items = [...f.actionItems];
+        items.splice(index + 1, 0, newItem);
+        return { ...f, actionItems: items };
+      });
+      // 새 항목 input으로 포커스 (다음 렌더 후)
+      setTimeout(() => {
+        const el = document.querySelector<HTMLInputElement>(`input[data-action-id="${newItem.id}"]`);
+        el?.focus();
+      }, 0);
+    } else if (e.key === 'Backspace') {
+      const item = form.actionItems.find((it) => it.id === id);
+      if (item && item.text === '' && form.actionItems.length > 0) {
+        e.preventDefault();
+        removeActionItem(id);
+        // 이전 항목으로 포커스
+        const prevItem = form.actionItems[index - 1];
+        if (prevItem) {
+          setTimeout(() => {
+            const el = document.querySelector<HTMLInputElement>(`input[data-action-id="${prevItem.id}"]`);
+            el?.focus();
+            el?.setSelectionRange(prevItem.text.length, prevItem.text.length);
+          }, 0);
+        }
+      }
+    }
+  };
 
   const isParentTask = !form.parentTaskId;
 
@@ -120,20 +207,41 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
 
     const reportNoteTrim = form.reportNote.trim();
 
+    // 빈 항목 제거 + 텍스트 trim
+    const cleanedActionItems: ActionItem[] = form.actionItems
+      .map((it) => ({ ...it, text: it.text.trim() }))
+      .filter((it) => it.text);
+
+    const itemsExist = cleanedActionItems.length > 0;
+    const allDone = itemsExist && cleanedActionItems.every((it) => it.done);
+    const finalProgress = itemsExist
+      ? calcProgressFromItems(cleanedActionItems)
+      : (Number(form.progressRate) || 0);
+
+    // 액션아이템 전체 완료 → 자동으로 '완료' 상태
+    let finalStatus: TaskStatus = form.status;
+    if (itemsExist && allDone && finalStatus !== '완료') {
+      finalStatus = '완료';
+    } else if (itemsExist && !allDone && finalStatus === '완료') {
+      // 미완료 항목이 있는데 상태가 완료면 진행중으로 되돌림
+      finalStatus = '진행중';
+    }
+
     const data: Partial<Task> = {
       title: form.title.trim(),
       description: isParentTask ? '' : form.description.trim(),
+      actionItems: isParentTask ? [] : cleanedActionItems,
       assignee: isParentTask ? '' : form.assigneeName,
       assigneeName: isParentTask ? '' : form.assigneeName,
       category: form.category,
-      status: isParentTask ? '대기' : form.status,
+      status: isParentTask ? '대기' : finalStatus,
       parentTaskId: form.parentTaskId || null,
       startDate: isParentTask ? null : (form.startDate ? Timestamp.fromDate(new Date(form.startDate + 'T00:00:00')) : null),
       dueDate: isParentTask ? null : (form.dueDate ? Timestamp.fromDate(new Date(form.dueDate + 'T00:00:00')) : null),
-      completedDate: (!isParentTask && form.status === '완료')
+      completedDate: (!isParentTask && finalStatus === '완료')
         ? (task?.status === '완료' && task?.completedDate ? task.completedDate : Timestamp.now())
         : null,
-      progressRate: isParentTask ? 0 : (Number(form.progressRate) || 0),
+      progressRate: isParentTask ? 0 : finalProgress,
       kpiLinked: null,
       reportNote: isParentTask ? '' : reportNoteTrim,
       reportTo: isParentTask ? null : form.reportTo,
@@ -163,6 +271,7 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
       ...f,
       title: '',
       description: '',
+      actionItems: [],
       reportNote: '',
       reportTo: 'team',
       status: '대기' as TaskStatus,
@@ -225,15 +334,46 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
           {/* 하위업무일 때만 세부 필드 표시 */}
           {!isParentTask && (
             <>
+              {/* 체크리스트 (액션아이템) */}
               <label>
-                상세 내용
-                <textarea
-                  name="description"
-                  value={form.description}
-                  onChange={handleChange}
-                  placeholder="업무 상세 내용"
-                  rows={2}
-                />
+                체크리스트
+                <div className="tm-checklist">
+                  {form.actionItems.length === 0 && (
+                    <div className="tm-checklist-empty">
+                      세부 항목을 추가하면 체크에 따라 진행률이 자동 계산됩니다.
+                    </div>
+                  )}
+                  {form.actionItems.map((item, idx) => (
+                    <div key={item.id} className="tm-checklist-row">
+                      <input
+                        type="checkbox"
+                        className="tm-checklist-check"
+                        checked={item.done}
+                        onChange={(e) => updateActionItem(item.id, { done: e.target.checked })}
+                      />
+                      <input
+                        type="text"
+                        className={`tm-checklist-text ${item.done ? 'tm-checklist-text-done' : ''}`}
+                        data-action-id={item.id}
+                        value={item.text}
+                        onChange={(e) => updateActionItem(item.id, { text: e.target.value })}
+                        onKeyDown={(e) => handleActionItemKeyDown(e, item.id, idx)}
+                        placeholder="할 일 항목"
+                      />
+                      <button
+                        type="button"
+                        className="tm-checklist-remove"
+                        onClick={() => removeActionItem(item.id)}
+                        title="항목 삭제"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button type="button" className="tm-checklist-add" onClick={addActionItem}>
+                    + 항목 추가
+                  </button>
+                </div>
               </label>
 
               <div className="tm-form-row-3">
@@ -255,7 +395,7 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
                   </select>
                 </label>
                 <label>
-                  진행률
+                  진행률 {hasActionItems && <span className="tm-progress-auto-tag">자동</span>}
                   <div className="tm-slider-wrap">
                     <input
                       name="progressRate"
@@ -263,10 +403,12 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
                       min="0"
                       max="100"
                       step="5"
-                      value={form.progressRate}
+                      value={effectiveProgress}
                       onChange={handleChange}
+                      disabled={hasActionItems}
+                      title={hasActionItems ? '체크리스트가 있으면 자동 계산됩니다' : ''}
                     />
-                    <span className="tm-slider-value">{form.progressRate}%</span>
+                    <span className="tm-slider-value">{effectiveProgress}%</span>
                   </div>
                 </label>
               </div>

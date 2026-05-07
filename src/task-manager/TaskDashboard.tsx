@@ -23,6 +23,7 @@ import {
 import TaskCard from './TaskCard';
 import TaskForm from './TaskForm';
 import MeetingReportPanel from './MeetingReportPanel';
+import MeetingNotesPanel from './MeetingNotesPanel';
 import NotificationCenter from './NotificationCenter';
 import SettingsPanel from './SettingsPanel';
 import KpiPanel from './KpiPanel';
@@ -40,6 +41,7 @@ function CategorySection({
   onEdit,
   onDelete,
   onAddSubTask,
+  onActionItemToggle,
 }: {
   category: string;
   parentTasks: Task[];
@@ -49,6 +51,7 @@ function CategorySection({
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onAddSubTask: (parentId: string) => void;
+  onActionItemToggle?: (taskId: string, itemId: string, done: boolean) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -84,6 +87,7 @@ function CategorySection({
               onEdit={onEdit}
               onDelete={onDelete}
               onAddSubTask={onAddSubTask}
+              onActionItemToggle={onActionItemToggle}
             />
           ))}
         </div>
@@ -136,7 +140,7 @@ export default function TaskDashboard() {
   // localStorage → Firestore 마이그레이션
   useMigration(user?.uid);
 
-  const [view, setView] = useState<'list' | 'weekly' | 'matrix' | 'report' | 'kpi'>('kpi');
+  const [view, setView] = useState<'list' | 'weekly' | 'matrix' | 'report' | 'kpi' | 'meeting'>('kpi');
   const [statusFilter, setStatusFilter] = useState<TaskStatus | ''>('');
   const [categoryFilter, setCategoryFilter] = useState('전체');
   const [assigneeFilter, setAssigneeFilter] = useState('');
@@ -615,6 +619,64 @@ export default function TaskDashboard() {
     [del],
   );
 
+  const handleActionItemToggle = useCallback(
+    async (taskId: string, itemId: string, done: boolean) => {
+      if (!user) return;
+      const latest = tasksRef.current;
+      const target = latest.find((t) => t.taskId === taskId);
+      if (!target) return;
+      const items = target.actionItems || [];
+      if (items.length === 0) return;
+
+      const nextItems = items.map((it) => (it.id === itemId ? { ...it, done } : it));
+      const doneCnt = nextItems.filter((it) => it.done).length;
+      const progressRate = Math.round((doneCnt / nextItems.length) * 100);
+
+      const allDone = doneCnt === nextItems.length;
+      const data: Partial<Task> = {
+        actionItems: nextItems,
+        progressRate,
+      };
+
+      // 전체 완료 → 자동 완료
+      if (allDone && target.status !== '완료') {
+        const { Timestamp } = await import('firebase/firestore');
+        data.status = '완료';
+        data.completedDate = Timestamp.now();
+      } else if (!allDone && target.status === '완료') {
+        // 완료 해제 → 진행중으로 되돌림
+        data.status = '진행중';
+        data.completedDate = null;
+      }
+
+      try {
+        await update(taskId, data, user.uid, user.displayName || user.email || '');
+
+        // 하위업무 전체 완료 시 상위업무 자동 완료 (handleStatusChange와 동일 로직)
+        if (allDone && target.status !== '완료' && target.parentTaskId) {
+          const parentId = target.parentTaskId;
+          const siblings = latest.filter((t) => t.parentTaskId === parentId);
+          if (siblings.length > 0) {
+            const allSiblingsDone = siblings.every((t) =>
+              t.taskId === taskId ? true : t.status === '완료',
+            );
+            if (allSiblingsDone) {
+              const parent = latest.find((t) => t.taskId === parentId);
+              const { Timestamp: Ts } = await import('firebase/firestore');
+              await update(parentId, {
+                status: '완료',
+                completedDate: Ts.now(),
+                progressRate: 100,
+              }, 'system', '자동완료');
+              if (parent) addToast(`"${parent.title}" 이(가) 자동으로 완료 처리되었습니다`);
+            }
+          }
+        }
+      } catch {}
+    },
+    [user, update, addToast],
+  );
+
   const handleAddSubTask = useCallback((parentId: string) => {
     setEditingTask(null);
     setParentForNewTask(parentId);
@@ -749,6 +811,9 @@ export default function TaskDashboard() {
         </button>
         <button className={`tm-tab ${view === 'report' ? 'active' : ''}`} onClick={() => setView('report')}>
           회의 자료
+        </button>
+        <button className={`tm-tab ${view === 'meeting' ? 'active' : ''}`} onClick={() => setView('meeting')}>
+          회의록
         </button>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
           <NotificationCenter
@@ -992,6 +1057,7 @@ export default function TaskDashboard() {
                       onEdit={(t) => { setEditingTask(t); setParentForNewTask(null); setShowForm(true); }}
                       onDelete={handleDelete}
                       onAddSubTask={handleAddSubTask}
+                      onActionItemToggle={handleActionItemToggle}
                     />
                   ))}
                 </div>
@@ -1042,6 +1108,8 @@ export default function TaskDashboard() {
       )}
 
       {view === 'report' && <MeetingReportPanel ceoMeetingDates={ceoMeetingDates} />}
+
+      {view === 'meeting' && <MeetingNotesPanel />}
 
       {view === 'kpi' && <KpiPanel />}
 
