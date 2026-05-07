@@ -123,6 +123,7 @@ function DraggableCard({
 /* ─── 카드 오버레이 (드래그 중 표시) ─── */
 function CardOverlay({ task }: { task: Task }) {
   const color = getMemberColor(task.assigneeName);
+  const dueDate = task.dueDate instanceof Timestamp ? task.dueDate.toDate() : null;
   return (
     <div
       className="em-card em-card-overlay"
@@ -130,9 +131,18 @@ function CardOverlay({ task }: { task: Task }) {
     >
       <div className="em-card-header">
         <span className="em-card-title">{task.title}</span>
+        {(task.reportTo === 'ceo' || task.reportTo === 'both') && <span className="em-card-ceo">CEO</span>}
       </div>
       <div className="em-card-meta">
-        <span className="em-card-assignee" style={{ color: color.text }}>{task.assigneeName}</span>
+        <span className="em-card-assignee" style={{ color: color.text }}>{task.assigneeName || '미배정'}</span>
+        {dueDate && (
+          <span className="em-card-dday">
+            {`${dueDate.getMonth()+1}.${String(dueDate.getDate()).padStart(2,'0')}`}
+          </span>
+        )}
+        {task.progressRate > 0 && (
+          <span className="em-card-progress">{task.progressRate}%</span>
+        )}
       </div>
     </div>
   );

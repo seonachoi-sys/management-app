@@ -1207,7 +1207,16 @@
 
 .em-card:hover { box-shadow: var(--shadow-sm); }
 .em-card-dragging { opacity: 0.3; }
-.em-card-overlay { box-shadow: var(--shadow-lg); transform: rotate(2deg); }
+.em-card-overlay {
+  width: 240px;
+  box-shadow: var(--shadow-lg, 0 8px 24px rgba(0,0,0,0.18));
+  transform: rotate(2deg);
+  background: #fff;
+  border: 1px solid var(--c-line);
+  border-left-width: 3px;
+  cursor: grabbing;
+  z-index: 9999;
+}
 
 .em-card-header { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; }
 .em-card-title { font-size: 12px; font-weight: 600; color: var(--c-text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
