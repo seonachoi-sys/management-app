@@ -231,3 +231,9 @@ export async function fetchAllTasks(): Promise<Task[]> {
   const snap = await getDocs(collection(db, TASKS));
   return snap.docs.map((d) => ({ taskId: d.id, ...d.data() })) as Task[];
 }
+
+/* ─── 전체 변경이력 조회 (통계용) ─── */
+export async function fetchAllTaskHistory(): Promise<TaskHistory[]> {
+  const snap = await getDocs(collection(db, HISTORY));
+  return snap.docs.map((d) => ({ historyId: d.id, ...d.data() })) as TaskHistory[];
+}

@@ -2431,6 +2431,336 @@
   border-color: var(--c-accent);
 }
 
+/* ─── 액션아이템 (회의록 → 업무 자동 등록) ─── */
+.tm-action-items-hint {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--c-accent);
+}
+.tm-action-items-empty {
+  padding: 12px;
+  font-size: 12px;
+  color: var(--c-text-4);
+  font-style: italic;
+  background: var(--c-bg-sub, #fafafa);
+  border: 0.5px dashed var(--c-line);
+  border-radius: 6px;
+  text-align: center;
+}
+.tm-action-items-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.tm-action-items-header,
+.tm-action-items-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 130px 28px;
+  gap: 6px;
+  align-items: center;
+}
+.tm-action-items-header {
+  padding: 4px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-text-3);
+  background: var(--c-bg-sub, #fafafa);
+  border-radius: 4px;
+}
+.tm-action-items-row input,
+.tm-action-items-row select {
+  padding: 6px 8px;
+  border: 0.5px solid var(--c-line);
+  border-radius: 5px;
+  font-size: 12px;
+  background: #fff;
+  color: var(--c-text);
+  font-family: inherit;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.tm-action-items-row input:focus,
+.tm-action-items-row select:focus {
+  outline: none;
+  border-color: var(--c-accent);
+}
+.tm-action-items-remove {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--c-text-4);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 16px;
+  line-height: 1;
+}
+.tm-action-items-remove:hover {
+  background: var(--c-red-bg, #fdeeee);
+  color: var(--c-red, #e53935);
+}
+.tm-action-items-add {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 0.5px dashed var(--c-line);
+  background: transparent;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--c-text-3);
+  cursor: pointer;
+}
+.tm-action-items-add:hover {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+  background: var(--c-accent-light, #eef3fd);
+}
+
+@media (max-width: 700px) {
+  .tm-action-items-header,
+  .tm-action-items-row {
+    grid-template-columns: 1fr;
+  }
+  .tm-action-items-header {
+    display: none;
+  }
+}
+
+/* ─── 통계 탭 ─── */
+.tm-stats-view {
+  padding: 20px;
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tm-stats-filter {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 14px 16px;
+  background: #fff;
+  border: 0.5px solid var(--c-line);
+  border-radius: 8px;
+}
+.tm-stats-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tm-stats-filter-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text-3);
+}
+.tm-stats-filter-group select {
+  padding: 5px 10px;
+  border: 0.5px solid var(--c-line);
+  border-radius: 5px;
+  font-size: 12px;
+  background: #fff;
+}
+.tm-stats-range-buttons {
+  display: flex;
+  gap: 4px;
+}
+.tm-stats-range-buttons button {
+  padding: 5px 12px;
+  border: 0.5px solid var(--c-line);
+  background: transparent;
+  border-radius: 100px;
+  font-size: 12px;
+  color: var(--c-text-3);
+  cursor: pointer;
+}
+.tm-stats-range-buttons button:hover {
+  color: var(--c-text);
+  border-color: var(--c-text-3);
+}
+.tm-stats-range-buttons button.active {
+  background: var(--c-accent);
+  color: #fff;
+  border-color: var(--c-accent);
+}
+.tm-stats-custom-range {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+.tm-stats-custom-range input {
+  padding: 4px 8px;
+  border: 0.5px solid var(--c-line);
+  border-radius: 4px;
+  font-size: 12px;
+}
+.tm-stats-filter-meta {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--c-text-3);
+}
+.tm-stats-print-btn {
+  padding: 5px 12px;
+  border: 0.5px solid var(--c-line);
+  background: transparent;
+  border-radius: 5px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--c-text);
+}
+.tm-stats-print-btn:hover {
+  background: var(--c-bg-sub);
+}
+
+.tm-stats-section {
+  background: #fff;
+  border: 0.5px solid var(--c-line);
+  border-radius: 8px;
+  padding: 16px 18px;
+}
+.tm-stats-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text);
+  padding-bottom: 8px;
+  border-bottom: 0.5px solid var(--c-line);
+}
+.tm-stats-note {
+  margin: 8px 0 0 0;
+  font-size: 11px;
+  color: var(--c-text-4);
+  line-height: 1.5;
+}
+
+.tm-stats-insights {
+  background: #fff8e6;
+  border-color: #f5d57c;
+}
+.tm-stats-insights h3 {
+  border-bottom-color: #f5d57c;
+}
+.tm-stats-insights ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tm-stats-insights li {
+  font-size: 13px;
+  color: var(--c-text);
+}
+
+/* 통계 테이블 */
+.tm-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.tm-stats-table th,
+.tm-stats-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 0.5px solid var(--c-line);
+}
+.tm-stats-table th {
+  background: var(--c-bg-sub, #fafafa);
+  font-weight: 600;
+  color: var(--c-text-2);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.tm-stats-table tbody tr:hover {
+  background: var(--c-bg-sub, #fafafa);
+}
+.tm-stats-table .tm-stats-name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tm-stats-num-good { color: var(--c-green); font-weight: 600; }
+.tm-stats-num-warn { color: var(--c-red); font-weight: 600; }
+
+.tm-stats-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tm-stats-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--c-bg-sub, #f0f0f0);
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 60px;
+}
+.tm-stats-bar-fill {
+  height: 100%;
+  background: var(--c-accent);
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+.tm-stats-bar-warn {
+  background: var(--c-red, #e53935);
+}
+.tm-stats-tag-warn {
+  display: inline-block;
+  padding: 1px 8px;
+  background: var(--c-red-bg, #fdeeee);
+  color: var(--c-red, #e53935);
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* 매트릭스 셀 톤 */
+.tm-stats-matrix-cell {
+  text-align: center;
+  vertical-align: middle;
+}
+.tm-stats-cell-empty {
+  text-align: center;
+  color: var(--c-text-4);
+}
+.tm-stats-matrix-rate {
+  font-weight: 600;
+  font-size: 13px;
+}
+.tm-stats-matrix-detail {
+  font-size: 10px;
+  color: var(--c-text-3);
+  margin-top: 1px;
+}
+.tm-stats-matrix-good { background: rgba(13, 159, 97, 0.12); }
+.tm-stats-matrix-good .tm-stats-matrix-rate { color: var(--c-green); }
+.tm-stats-matrix-mid { background: rgba(229, 152, 0, 0.10); }
+.tm-stats-matrix-mid .tm-stats-matrix-rate { color: #c26009; }
+.tm-stats-matrix-low { background: rgba(229, 57, 53, 0.08); }
+.tm-stats-matrix-low .tm-stats-matrix-rate { color: var(--c-red); }
+.tm-stats-matrix-warn { background: rgba(229, 57, 53, 0.16); }
+.tm-stats-matrix-warn .tm-stats-matrix-rate { color: var(--c-red); }
+
+@media print {
+  .tm-stats-filter,
+  .tm-tabs,
+  .tm-stats-print-btn {
+    display: none !important;
+  }
+  .tm-stats-section {
+    break-inside: avoid;
+    border: 0.5px solid #ccc;
+  }
+}
+
 .tm-meeting-logs-section {
   display: flex;
   flex-direction: column;

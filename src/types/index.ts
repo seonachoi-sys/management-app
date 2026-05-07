@@ -51,6 +51,8 @@ export interface Task {
   reportNote: string;
   /** 어느 회의에 노출할지: 'ceo'=격주, 'team'=월간, 'both'=둘 다, null=노출 안 함 */
   reportTo: 'ceo' | 'team' | 'both' | null;
+  /** 회의록에서 자동 등록된 업무인 경우 출처 회의록 ID */
+  meetingLogId: string | null;
   isNewDismissed: boolean;
   leadTimeDays: number | null; // 완료 시 자동계산: dueDate - completedAt (양수=조기, 음수=지연, 0=정시)
   createdAt: Timestamp;

@@ -24,6 +24,7 @@ import TaskCard from './TaskCard';
 import TaskForm from './TaskForm';
 import MeetingReportPanel from './MeetingReportPanel';
 import MeetingNotesPanel from './MeetingNotesPanel';
+import StatsPanel from './StatsPanel';
 import NotificationCenter from './NotificationCenter';
 import SettingsPanel from './SettingsPanel';
 import KpiPanel from './KpiPanel';
@@ -140,7 +141,7 @@ export default function TaskDashboard() {
   // localStorage → Firestore 마이그레이션
   useMigration(user?.uid);
 
-  const [view, setView] = useState<'list' | 'weekly' | 'matrix' | 'report' | 'kpi' | 'meeting'>('kpi');
+  const [view, setView] = useState<'list' | 'weekly' | 'matrix' | 'report' | 'kpi' | 'meeting' | 'stats'>('kpi');
   const [statusFilter, setStatusFilter] = useState<TaskStatus | ''>('');
   const [categoryFilter, setCategoryFilter] = useState('전체');
   const [assigneeFilter, setAssigneeFilter] = useState('');
@@ -815,6 +816,9 @@ export default function TaskDashboard() {
         <button className={`tm-tab ${view === 'meeting' ? 'active' : ''}`} onClick={() => setView('meeting')}>
           회의록
         </button>
+        <button className={`tm-tab ${view === 'stats' ? 'active' : ''}`} onClick={() => setView('stats')}>
+          통계
+        </button>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
           <NotificationCenter
             notifications={notifications}
@@ -1110,6 +1114,8 @@ export default function TaskDashboard() {
       {view === 'report' && <MeetingReportPanel ceoMeetingDates={ceoMeetingDates} />}
 
       {view === 'meeting' && <MeetingNotesPanel />}
+
+      {view === 'stats' && <StatsPanel />}
 
       {view === 'kpi' && <KpiPanel />}
 
