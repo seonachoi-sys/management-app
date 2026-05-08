@@ -23,7 +23,7 @@ interface UploadSlot {
 }
 
 const UPLOAD_SLOTS: UploadSlot[] = [
-  { id: 'payroll', label: '급여대장', desc: '전체 직원 급여대장 CSV (EUC-KR)', required: true, accept: '.csv' },
+  { id: 'payroll', label: '급여대장', desc: '전체 직원 급여대장 CSV/XLS/XLSX', required: true, accept: '.csv,.xls,.xlsx' },
   { id: 'health', label: '건강보험 고지서', desc: '건강보험공단 CSV 또는 엑셀', required: true, accept: '.csv,.xlsx,.xls' },
   { id: 'employment', label: '고용보험 고지서', desc: '근로복지공단 고용보험 CSV/엑셀', required: true, accept: '.csv,.xlsx,.xls' },
   { id: 'accident', label: '산재보험 고지서', desc: '근로복지공단 산재보험 CSV/엑셀', required: true, accept: '.csv,.xlsx,.xls' },

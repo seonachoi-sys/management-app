@@ -133,30 +133,31 @@ export interface PayrollEntry {
   department: string;
 }
 
-// ═══ 급여대장 파싱 (3행마다 1명) ═══
+// ═══ 급여대장 파싱 (3행마다 1명) — CSV/XLSX 둘 다 ═══
 export async function parsePayrollCSV(file: File): Promise<PayrollEntry[]> {
-  const text = await decodeFile(file);
-  const lines = text.split('\n').map(l => parseCSVLine(l));
+  const lines = await readFileAsRows(file);
   const employees: PayrollEntry[] = [];
   let i = 0;
 
   while (i < lines.length) {
     const row = lines[i];
-    if (row[0] && /^\d{7}$/.test(row[0].trim())) {
+    const c0 = String(row[0] || '').trim();
+    // 7자리 사원번호 패턴 매칭 (헤더/메타 행 자동 스킵)
+    if (/^\d{7}$/.test(c0)) {
       const row1 = lines[i];
       const row2 = lines[i + 1] || [];
       const row3 = lines[i + 2] || [];
 
       employees.push({
-        employeeNumber: row1[0].trim(),
-        name: row1[1].trim(),
+        employeeNumber: c0,
+        name: String(row1[1] || '').trim(),
         basePay: parseNumber(row1[2]),
         mealAllowance: parseNumber(row1[3]),
         vehicleAllowance: parseNumber(row1[4]),
         researchAllowance: parseNumber(row1[5]),
         childcareAllowance: parseNumber(row1[6]),
         overtime: parseNumber(row1[7]),
-        holidayWork: 0,
+        holidayWork: parseNumber(row2[2]),
         nightWork: parseNumber(row1[8]),
         totalPay: parseNumber(row3[8]),
         nationalPension: parseNumber(row1[9]),
@@ -167,9 +168,9 @@ export async function parsePayrollCSV(file: File): Promise<PayrollEntry[]> {
         localTax: parseNumber(row1[14]),
         totalDeduction: parseNumber(row2[14]),
         netPay: parseNumber(row3[14]),
-        hireDate: (row2[0] || '').trim(),
-        position: (row2[1] || '').trim(),
-        department: (row3[1] || '').trim(),
+        hireDate: String(row2[0] || '').trim(),
+        position: String(row2[1] || '').trim(),
+        department: String(row3[1] || '').trim(),
       });
       i += 3;
     } else {
