@@ -1060,42 +1060,49 @@
 .rpt-compare-stat-left { background: var(--c-red-bg); color: var(--c-red); }
 
 .rpt-compare-table {
-  margin: 6px 0 4px;
-  border: 0.5px solid var(--c-line);
-  border-radius: 6px;
+  margin: 8px 0 4px;
+  border: 1px solid var(--c-line, #d6d6d6);
+  border-radius: 8px;
   overflow: hidden;
-  background: var(--c-bg);
+  background: var(--c-bg, #fff);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 .rpt-compare-header {
   display: grid; grid-template-columns: 1fr 1fr; gap: 0;
   padding: 0;
-  font-size: 13px; font-weight: 700;
+  font-size: 12px; font-weight: 700;
   color: var(--c-text);
-  background: var(--c-bg-sub);
-  border-bottom: 1px solid var(--c-line);
+  background: linear-gradient(180deg, #f7f8fa 0%, #eef0f3 100%);
+  border-bottom: 1.5px solid var(--c-line, #d6d6d6);
+  letter-spacing: 0.2px;
 }
 .rpt-compare-header > div {
-  padding: 10px 14px;
-  border-right: 0.5px solid var(--c-line);
+  padding: 11px 14px;
+  border-right: 1px solid var(--c-line, #d6d6d6);
+  text-align: left;
 }
 .rpt-compare-header > div:last-child { border-right: none; }
 .rpt-compare-row {
   display: grid; grid-template-columns: 1fr 1fr; gap: 0;
   padding: 0;
-  border-bottom: 0.5px solid var(--c-line-light);
+  border-bottom: 1px solid var(--c-line-light, #ececec);
   align-items: stretch;
+  transition: background 0.1s;
 }
+.rpt-compare-row:hover { background: rgba(47, 108, 229, 0.03); }
 .rpt-compare-row > div {
   padding: 10px 14px;
-  border-right: 0.5px solid var(--c-line-light);
+  border-right: 1px solid var(--c-line-light, #ececec);
 }
 .rpt-compare-row > div:last-child { border-right: none; }
 .rpt-compare-row:last-child { border-bottom: none; }
-.rpt-compare-row-done { background: var(--c-green-bg); }
-.rpt-compare-row-warn { background: var(--c-red-bg); }
+.rpt-compare-row-done { background: var(--c-green-bg, #f0f9f4); }
+.rpt-compare-row-done:hover { background: var(--c-green-bg, #e6f5ec); }
+.rpt-compare-row-warn { background: var(--c-red-bg, #fdf3f3); }
+.rpt-compare-row-warn:hover { background: #fce9e9; }
 
-.rpt-compare-col-plan { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.rpt-compare-col-result { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rpt-compare-col-plan { display: flex; flex-direction: column; gap: 3px; min-width: 0; justify-content: center; }
+.rpt-compare-col-result { display: flex; flex-direction: column; gap: 4px; min-width: 0; justify-content: center; }
 
 /* 담당자 그룹 내 카테고리 subheader */
 .rpt-compare-subcat {
@@ -1714,32 +1721,35 @@
 
 /* ═══ 회의록: 담당자별 그룹 ═══ */
 .rpt-assignee-group {
-  border: 0.5px solid var(--c-line);
-  border-radius: 8px;
-  background: var(--c-bg);
-  margin-bottom: 10px;
+  border: 1px solid var(--c-line, #d6d6d6);
+  border-radius: 10px;
+  background: var(--c-bg, #fff);
+  margin-bottom: 16px;
   overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 .rpt-assignee-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--c-bg-sub);
-  border-bottom: 0.5px solid var(--c-line);
+  gap: 10px;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, #fff 0%, #f5f7fb 100%);
+  border-bottom: 1px solid var(--c-line, #d6d6d6);
 }
 .rpt-assignee-name {
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: 700;
+  font-size: 15px;
   color: var(--c-text);
+  letter-spacing: 0.2px;
 }
 .rpt-assignee-cnt {
   font-size: 11px;
   color: var(--c-text-3);
-  padding: 1px 7px;
-  border-radius: 10px;
-  background: var(--c-bg);
-  border: 0.5px solid var(--c-line);
+  padding: 2px 10px;
+  border-radius: 100px;
+  background: var(--c-bg-sub, #f0f2f5);
+  border: 1px solid var(--c-line-light, #ececec);
+  font-weight: 500;
 }
 .rpt-assignee-body { padding: 6px 12px; }
 
@@ -2135,22 +2145,59 @@
   grid-template-columns: 1.2fr 1.2fr 1.2fr 1fr;
 }
 
-/* 4-col 테이블 내부 섹션 구분 */
+/* 4-col 테이블 내부 섹션 구분 (지난 2주 / 앞으로 2주) */
 .rpt-compare-section-divider {
   grid-column: 1 / -1;
-  padding: 6px 10px;
-  background: var(--c-bg-sub, #fafafa);
-  border-top: 0.5px solid var(--c-line);
-  border-bottom: 0.5px solid var(--c-line);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--c-text-3);
-  letter-spacing: 0.3px;
+  padding: 8px 14px;
+  background: linear-gradient(90deg, #2f6ce5 0%, #4f88f5 100%);
+  color: #fff;
+  border-top: 1px solid var(--c-line, #d6d6d6);
+  border-bottom: 1px solid var(--c-line, #d6d6d6);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
 }
 .rpt-compare-section-divider .cnt {
-  margin-left: 6px;
-  font-weight: 400;
-  color: var(--c-text-4);
+  margin-left: 8px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.85);
+  font-size: 11px;
+}
+
+/* 카테고리 그룹 구분선 (테이블 내부 — 인사 / 재무 등) */
+.rpt-compare-cat-divider {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: #f5f7fb;
+  border-top: 1px solid var(--c-line-light, #ececec);
+  border-bottom: 1px solid var(--c-line-light, #ececec);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #2f6ce5;
+}
+.rpt-compare-cat-divider::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 12px;
+  background: #2f6ce5;
+  border-radius: 2px;
+}
+.rpt-compare-cat-name {
+  letter-spacing: 0.2px;
+}
+.rpt-compare-cat-cnt {
+  margin-left: auto;
+  padding: 1px 8px;
+  background: #fff;
+  border: 1px solid #c8d6f1;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #2f6ce5;
 }
 .rpt-compare-col-upcoming { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .rpt-compare-col-upcoming .rpt-compare-title {

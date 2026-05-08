@@ -716,6 +716,19 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       return da - db;
     };
 
+    /** 카테고리별 그룹화 후 같은 카테고리 안에서 마감일 순 정렬. 카테고리는 알파벳/한글 가나다 순 */
+    const groupAndSortByCategory = (list: Task[]): { category: string; tasks: Task[] }[] => {
+      const map: Record<string, Task[]> = {};
+      list.forEach((t) => {
+        const cat = t.category || '기타';
+        if (!map[cat]) map[cat] = [];
+        map[cat].push(t);
+      });
+      return Object.entries(map)
+        .map(([category, tasks]) => ({ category, tasks: [...tasks].sort(sortByDue) }))
+        .sort((a, b) => a.category.localeCompare(b.category, 'ko'));
+    };
+
     return (
       <Block title={blockTitle} count={planned.length + upcoming.length} dotColor="green" defaultOpen>
         {hiddenCount > 0 && (
@@ -739,8 +752,8 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
             </div>
 
             {assigneeBlocks.map((ag) => {
-              const pastSorted = [...ag.past].sort(sortByDue);
-              const futureSorted = [...ag.future].sort(sortByDue);
+              const pastByCat = groupAndSortByCategory(ag.past);
+              const futureByCat = groupAndSortByCategory(ag.future);
               return (
                 <div key={ag.name} className="rpt-assignee-group">
                   <div className="rpt-assignee-header">
@@ -755,108 +768,118 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
                       <div className="rpt-compare-col-note">비고</div>
                     </div>
 
-                    {/* 지난 (계획) */}
-                    {pastSorted.length > 0 && (
+                    {/* 지난 (계획) — 카테고리별로 그룹화 */}
+                    {pastByCat.length > 0 && (
                       <>
                         <div className="rpt-compare-section-divider">
                           {pastLabel}<span className="cnt">{ag.past.length}건</span>
                         </div>
-                        {pastSorted.map((t) => {
-                          const detail = statusDetail(t);
-                          const dd = tsToDate(t.dueDate);
-                          return (
-                            <div key={`past-${t.taskId}`} className={`rpt-compare-row ${t.status === '완료' ? 'rpt-compare-row-done' : t.status === '지연' || t.status === '보류' ? 'rpt-compare-row-warn' : ''}`}>
-                              <div className="rpt-compare-col-plan">
-                                <div className="rpt-compare-title-line">
-                                  <span className="rpt-cat-badge">{t.category || '기타'}</span>
-                                  <span className="rpt-compare-title">{t.title}</span>
-                                </div>
-                                {dd && <span className="rpt-compare-assignee">마감 {format(dd, 'M.dd')}</span>}
-                              </div>
-                              <div className="rpt-compare-col-result">
-                                {statusBadge(t)}
-                                {t.status === '진행중' && t.progressRate > 0 && (
-                                  <div className="rpt-compare-progress">
-                                    <div className="rpt-compare-progress-bar">
-                                      <div className="rpt-compare-progress-fill" style={{ width: `${t.progressRate}%` }} />
-                                    </div>
-                                    <span className="rpt-compare-progress-text">{t.progressRate}%</span>
-                                  </div>
-                                )}
-                                {detail && <div className="rpt-compare-detail">{detail}</div>}
-                              </div>
-                              <div className="rpt-compare-col-upcoming">
-                                <span className="rpt-compare-col-empty">—</span>
-                              </div>
-                              <div className="rpt-compare-col-note">
-                                <textarea
-                                  className="rpt-row-note"
-                                  placeholder="비고"
-                                  value={taskNotes[t.taskId] || ''}
-                                  onChange={(e) => updateTaskNote(t.taskId, e.target.value)}
-                                  rows={2}
-                                />
-                                <button
-                                  type="button"
-                                  className="rpt-hide-btn"
-                                  onClick={() => hideTask(t.taskId)}
-                                  title="회의록에서 이 업무 숨기기"
-                                >
-                                  ×
-                                </button>
-                              </div>
+                        {pastByCat.map((cg) => (
+                          <React.Fragment key={`past-cat-${cg.category}`}>
+                            <div className="rpt-compare-cat-divider">
+                              <span className="rpt-compare-cat-name">{cg.category}</span>
+                              <span className="rpt-compare-cat-cnt">{cg.tasks.length}</span>
                             </div>
-                          );
-                        })}
+                            {cg.tasks.map((t) => {
+                              const detail = statusDetail(t);
+                              const dd = tsToDate(t.dueDate);
+                              return (
+                                <div key={`past-${t.taskId}`} className={`rpt-compare-row ${t.status === '완료' ? 'rpt-compare-row-done' : t.status === '지연' || t.status === '보류' ? 'rpt-compare-row-warn' : ''}`}>
+                                  <div className="rpt-compare-col-plan">
+                                    <span className="rpt-compare-title">{t.title}</span>
+                                    {dd && <span className="rpt-compare-assignee">마감 {format(dd, 'M.dd')}</span>}
+                                  </div>
+                                  <div className="rpt-compare-col-result">
+                                    {statusBadge(t)}
+                                    {t.status === '진행중' && t.progressRate > 0 && (
+                                      <div className="rpt-compare-progress">
+                                        <div className="rpt-compare-progress-bar">
+                                          <div className="rpt-compare-progress-fill" style={{ width: `${t.progressRate}%` }} />
+                                        </div>
+                                        <span className="rpt-compare-progress-text">{t.progressRate}%</span>
+                                      </div>
+                                    )}
+                                    {detail && <div className="rpt-compare-detail">{detail}</div>}
+                                  </div>
+                                  <div className="rpt-compare-col-upcoming">
+                                    <span className="rpt-compare-col-empty">—</span>
+                                  </div>
+                                  <div className="rpt-compare-col-note">
+                                    <textarea
+                                      className="rpt-row-note"
+                                      placeholder="비고"
+                                      value={taskNotes[t.taskId] || ''}
+                                      onChange={(e) => updateTaskNote(t.taskId, e.target.value)}
+                                      rows={2}
+                                    />
+                                    <button
+                                      type="button"
+                                      className="rpt-hide-btn"
+                                      onClick={() => hideTask(t.taskId)}
+                                      title="회의록에서 이 업무 숨기기"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </React.Fragment>
+                        ))}
                       </>
                     )}
 
-                    {/* 향후 */}
-                    {futureSorted.length > 0 && (
+                    {/* 향후 — 카테고리별로 그룹화 */}
+                    {futureByCat.length > 0 && (
                       <>
                         <div className="rpt-compare-section-divider">
                           {futureLabel}<span className="cnt">{ag.future.length}건</span>
                         </div>
-                        {futureSorted.map((t) => {
-                          const dd = tsToDate(t.dueDate);
-                          return (
-                            <div key={`fut-${t.taskId}`} className="rpt-compare-row">
-                              <div className="rpt-compare-col-plan">
-                                <span className="rpt-compare-col-empty">—</span>
-                              </div>
-                              <div className="rpt-compare-col-result">
-                                <span className="rpt-compare-col-empty">—</span>
-                              </div>
-                              <div className="rpt-compare-col-upcoming">
-                                <div className="rpt-compare-title-line">
-                                  <span className="rpt-cat-badge">{t.category || '기타'}</span>
-                                  <span className="rpt-compare-title">{t.title}</span>
-                                </div>
-                                {dd && <span className="rpt-compare-assignee">마감 {format(dd, 'M.dd')}</span>}
-                                {t.reportNote && (
-                                  <span style={{ fontSize: 11, color: '#888', marginTop: 2 }}>└ {t.reportNote}</span>
-                                )}
-                              </div>
-                              <div className="rpt-compare-col-note">
-                                <textarea
-                                  className="rpt-row-note"
-                                  placeholder="비고"
-                                  value={taskNotes[t.taskId] || ''}
-                                  onChange={(e) => updateTaskNote(t.taskId, e.target.value)}
-                                  rows={2}
-                                />
-                                <button
-                                  type="button"
-                                  className="rpt-hide-btn"
-                                  onClick={() => hideTask(t.taskId)}
-                                  title="회의록에서 이 항목 숨기기"
-                                >
-                                  ×
-                                </button>
-                              </div>
+                        {futureByCat.map((cg) => (
+                          <React.Fragment key={`fut-cat-${cg.category}`}>
+                            <div className="rpt-compare-cat-divider">
+                              <span className="rpt-compare-cat-name">{cg.category}</span>
+                              <span className="rpt-compare-cat-cnt">{cg.tasks.length}</span>
                             </div>
-                          );
-                        })}
+                            {cg.tasks.map((t) => {
+                              const dd = tsToDate(t.dueDate);
+                              return (
+                                <div key={`fut-${t.taskId}`} className="rpt-compare-row">
+                                  <div className="rpt-compare-col-plan">
+                                    <span className="rpt-compare-col-empty">—</span>
+                                  </div>
+                                  <div className="rpt-compare-col-result">
+                                    <span className="rpt-compare-col-empty">—</span>
+                                  </div>
+                                  <div className="rpt-compare-col-upcoming">
+                                    <span className="rpt-compare-title">{t.title}</span>
+                                    {dd && <span className="rpt-compare-assignee">마감 {format(dd, 'M.dd')}</span>}
+                                    {t.reportNote && (
+                                      <span style={{ fontSize: 11, color: '#888', marginTop: 2 }}>└ {t.reportNote}</span>
+                                    )}
+                                  </div>
+                                  <div className="rpt-compare-col-note">
+                                    <textarea
+                                      className="rpt-row-note"
+                                      placeholder="비고"
+                                      value={taskNotes[t.taskId] || ''}
+                                      onChange={(e) => updateTaskNote(t.taskId, e.target.value)}
+                                      rows={2}
+                                    />
+                                    <button
+                                      type="button"
+                                      className="rpt-hide-btn"
+                                      onClick={() => hideTask(t.taskId)}
+                                      title="회의록에서 이 항목 숨기기"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </React.Fragment>
+                        ))}
                       </>
                     )}
                   </div>
