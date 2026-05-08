@@ -71,6 +71,23 @@ export async function generatePdfFromElement(
     el.style.display = 'none';
   });
 
+  // 인라인 편집 input(.pt-edit-cell)을 캡처 시점에만 포맷된 span으로 교체
+  // → html2canvas의 input 렌더링 폰트 깨짐 + 천단위 콤마/원 단위 표시 처리
+  const editInputs = element.querySelectorAll<HTMLInputElement>('.pt-edit-cell');
+  const editSwaps: Array<{ input: HTMLInputElement; span: HTMLSpanElement }> = [];
+  editInputs.forEach((input) => {
+    // input value는 "8,000,000" 같은 콤마 텍스트 또는 raw 숫자 — 콤마 제거 후 parse
+    const num = parseInt(String(input.value).replace(/[^\d-]/g, ''), 10) || 0;
+    const span = document.createElement('span');
+    span.textContent = num.toLocaleString() + '원';
+    span.style.fontFamily = 'inherit';
+    span.style.fontSize = 'inherit';
+    span.style.color = 'inherit';
+    input.parentElement?.insertBefore(span, input);
+    input.style.display = 'none';
+    editSwaps.push({ input, span });
+  });
+
   // 자연 너비 측정 (maxWidth 해제 후)
   element.style.maxWidth = 'none';
   element.style.minWidth = `${captureWidth}px`;
@@ -108,6 +125,11 @@ export async function generatePdfFromElement(
     element.style.margin = originalStyle.margin;
     wraps.forEach((w, i) => { w.style.overflow = origOverflow[i] || ''; });
     hideEls.forEach((el, i) => { el.style.display = origDisplay[i] || ''; });
+    // input ↔ span swap 원복
+    editSwaps.forEach(({ input, span }) => {
+      span.remove();
+      input.style.display = '';
+    });
   }
 
   const imgWidth = canvas.width;   // px (scale 적용됨)

@@ -470,19 +470,27 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
                         <td className="money">{r.rate}%</td>
                         <td className="money">
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
                             className="pt-edit-cell"
-                            value={r.cash}
-                            onChange={(e) => updateRowAmount(r.emp.employeeNumber, 'cash', parseInt(e.target.value, 10) || 0)}
+                            value={r.cash.toLocaleString()}
+                            onChange={(e) => {
+                              const num = parseInt(e.target.value.replace(/[^\d-]/g, ''), 10) || 0;
+                              updateRowAmount(r.emp.employeeNumber, 'cash', num);
+                            }}
                             title="현금 — 클릭하여 수정"
                           />
                         </td>
                         <td className="money">
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
                             className="pt-edit-cell"
-                            value={r.inKind}
-                            onChange={(e) => updateRowAmount(r.emp.employeeNumber, 'inKind', parseInt(e.target.value, 10) || 0)}
+                            value={r.inKind.toLocaleString()}
+                            onChange={(e) => {
+                              const num = parseInt(e.target.value.replace(/[^\d-]/g, ''), 10) || 0;
+                              updateRowAmount(r.emp.employeeNumber, 'inKind', num);
+                            }}
                             title="현물 — 클릭하여 수정"
                           />
                         </td>
