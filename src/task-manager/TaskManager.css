@@ -1100,6 +1100,8 @@
 .rpt-compare-row-done:hover { background: var(--c-green-bg, #e6f5ec); }
 .rpt-compare-row-warn { background: var(--c-red-bg, #fdf3f3); }
 .rpt-compare-row-warn:hover { background: #fce9e9; }
+.rpt-compare-row-future { background: #fbfcff; }
+.rpt-compare-row-future:hover { background: #f3f6fd; }
 
 .rpt-compare-col-plan { display: flex; flex-direction: column; gap: 3px; min-width: 0; justify-content: center; }
 .rpt-compare-col-result { display: flex; flex-direction: column; gap: 4px; min-width: 0; justify-content: center; }
