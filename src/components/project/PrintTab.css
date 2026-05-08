@@ -69,7 +69,9 @@
 /* Tables */
 .pt-table-wrap { overflow-x: auto; }
 .pt-doc-table { font-size: 12px; width: 100%; }
-.pt-doc-table td, .pt-doc-table th { padding: 8px 10px; white-space: nowrap; }
+.pt-doc-table td, .pt-doc-table th { padding: 7px 8px; white-space: nowrap; }
+/* 급여대장은 컬럼 많아서 더 좁게 */
+.pt-payroll-table td, .pt-payroll-table th { padding: 6px 6px; font-size: 11px; }
 .pt-doc-table tfoot td,
 .pt-doc-foot td { background: #F1F5F9; border-top: 2px solid var(--border-default); font-weight: 600; }
 

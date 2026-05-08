@@ -44,17 +44,43 @@ export async function generatePdfFromElement(
   const contentWidth = a4Width - margin * 2;
   const contentHeight = a4Height - margin * 2;
 
-  // ─── 캡처 전: element 너비 강제 적용 (일관된 PDF 출력 위함) ───
+  // ─── 캡처 전: 콘텐츠가 모두 보이도록 너비 자동 산출 ───
+  // 1) maxWidth 해제 + width auto로 자연 너비 측정
+  // 2) 표가 element보다 넓을 수 있으니 max(scrollWidth, captureWidth) 사용
+  // 3) .pt-table-wrap의 overflow-x:auto도 visible로 강제 (캡처 시 잘림 방지)
   const originalStyle = {
     width: element.style.width,
     maxWidth: element.style.maxWidth,
     minWidth: element.style.minWidth,
     margin: element.style.margin,
   };
-  element.style.width = `${captureWidth}px`;
-  element.style.maxWidth = `${captureWidth}px`;
+
+  // table-wrap의 overflow:auto를 visible로 임시 변경
+  const wraps = element.querySelectorAll<HTMLElement>('.pt-table-wrap');
+  const origOverflow: string[] = [];
+  wraps.forEach((w) => {
+    origOverflow.push(w.style.overflow);
+    w.style.overflow = 'visible';
+  });
+
+  // 자연 너비 측정 (maxWidth 해제 후)
+  element.style.maxWidth = 'none';
   element.style.minWidth = `${captureWidth}px`;
+  element.style.width = `${captureWidth}px`;
   element.style.margin = '0';
+
+  // 강제 리플로우 후 실제 콘텐츠 너비 확인
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  element.offsetHeight;
+  const naturalWidth = Math.max(element.scrollWidth, captureWidth);
+  if (naturalWidth > captureWidth) {
+    // 콘텐츠가 더 넓으면 element를 그 폭으로 펼침
+    element.style.width = `${naturalWidth}px`;
+    element.style.minWidth = `${naturalWidth}px`;
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    element.offsetHeight;
+  }
+  const finalCaptureWidth = naturalWidth;
 
   let canvas: HTMLCanvasElement;
   try {
@@ -63,8 +89,8 @@ export async function generatePdfFromElement(
       useCORS: true,
       logging: false,
       backgroundColor: '#ffffff',
-      width: captureWidth,
-      windowWidth: captureWidth,
+      width: finalCaptureWidth,
+      windowWidth: finalCaptureWidth,
     });
   } finally {
     // 원본 스타일 복원
@@ -72,6 +98,7 @@ export async function generatePdfFromElement(
     element.style.maxWidth = originalStyle.maxWidth;
     element.style.minWidth = originalStyle.minWidth;
     element.style.margin = originalStyle.margin;
+    wraps.forEach((w, i) => { w.style.overflow = origOverflow[i] || ''; });
   }
 
   const imgWidth = canvas.width;   // px (scale 적용됨)
@@ -81,8 +108,8 @@ export async function generatePdfFromElement(
   const pdf = new jsPDF({ orientation, unit: 'mm', format: 'a4', compress: true });
 
   // PDF에서의 콘텐츠 크기 계산
-  // ratio: 캔버스 1px = ?mm
-  const elementWidthPx = imgWidth / scale; // element의 실제 width (= captureWidth)
+  // ratio: 캔버스 1px = ?mm — 캡처된 실제 너비를 PDF contentWidth에 맞춤
+  const elementWidthPx = imgWidth / scale; // = finalCaptureWidth
   const ratio = contentWidth / elementWidthPx;
   const scaledFullHeight = (imgHeight / scale) * ratio; // 전체를 PDF mm로
 
