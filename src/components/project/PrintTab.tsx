@@ -5,7 +5,7 @@ import { saveAs } from 'file-saver';
 import { FileText, Printer, Download, Package, FileDown } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import { Employee, Project, YearlyParticipation } from '../../types/project';
+import { Employee, Project, YearlyParticipation, isExecutive } from '../../types/project';
 import { logAction } from '../../services/auditService';
 import { calcLaborSalary } from '../../services/payrollParserService';
 import { downloadPdfFromElement, getPdfBlob } from '../../services/pdfService';
@@ -94,7 +94,8 @@ function calcLabor(
 
     const totalCost = salary + retirement + totalInsComp;
     const total = Math.round(totalCost * rate / 100);
-    const cash = Math.round(total * cashRatio);
+    // 임원(박재민/문재훈/안준/신규보)은 100% 현물, 그 외는 과제 예산 비율로 분배
+    const cash = isExecutive(emp.name) ? 0 : Math.round(total * cashRatio);
     const inKind = total - cash;
 
     results.push({
