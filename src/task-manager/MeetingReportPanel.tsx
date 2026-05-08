@@ -12,9 +12,8 @@ import {
   subMonths,
   differenceInDays,
 } from 'date-fns';
-import type { Task, MeetingType, Kpi } from '../types';
+import type { Task, MeetingType } from '../types';
 import { fetchAllTasks } from '../services/taskService';
-import { fetchAllKpis } from '../services/kpiService';
 import { saveReportToObsidian, formatReportMarkdown } from '../services/obsidianService';
 
 /* ─── 아코디언 블록 ─── */
@@ -170,43 +169,6 @@ function LeadTimeByCategoryMonthly({ tasks, prevMonthTasks }: { tasks: Task[]; p
   );
 }
 
-const PRIORITY_ORDER: Record<string, number> = { '긴급': 0, '높음': 1, '보통': 2, '낮음': 3 };
-function sortByPriority(tasks: Task[]): Task[] {
-  return [...tasks].sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9));
-}
-
-/* ─── 카테고리 그룹 렌더링 헬퍼 ─── */
-function renderTaskList(tasks: Task[], showProgress = true) {
-  const today = new Date();
-  return tasks.map((t) => {
-    const dd = tsToDate(t.dueDate);
-    const daysLeft = dd ? differenceInDays(dd, today) : null;
-    const isDelayed = daysLeft !== null && daysLeft < 0;
-    return (
-      <div key={t.taskId} className={`rpt-item ${isDelayed ? 'rpt-item-delayed' : ''}`}>
-        <span className="rpt-item-title">{t.title}</span>
-        <span className="rpt-item-assignee">{t.assigneeName}</span>
-        {showProgress && (
-          <div className="rpt-progress">
-            <div className="rpt-progress-bar">
-              <div className="rpt-progress-fill" style={{ width: `${t.progressRate}%` }} />
-            </div>
-            <span className="rpt-progress-text">{t.progressRate}%</span>
-          </div>
-        )}
-        {daysLeft !== null && (
-          <span
-            className={`rpt-item-tag ${isDelayed ? 'rpt-tag-red' : daysLeft <= 3 ? 'rpt-tag-orange' : 'rpt-tag-gray'}`}
-          >
-            {isDelayed ? `D+${Math.abs(daysLeft)}` : `D-${daysLeft}`}
-          </span>
-        )}
-        {t.reportNote && <span className="rpt-item-note" title={t.reportNote}>📋</span>}
-      </div>
-    );
-  });
-}
-
 function renderCompletedList(tasks: Task[]) {
   return tasks.map((t) => {
     const cd = tsToDate(t.completedDate);
@@ -247,68 +209,6 @@ function renderAssigneeCategoryBlocks(tasks: Task[], renderFn: (tasks: Task[]) =
   });
 }
 
-/* ─── KPI 블록 렌더링 ─── */
-function renderKpiBlock(
-  kpis: Kpi[],
-  kpiNotes?: Record<string, string>,
-  onNoteChange?: (kpiId: string, note: string) => void,
-  onHide?: (kpiId: string) => void,
-) {
-  if (kpis.length === 0) {
-    return <div className="rpt-empty">해당 없음</div>;
-  }
-  return (
-    <div className="rpt-list">
-      {kpis.map((kpi) => (
-        <div key={kpi.kpiId} className="rpt-item-with-note">
-          <div className="rpt-item">
-            <span className="rpt-item-title">{kpi.title}</span>
-            <div className="rpt-progress">
-              <div className="rpt-progress-bar">
-                <div className="rpt-progress-fill" style={{ width: `${kpi.achievementRate}%` }} />
-              </div>
-              <span className="rpt-progress-text">
-                {kpi.currentValue}/{kpi.targetValue} {kpi.unit} ({kpi.achievementRate}%)
-              </span>
-            </div>
-            <span
-              className={`rpt-item-tag ${
-                kpi.status === '달성'
-                  ? 'rpt-tag-green'
-                  : kpi.status === '진행중'
-                    ? 'rpt-tag-orange'
-                    : 'rpt-tag-red'
-              }`}
-            >
-              {kpi.status}
-            </span>
-            {onHide && (
-              <button
-                type="button"
-                className="rpt-hide-btn"
-                onClick={() => onHide(kpi.kpiId)}
-                title="회의록에서 이 KPI 숨기기"
-                style={{ marginLeft: 'auto' }}
-              >
-                ×
-              </button>
-            )}
-          </div>
-          {onNoteChange && (
-            <textarea
-              className="rpt-row-note"
-              placeholder="비고 (달성/미달 사유, 후속 계획 등)"
-              value={kpiNotes?.[kpi.kpiId] || ''}
-              onChange={(e) => onNoteChange(kpi.kpiId, e.target.value)}
-              rows={1}
-            />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /* ─── 메인 컴포넌트 ─── */
 interface Props {
   ceoMeetingDates?: string[];
@@ -319,23 +219,17 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [allTasks, setAllTasks] = useState<Task[]>([]);
-  const [allKpis, setAllKpis] = useState<Kpi[]>([]);
   const [generated, setGenerated] = useState(false);
 
-  // 업무/KPI 비고 (회의 중 입력)
+  // 업무 비고 (회의 중 입력)
   const [taskNotes, setTaskNotes] = useState<Record<string, string>>({});
-  const [kpiNotes, setKpiNotes] = useState<Record<string, string>>({});
 
   const updateTaskNote = useCallback((taskId: string, note: string) => {
     setTaskNotes((prev) => ({ ...prev, [taskId]: note }));
   }, []);
-  const updateKpiNote = useCallback((kpiId: string, note: string) => {
-    setKpiNotes((prev) => ({ ...prev, [kpiId]: note }));
-  }, []);
 
-  // 회의록에서 숨긴 업무/KPI ID
+  // 회의록에서 숨긴 업무 ID
   const [hiddenTaskIds, setHiddenTaskIds] = useState<Set<string>>(new Set());
-  const [hiddenKpiIds, setHiddenKpiIds] = useState<Set<string>>(new Set());
 
   const hideTask = useCallback((taskId: string) => {
     setHiddenTaskIds((prev) => {
@@ -344,15 +238,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       return s;
     });
   }, []);
-  const hideKpi = useCallback((kpiId: string) => {
-    setHiddenKpiIds((prev) => {
-      const s = new Set(prev);
-      s.add(kpiId);
-      return s;
-    });
-  }, []);
   const restoreAllTasks = useCallback(() => setHiddenTaskIds(new Set()), []);
-  const restoreAllKpis = useCallback(() => setHiddenKpiIds(new Set()), []);
 
   const now = new Date();
   const [startDate, setStartDate] = useState(format(startOfMonth(now), 'yyyy-MM-dd'));
@@ -438,9 +324,8 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const [tasks, kpis] = await Promise.all([fetchAllTasks(), fetchAllKpis()]);
+      const tasks = await fetchAllTasks();
       setAllTasks(tasks);
-      setAllKpis(kpis);
       setGenerated(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '리포트 생성에 실패했습니다.');
@@ -770,107 +655,24 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     }
   };
 
-  /* ─── 주간 리포트 렌더 ─── */
-  const renderWeeklyReport = () => {
-    if (!weeklyData) return null;
-    const { completed, incomplete, nextWeek, delayed } = weeklyData;
-
-    // 담당자별 KPI 그룹 (숨긴 KPI 제외)
-    const visibleKpisWeekly = allKpis.filter((k) => !hiddenKpiIds.has(k.kpiId));
-    const kpiHiddenCount = allKpis.length - visibleKpisWeekly.length;
-    const kpiByAssignee: Record<string, Kpi[]> = {};
-    visibleKpisWeekly.forEach((k) => {
-      const name = k.assigneeName || '미배정';
-      if (!kpiByAssignee[name]) kpiByAssignee[name] = [];
-      kpiByAssignee[name].push(k);
-    });
-
-    return (
-      <>
-        <Block title="이번 주 완료 업무" count={completed.length} dotColor="green" defaultOpen>
-          {renderAssigneeCategoryBlocks(completed, (tasks) => renderCompletedList(tasks))}
-          <LeadTimeSummary tasks={completed} />
-        </Block>
-
-        <Block title="이번 주 미완료 업무" count={incomplete.length} dotColor="red" danger defaultOpen>
-          {incomplete.length === 0 ? <div className="rpt-empty">해당 없음</div> : (
-            <div className="rpt-list">
-              {incomplete.map((t) => {
-                const dd = tsToDate(t.dueDate);
-                const delayDays = dd ? Math.abs(differenceInDays(dd, new Date())) : 0;
-                return (
-                  <div key={t.taskId} className="rpt-item rpt-item-delayed">
-                    <span className="rpt-item-title">{t.title}</span>
-                    <span className="rpt-item-assignee">{t.assigneeName}</span>
-                    <span className="rpt-item-tag rpt-tag-red">{delayDays}일 지연</span>
-                    {t.reportNote && <span className="rpt-item-note" title={t.reportNote}>📋</span>}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Block>
-
-        <Block title="차주 진행 예정" count={nextWeek.length} dotColor="blue" defaultOpen={false}>
-          {renderAssigneeCategoryBlocks(sortByPriority(nextWeek), (tasks) => renderTaskList(tasks))}
-        </Block>
-
-        <Block title="차주 이월 업무" count={delayed.length} dotColor="red" danger defaultOpen>
-          {delayed.length === 0 ? <div className="rpt-empty">해당 없음</div> : (
-            <div className="rpt-list">
-              {delayed.map((t) => {
-                const dd = tsToDate(t.dueDate);
-                const delayDays = dd ? Math.abs(differenceInDays(dd, new Date())) : 0;
-                return (
-                  <div key={t.taskId} className="rpt-item rpt-item-delayed">
-                    <span className="rpt-item-title">{t.title}</span>
-                    <span className="rpt-item-assignee">{t.assigneeName}</span>
-                    <span className="rpt-item-tag rpt-tag-red">{delayDays}일 지연</span>
-                    {t.reportNote && <span className="rpt-item-note" title={t.reportNote}>📋</span>}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Block>
-
-        <Block title="KPI 진행 현황" count={visibleKpisWeekly.length} dotColor="yellow" defaultOpen>
-          {kpiHiddenCount > 0 && (
-            <div className="rpt-hidden-bar">
-              <span>숨긴 KPI {kpiHiddenCount}개</span>
-              <button type="button" className="rpt-restore-btn" onClick={restoreAllKpis}>
-                모두 복원
-              </button>
-            </div>
-          )}
-          {Object.keys(kpiByAssignee).length === 0 ? <div className="rpt-empty">해당 없음</div> :
-            Object.entries(kpiByAssignee).map(([name, kpis]) => (
-              <div key={name} className="rpt-cat-group">
-                <div className="rpt-cat-label">{name} <span className="rpt-cat-cnt">{kpis.length}</span></div>
-                {renderKpiBlock(kpis, kpiNotes, updateKpiNote, hideKpi)}
-              </div>
-            ))
-          }
-        </Block>
-      </>
-    );
-  };
-
-  /* ─── 격주(CEO) 리포트 렌더 ─── */
-  const renderBiweeklyReport = () => {
-    if (!biweeklyData) return null;
-    const { planned, planCompleted, planInProgress, planRemaining, upcoming, ceoDecision } = biweeklyData;
-
-    // 담당자별 KPI 그룹 (숨긴 KPI 제외)
-    const visibleKpisBi = allKpis.filter((k) => !hiddenKpiIds.has(k.kpiId));
-    const kpiHiddenCountBi = allKpis.length - visibleKpisBi.length;
-    const kpiByAssignee: Record<string, Kpi[]> = {};
-    visibleKpisBi.forEach((k) => {
-      const name = k.assigneeName || '미배정';
-      if (!kpiByAssignee[name]) kpiByAssignee[name] = [];
-      kpiByAssignee[name].push(k);
-    });
-
+  /* ─── 통합 4칸 테이블 렌더 (계획 / 결과 / 향후 / 비고) ─── */
+  const renderUnifiedReport = ({
+    planned,
+    upcoming,
+    pastLabel,
+    futureLabel,
+    blockTitle,
+    summary,
+    hiddenCount,
+  }: {
+    planned: Task[];
+    upcoming: Task[];
+    pastLabel: string;
+    futureLabel: string;
+    blockTitle: string;
+    summary: { completed: number; inProgress: number; remaining: number };
+    hiddenCount: number;
+  }) => {
     const statusBadge = (t: Task) => {
       const color: Record<string, string> = {
         '완료': 'var(--c-green)', '진행중': 'var(--c-accent)', '대기': 'var(--c-text-3)',
@@ -897,7 +699,7 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       return parts.length > 0 ? parts.join(' · ') : null;
     };
 
-    // 담당자별로 지난 2주(planned) + 앞으로 2주(upcoming) 통합
+    // 담당자별로 통합
     const allAssignees = new Set<string>();
     planned.forEach((t) => allAssignees.add(t.assigneeName || '미배정'));
     upcoming.forEach((t) => allAssignees.add(t.assigneeName || '미배정'));
@@ -915,211 +717,209 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     };
 
     return (
-      <>
-        {/* ── 담당자별 4칸 통합 (계획 / 결과 / 앞으로 2주 / 비고) ── */}
-        <Block
-          title="2주 업무 현황"
-          count={planned.length + upcoming.length}
-          dotColor="green"
-          defaultOpen
-        >
-          {biweeklyHiddenCounts.planned > 0 && (
-            <div className="rpt-hidden-bar">
-              <span>숨긴 업무 {biweeklyHiddenCounts.planned}건</span>
-              <button type="button" className="rpt-restore-btn" onClick={restoreAllTasks}>
-                모두 복원
-              </button>
+      <Block title={blockTitle} count={planned.length + upcoming.length} dotColor="green" defaultOpen>
+        {hiddenCount > 0 && (
+          <div className="rpt-hidden-bar">
+            <span>숨긴 업무 {hiddenCount}건</span>
+            <button type="button" className="rpt-restore-btn" onClick={restoreAllTasks}>
+              모두 복원
+            </button>
+          </div>
+        )}
+        {planned.length === 0 && upcoming.length === 0 ? (
+          <div className="rpt-empty">해당 기간 업무 없음</div>
+        ) : (
+          <>
+            {/* 요약 바 */}
+            <div className="rpt-compare-summary">
+              <span className="rpt-compare-stat rpt-compare-stat-done">완료 {summary.completed}</span>
+              <span className="rpt-compare-stat rpt-compare-stat-prog">진행중 {summary.inProgress}</span>
+              <span className="rpt-compare-stat rpt-compare-stat-left">미완료 {summary.remaining}</span>
+              <span className="rpt-compare-stat" style={{ color: 'var(--c-accent)', borderColor: 'var(--c-accent)' }}>{futureLabel} {upcoming.length}</span>
             </div>
-          )}
-          {planned.length === 0 && upcoming.length === 0 ? (
-            <div className="rpt-empty">해당 기간 업무 없음</div>
-          ) : (
-            <>
-              {/* 요약 바 */}
-              <div className="rpt-compare-summary">
-                <span className="rpt-compare-stat rpt-compare-stat-done">완료 {planCompleted.length}</span>
-                <span className="rpt-compare-stat rpt-compare-stat-prog">진행중 {planInProgress.length}</span>
-                <span className="rpt-compare-stat rpt-compare-stat-left">미완료 {planRemaining.length}</span>
-                <span className="rpt-compare-stat" style={{ color: 'var(--c-accent)', borderColor: 'var(--c-accent)' }}>앞으로 {upcoming.length}</span>
-              </div>
 
-              {assigneeBlocks.map((ag) => {
-                const pastSorted = [...ag.past];
-                const futureSorted = [...ag.future].sort(sortByDue);
-                return (
-                  <div key={ag.name} className="rpt-assignee-group">
-                    <div className="rpt-assignee-header">
-                      <span className="rpt-assignee-name">{ag.name}</span>
-                      <span className="rpt-assignee-cnt">지난 {ag.past.length} · 앞으로 {ag.future.length}</span>
+            {assigneeBlocks.map((ag) => {
+              const pastSorted = [...ag.past].sort(sortByDue);
+              const futureSorted = [...ag.future].sort(sortByDue);
+              return (
+                <div key={ag.name} className="rpt-assignee-group">
+                  <div className="rpt-assignee-header">
+                    <span className="rpt-assignee-name">{ag.name}</span>
+                    <span className="rpt-assignee-cnt">{pastLabel} {ag.past.length} · {futureLabel} {ag.future.length}</span>
+                  </div>
+                  <div className="rpt-compare-table rpt-compare-table-4col">
+                    <div className="rpt-compare-header">
+                      <div className="rpt-compare-col-plan">계획</div>
+                      <div className="rpt-compare-col-result">결과</div>
+                      <div className="rpt-compare-col-upcoming">{futureLabel} 진행</div>
+                      <div className="rpt-compare-col-note">비고</div>
                     </div>
-                    <div className="rpt-compare-table rpt-compare-table-4col">
-                      <div className="rpt-compare-header">
-                        <div className="rpt-compare-col-plan">계획</div>
-                        <div className="rpt-compare-col-result">결과</div>
-                        <div className="rpt-compare-col-upcoming">앞으로 2주 진행</div>
-                        <div className="rpt-compare-col-note">비고</div>
-                      </div>
 
-                      {/* 지난 2주 */}
-                      {pastSorted.length > 0 && (
-                        <>
-                          <div className="rpt-compare-section-divider">
-                            지난 2주<span className="cnt">{ag.past.length}건</span>
-                          </div>
-                          {pastSorted.map((t) => {
-                            const detail = statusDetail(t);
-                            const dd = tsToDate(t.dueDate);
-                            return (
-                              <div key={`past-${t.taskId}`} className={`rpt-compare-row ${t.status === '완료' ? 'rpt-compare-row-done' : t.status === '지연' || t.status === '보류' ? 'rpt-compare-row-warn' : ''}`}>
-                                <div className="rpt-compare-col-plan">
+                    {/* 지난 (계획) */}
+                    {pastSorted.length > 0 && (
+                      <>
+                        <div className="rpt-compare-section-divider">
+                          {pastLabel}<span className="cnt">{ag.past.length}건</span>
+                        </div>
+                        {pastSorted.map((t) => {
+                          const detail = statusDetail(t);
+                          const dd = tsToDate(t.dueDate);
+                          return (
+                            <div key={`past-${t.taskId}`} className={`rpt-compare-row ${t.status === '완료' ? 'rpt-compare-row-done' : t.status === '지연' || t.status === '보류' ? 'rpt-compare-row-warn' : ''}`}>
+                              <div className="rpt-compare-col-plan">
+                                <div className="rpt-compare-title-line">
+                                  <span className="rpt-cat-badge">{t.category || '기타'}</span>
                                   <span className="rpt-compare-title">{t.title}</span>
-                                  {dd && <span className="rpt-compare-assignee">마감 {format(dd, 'M.dd')}</span>}
                                 </div>
-                                <div className="rpt-compare-col-result">
-                                  {statusBadge(t)}
-                                  {t.status === '진행중' && t.progressRate > 0 && (
-                                    <div className="rpt-compare-progress">
-                                      <div className="rpt-compare-progress-bar">
-                                        <div className="rpt-compare-progress-fill" style={{ width: `${t.progressRate}%` }} />
-                                      </div>
-                                      <span className="rpt-compare-progress-text">{t.progressRate}%</span>
+                                {dd && <span className="rpt-compare-assignee">마감 {format(dd, 'M.dd')}</span>}
+                              </div>
+                              <div className="rpt-compare-col-result">
+                                {statusBadge(t)}
+                                {t.status === '진행중' && t.progressRate > 0 && (
+                                  <div className="rpt-compare-progress">
+                                    <div className="rpt-compare-progress-bar">
+                                      <div className="rpt-compare-progress-fill" style={{ width: `${t.progressRate}%` }} />
                                     </div>
-                                  )}
-                                  {detail && <div className="rpt-compare-detail">{detail}</div>}
-                                </div>
-                                <div className="rpt-compare-col-upcoming">
-                                  <span className="rpt-compare-col-empty">—</span>
-                                </div>
-                                <div className="rpt-compare-col-note">
-                                  <textarea
-                                    className="rpt-row-note"
-                                    placeholder="비고"
-                                    value={taskNotes[t.taskId] || ''}
-                                    onChange={(e) => updateTaskNote(t.taskId, e.target.value)}
-                                    rows={2}
-                                  />
-                                  <button
-                                    type="button"
-                                    className="rpt-hide-btn"
-                                    onClick={() => hideTask(t.taskId)}
-                                    title="회의록에서 이 업무 숨기기"
-                                  >
-                                    ×
-                                  </button>
-                                </div>
+                                    <span className="rpt-compare-progress-text">{t.progressRate}%</span>
+                                  </div>
+                                )}
+                                {detail && <div className="rpt-compare-detail">{detail}</div>}
                               </div>
-                            );
-                          })}
-                        </>
-                      )}
+                              <div className="rpt-compare-col-upcoming">
+                                <span className="rpt-compare-col-empty">—</span>
+                              </div>
+                              <div className="rpt-compare-col-note">
+                                <textarea
+                                  className="rpt-row-note"
+                                  placeholder="비고"
+                                  value={taskNotes[t.taskId] || ''}
+                                  onChange={(e) => updateTaskNote(t.taskId, e.target.value)}
+                                  rows={2}
+                                />
+                                <button
+                                  type="button"
+                                  className="rpt-hide-btn"
+                                  onClick={() => hideTask(t.taskId)}
+                                  title="회의록에서 이 업무 숨기기"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
 
-                      {/* 앞으로 2주 */}
-                      {futureSorted.length > 0 && (
-                        <>
-                          <div className="rpt-compare-section-divider">
-                            앞으로 2주<span className="cnt">{ag.future.length}건</span>
-                          </div>
-                          {futureSorted.map((t) => {
-                            const dd = tsToDate(t.dueDate);
-                            return (
-                              <div key={`fut-${t.taskId}`} className="rpt-compare-row">
-                                <div className="rpt-compare-col-plan">
-                                  <span className="rpt-compare-col-empty">—</span>
-                                </div>
-                                <div className="rpt-compare-col-result">
-                                  <span className="rpt-compare-col-empty">—</span>
-                                </div>
-                                <div className="rpt-compare-col-upcoming">
+                    {/* 향후 */}
+                    {futureSorted.length > 0 && (
+                      <>
+                        <div className="rpt-compare-section-divider">
+                          {futureLabel}<span className="cnt">{ag.future.length}건</span>
+                        </div>
+                        {futureSorted.map((t) => {
+                          const dd = tsToDate(t.dueDate);
+                          return (
+                            <div key={`fut-${t.taskId}`} className="rpt-compare-row">
+                              <div className="rpt-compare-col-plan">
+                                <span className="rpt-compare-col-empty">—</span>
+                              </div>
+                              <div className="rpt-compare-col-result">
+                                <span className="rpt-compare-col-empty">—</span>
+                              </div>
+                              <div className="rpt-compare-col-upcoming">
+                                <div className="rpt-compare-title-line">
+                                  <span className="rpt-cat-badge">{t.category || '기타'}</span>
                                   <span className="rpt-compare-title">{t.title}</span>
-                                  {dd && <span className="rpt-compare-assignee">마감 {format(dd, 'M.dd')}</span>}
-                                  {t.reportNote && (
-                                    <span style={{ fontSize: 11, color: '#888', marginTop: 2 }}>└ {t.reportNote}</span>
-                                  )}
                                 </div>
-                                <div className="rpt-compare-col-note">
-                                  <textarea
-                                    className="rpt-row-note"
-                                    placeholder="비고"
-                                    value={taskNotes[t.taskId] || ''}
-                                    onChange={(e) => updateTaskNote(t.taskId, e.target.value)}
-                                    rows={2}
-                                  />
-                                  <button
-                                    type="button"
-                                    className="rpt-hide-btn"
-                                    onClick={() => hideTask(t.taskId)}
-                                    title="회의록에서 이 항목 숨기기"
-                                  >
-                                    ×
-                                  </button>
-                                </div>
+                                {dd && <span className="rpt-compare-assignee">마감 {format(dd, 'M.dd')}</span>}
+                                {t.reportNote && (
+                                  <span style={{ fontSize: 11, color: '#888', marginTop: 2 }}>└ {t.reportNote}</span>
+                                )}
                               </div>
-                            );
-                          })}
-                        </>
-                      )}
-                    </div>
+                              <div className="rpt-compare-col-note">
+                                <textarea
+                                  className="rpt-row-note"
+                                  placeholder="비고"
+                                  value={taskNotes[t.taskId] || ''}
+                                  onChange={(e) => updateTaskNote(t.taskId, e.target.value)}
+                                  rows={2}
+                                />
+                                <button
+                                  type="button"
+                                  className="rpt-hide-btn"
+                                  onClick={() => hideTask(t.taskId)}
+                                  title="회의록에서 이 항목 숨기기"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
                   </div>
-                );
-              })}
-              <LeadTimeSummary tasks={planCompleted} />
-            </>
-          )}
-        </Block>
-
-        <Block title="결정 필요 사항" count={ceoDecision.length} dotColor="yellow" defaultOpen>
-          {biweeklyHiddenCounts.ceoDecision > 0 && (
-            <div className="rpt-hidden-bar">
-              <span>숨긴 항목 {biweeklyHiddenCounts.ceoDecision}건</span>
-              <button type="button" className="rpt-restore-btn" onClick={restoreAllTasks}>
-                모두 복원
-              </button>
-            </div>
-          )}
-          {ceoDecision.length === 0 ? (
-            <div className="rpt-empty">해당 없음</div>
-          ) : (
-            <div className="rpt-list">
-              {ceoDecision.map((t) => (
-                <div key={t.taskId} className="rpt-item-with-action">
-                  <div className="rpt-item" style={{ flex: 1 }}>
-                    <span className="rpt-item-title">{t.title}</span>
-                    <span className="rpt-item-assignee">{t.assigneeName}</span>
-                    <span className="rpt-item-reason">{t.reportNote || (t.status === '보류' ? '보류 중' : '')}</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="rpt-hide-btn"
-                    onClick={() => hideTask(t.taskId)}
-                    title="회의록에서 이 항목 숨기기"
-                  >
-                    ×
-                  </button>
-                  {t.reportNote && <div style={{ fontSize: 11, color: '#888', marginLeft: 12, marginTop: 1, flexBasis: '100%' }}>└ {t.reportNote}</div>}
                 </div>
-              ))}
-            </div>
-          )}
-        </Block>
+              );
+            })}
+            <LeadTimeSummary tasks={planned.filter((t) => t.status === '완료')} />
+          </>
+        )}
+      </Block>
+    );
+  };
 
-        <Block title="KPI 달성 현황" count={visibleKpisBi.length} dotColor="yellow" defaultOpen>
-          {kpiHiddenCountBi > 0 && (
-            <div className="rpt-hidden-bar">
-              <span>숨긴 KPI {kpiHiddenCountBi}개</span>
-              <button type="button" className="rpt-restore-btn" onClick={restoreAllKpis}>
-                모두 복원
-              </button>
-            </div>
-          )}
-          {Object.keys(kpiByAssignee).length === 0 ? <div className="rpt-empty">해당 없음</div> :
-            Object.entries(kpiByAssignee).map(([name, kpis]) => (
-              <div key={name} className="rpt-cat-group">
-                <div className="rpt-cat-label">{name} <span className="rpt-cat-cnt">{kpis.length}</span></div>
-                {renderKpiBlock(kpis, kpiNotes, updateKpiNote, hideKpi)}
-              </div>
-            ))
-          }
-        </Block>
+  /* ─── 주간 리포트 렌더 ─── */
+  const renderWeeklyReport = () => {
+    if (!weeklyData) return null;
+    const { completed, incomplete, nextWeek, delayed } = weeklyData;
+
+    // 주간을 격주 양식에 매핑: planned = 이번주 완료 + 미완료 + 이월(중복 제거)
+    const seen = new Set<string>();
+    const planned: Task[] = [];
+    [...completed, ...incomplete, ...delayed].forEach((t) => {
+      if (!seen.has(t.taskId)) {
+        seen.add(t.taskId);
+        planned.push(t);
+      }
+    });
+
+    const planCompleted = planned.filter((t) => t.status === '완료');
+    const planInProgress = planned.filter((t) => t.status === '진행중');
+    const planRemaining = planned.filter((t) => t.status !== '완료' && t.status !== '진행중');
+
+    return (
+      <>
+        {renderUnifiedReport({
+          planned,
+          upcoming: nextWeek,
+          pastLabel: '이번 주',
+          futureLabel: '다음 주',
+          blockTitle: '주간 업무 현황',
+          summary: { completed: planCompleted.length, inProgress: planInProgress.length, remaining: planRemaining.length },
+          hiddenCount: 0,
+        })}
+      </>
+    );
+  };
+
+  /* ─── 격주(CEO) 리포트 렌더 ─── */
+  const renderBiweeklyReport = () => {
+    if (!biweeklyData) return null;
+    const { planned, planCompleted, planInProgress, planRemaining, upcoming } = biweeklyData;
+
+    return (
+      <>
+        {renderUnifiedReport({
+          planned,
+          upcoming,
+          pastLabel: '지난 2주',
+          futureLabel: '앞으로 2주',
+          blockTitle: '2주 업무 현황',
+          summary: { completed: planCompleted.length, inProgress: planInProgress.length, remaining: planRemaining.length },
+          hiddenCount: biweeklyHiddenCounts.planned,
+        })}
       </>
     );
   };

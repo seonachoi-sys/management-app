@@ -821,6 +821,16 @@
 
 .tm-btn-save:hover { background: var(--c-accent-hover); }
 
+.tm-btn-delete {
+  padding: 8px 16px; background: transparent;
+  border: 1px solid var(--c-red, #e53935);
+  color: var(--c-red, #e53935);
+  border-radius: var(--radius);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: var(--font);
+}
+.tm-btn-delete:hover { background: var(--c-red-bg, #fdeeee); }
+
 .tm-btn-continue {
   padding: 8px 16px; background: var(--c-bg); color: var(--c-accent);
   border: 1px solid var(--c-accent); border-radius: var(--radius);
@@ -1113,6 +1123,30 @@
 }
 
 .rpt-compare-title { font-size: 13px; font-weight: 500; color: var(--c-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 계획 컬럼 — 카테고리 배지 + 업무명 한 줄 */
+.rpt-compare-title-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.rpt-compare-title-line .rpt-compare-title {
+  flex: 1;
+  min-width: 0;
+}
+.rpt-cat-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--c-bg-sub, #f0f0f0);
+  color: var(--c-text-2, #555);
+  white-space: nowrap;
+  flex-shrink: 0;
+  border: 0.5px solid var(--c-line);
+}
 .rpt-compare-assignee { font-size: 11px; color: var(--c-text-3); }
 
 .rpt-compare-badge {

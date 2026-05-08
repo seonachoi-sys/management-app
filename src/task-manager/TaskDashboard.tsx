@@ -29,7 +29,6 @@ import NotificationCenter from './NotificationCenter';
 import SettingsPanel from './SettingsPanel';
 import KpiPanel from './KpiPanel';
 import EisenhowerMatrix from './EisenhowerMatrix';
-import type { Quadrant } from './EisenhowerMatrix';
 import { normalizeUserName } from '../utils/userNameNormalizer';
 import './TaskManager.css';
 
@@ -1083,36 +1082,6 @@ export default function TaskDashboard() {
           <EisenhowerMatrix
             tasks={tasks}
             onCardClick={(t: Task) => { setEditingTask(t); setParentForNewTask(null); setShowForm(true); }}
-            onQuadrantChange={async (taskId: string, quadrant: Quadrant) => {
-              if (!user) return;
-              const task = tasks.find(t => t.taskId === taskId);
-              const now = new Date();
-              const updates: Partial<Task> = {};
-
-              // 사분면별 마감일
-              const dueDaysMap: Record<string, number> = { q1: 0, q3: 2, q2: 7, q4: 14 };
-              const newDue = addDays(now, dueDaysMap[quadrant]);
-
-              // 기존 마감일이 더 촉박하면 덮어쓰지 않음
-              const existingDue = task?.dueDate instanceof Timestamp ? task.dueDate.toDate() : null;
-              if (!existingDue || newDue < existingDue) {
-                updates.dueDate = Timestamp.fromDate(newDue);
-              }
-
-              // 중요도 — 매트릭스 드래그는 reportTo를 변경하지 않음 (A안: 회의록 노출은 명시적 폼 선택으로만)
-              const isImportant = quadrant === 'q1' || quadrant === 'q2';
-              updates.importance = isImportant ? 'high' : 'normal';
-              updates.priority = isImportant ? '높음' : '보통';
-
-              try {
-                await update(taskId, updates, user.uid, userName);
-                // 토스트 메시지
-                if (updates.dueDate) {
-                  const d = newDue;
-                  addToast(`마감일이 ${d.getMonth()+1}.${String(d.getDate()).padStart(2,'0')}(으)로 조정되었습니다`);
-                }
-              } catch {}
-            }}
           />
         </div>
       )}
@@ -1140,6 +1109,7 @@ export default function TaskDashboard() {
             handleSave(data, keepFormOpen);
           }}
           onClose={() => { setShowForm(false); setEditingTask(null); setParentForNewTask(null); }}
+          onDelete={handleDelete}
         />
       )}
 

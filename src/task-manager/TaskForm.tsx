@@ -34,6 +34,7 @@ interface Props {
   userName: string;
   onSave: (data: Partial<Task>, keepFormOpen?: boolean) => Promise<void> | void;
   onClose: () => void;
+  onDelete?: (taskId: string) => Promise<void> | void;
 }
 
 const STATUSES: TaskStatus[] = ['대기', '진행중', '완료', '지연', '보류'];
@@ -44,7 +45,7 @@ function tsToString(ts: Timestamp | null | undefined): string {
   return d.toISOString().slice(0, 10);
 }
 
-export default function TaskForm({ task, tasks, members, categories, userName, onSave, onClose }: Props) {
+export default function TaskForm({ task, tasks, members, categories, userName, onSave, onClose, onDelete }: Props) {
   const defaultAssigneeName = task?.assigneeName || userName || '';
 
   // 기존 description만 있는 업무는 진입 시 자동으로 actionItems로 변환
@@ -553,6 +554,20 @@ export default function TaskForm({ task, tasks, members, categories, userName, o
           )}
 
           <div className="tm-form-actions">
+            {task && onDelete && (
+              <button
+                type="button"
+                className="tm-btn-delete"
+                onClick={async () => {
+                  if (!window.confirm(`"${task.title}" 업무를 삭제하시겠습니까?`)) return;
+                  await onDelete(task.taskId);
+                  onClose();
+                }}
+                style={{ marginRight: 'auto' }}
+              >
+                삭제
+              </button>
+            )}
             <button type="button" className="tm-btn-cancel" onClick={onClose}>닫기</button>
             {!task && !isParentTask && (
               <button

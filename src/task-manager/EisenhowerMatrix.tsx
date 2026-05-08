@@ -3,19 +3,7 @@ import { Timestamp } from 'firebase/firestore';
 import { differenceInDays, format } from 'date-fns';
 import html2canvas from 'html2canvas';
 import { saveBinaryFile, saveNote } from '../services/obsidianService';
-import {
-  DndContext,
-  DragEndEvent,
-  DragStartEvent,
-  useDroppable,
-  useDraggable,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
-import type { Task, TaskStatus } from '../types';
-import { formatShort, dDayLabel } from '../utils/dateUtils';
+import type { Task } from '../types';
 
 /* ─── 팀원 색상 ─── */
 const MEMBER_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -58,8 +46,8 @@ function classifyTask(task: Task): Quadrant {
   return 'q4';
 }
 
-/* ─── 드래그 가능한 카드 (inline transform 방식 — 원본 카드 자체가 이동) ─── */
-function DraggableCard({
+/* ─── 카드 (클릭 → 수정 모달) ─── */
+function MatrixCard({
   task,
   dimmed,
   onClick,
@@ -68,43 +56,28 @@ function DraggableCard({
   dimmed: boolean;
   onClick?: (task: Task) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: task.taskId,
-    data: { task },
-  });
-
   const color = getMemberColor(task.assigneeName);
   const dueDate = task.dueDate instanceof Timestamp ? task.dueDate.toDate() : null;
   const daysLeft = dueDate ? differenceInDays(dueDate, new Date()) : null;
   const isDelayed = daysLeft !== null && daysLeft < 0 && task.status !== '완료';
 
-  // 드래그 중이 아닌 단순 클릭일 때만 onClick 발동
-  const handleClick = (e: React.MouseEvent) => {
-    if (isDragging) return;
-    e.stopPropagation();
-    onClick?.(task);
-  };
-
-  // 카드를 마우스 따라 이동 (inline transform — DragOverlay 미사용)
-  const style: React.CSSProperties = {
-    borderLeftColor: color.border,
-    opacity: dimmed ? 0.25 : 1,
-    cursor: isDragging ? 'grabbing' : 'pointer',
-    transform: CSS.Translate.toString(transform),
-    zIndex: isDragging ? 1000 : undefined,
-    boxShadow: isDragging ? '0 12px 28px rgba(0,0,0,0.22)' : undefined,
-    transition: isDragging ? 'none' : 'box-shadow 0.15s, opacity 0.2s',
-    touchAction: 'none', // 모바일 스크롤 방지 (PC는 영향 없음)
-  };
-
   return (
     <div
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      onClick={handleClick}
-      className={`em-card ${isDelayed ? 'em-card-delayed' : ''} ${isDragging ? 'em-card-dragging-inline' : ''}`}
-      style={style}
+      role="button"
+      tabIndex={0}
+      onClick={() => onClick?.(task)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.(task);
+        }
+      }}
+      className={`em-card ${isDelayed ? 'em-card-delayed' : ''}`}
+      style={{
+        borderLeftColor: color.border,
+        opacity: dimmed ? 0.25 : 1,
+        cursor: 'pointer',
+      }}
     >
       <div className="em-card-header">
         <span className="em-card-title">{task.title}</span>
@@ -128,7 +101,7 @@ function DraggableCard({
   );
 }
 
-/* ─── 드롭 가능한 사분면 ─── */
+/* ─── 사분면 ─── */
 function QuadrantZone({
   quadrant,
   tasks,
@@ -143,15 +116,10 @@ function QuadrantZone({
   onCardClick?: (task: Task) => void;
 }) {
   const info = QUADRANT_INFO[quadrant];
-  const { setNodeRef, isOver } = useDroppable({ id: quadrant });
   const isOverloaded = quadrant === 'q1' && totalCount >= 5;
 
   return (
-    <div
-      ref={setNodeRef}
-      className={`em-quadrant ${isOver ? 'em-quadrant-over' : ''} ${isOverloaded ? 'em-quadrant-warn' : ''}`}
-      style={{ background: isOver ? info.bg : undefined }}
-    >
+    <div className={`em-quadrant ${isOverloaded ? 'em-quadrant-warn' : ''}`}>
       <div className="em-quad-header">
         <span className="em-quad-dot" style={{ background: info.color }} />
         <span className="em-quad-title" style={{ color: info.color }}>{info.title}</span>
@@ -161,7 +129,7 @@ function QuadrantZone({
       <div className="em-quad-subtitle">{info.subtitle}</div>
       <div className="em-quad-cards">
         {tasks.map((t) => (
-          <DraggableCard
+          <MatrixCard
             key={t.taskId}
             task={t}
             dimmed={!!filterMember && t.assigneeName !== filterMember}
@@ -177,18 +145,13 @@ function QuadrantZone({
 /* ─── 메인 매트릭스 ─── */
 interface Props {
   tasks: Task[];
-  onQuadrantChange: (taskId: string, quadrant: Quadrant) => void;
   onCardClick?: (task: Task) => void;
 }
 
-export default function EisenhowerMatrix({ tasks, onQuadrantChange, onCardClick }: Props) {
+export default function EisenhowerMatrix({ tasks, onCardClick }: Props) {
   const [filterMember, setFilterMember] = useState('');
   const [capturing, setCapturing] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-  );
 
   // 상위업무(그룹 헤더) 제외, 완료 제외
   const activeTasks = useMemo(() => {
@@ -215,25 +178,6 @@ export default function EisenhowerMatrix({ tasks, onQuadrantChange, onCardClick 
     activeTasks.forEach((t) => { if (t.assigneeName) names.add(t.assigneeName); });
     return Array.from(names);
   }, [activeTasks]);
-
-  const handleDragStart = (_event: DragStartEvent) => {
-    // inline transform 방식 — overlay 없음
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const targetQuadrant = over.id as Quadrant;
-    const taskId = active.id as string;
-    const task = activeTasks.find((t) => t.taskId === taskId);
-    if (!task) return;
-
-    const currentQuadrant = classifyTask(task);
-    if (currentQuadrant !== targetQuadrant) {
-      onQuadrantChange(taskId, targetQuadrant);
-    }
-  };
 
   // 스크린샷 → Obsidian 저장
   const handleScreenshot = async () => {
@@ -326,16 +270,13 @@ export default function EisenhowerMatrix({ tasks, onQuadrantChange, onCardClick 
         <div className="em-axis-x">← 긴급 —————— 여유 →</div>
       </div>
 
-      {/* 사사분면 그리드 */}
-      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="em-grid" ref={gridRef}>
-          <QuadrantZone quadrant="q1" tasks={quadrants.q1} filterMember={filterMember} totalCount={quadrants.q1.length} onCardClick={onCardClick} />
-          <QuadrantZone quadrant="q2" tasks={quadrants.q2} filterMember={filterMember} totalCount={quadrants.q2.length} onCardClick={onCardClick} />
-          <QuadrantZone quadrant="q3" tasks={quadrants.q3} filterMember={filterMember} totalCount={quadrants.q3.length} onCardClick={onCardClick} />
-          <QuadrantZone quadrant="q4" tasks={quadrants.q4} filterMember={filterMember} totalCount={quadrants.q4.length} onCardClick={onCardClick} />
-        </div>
-
-      </DndContext>
+      {/* 사사분면 그리드 — 카드 클릭 시 수정 모달 (드래그 기능 제거) */}
+      <div className="em-grid" ref={gridRef}>
+        <QuadrantZone quadrant="q1" tasks={quadrants.q1} filterMember={filterMember} totalCount={quadrants.q1.length} onCardClick={onCardClick} />
+        <QuadrantZone quadrant="q2" tasks={quadrants.q2} filterMember={filterMember} totalCount={quadrants.q2.length} onCardClick={onCardClick} />
+        <QuadrantZone quadrant="q3" tasks={quadrants.q3} filterMember={filterMember} totalCount={quadrants.q3.length} onCardClick={onCardClick} />
+        <QuadrantZone quadrant="q4" tasks={quadrants.q4} filterMember={filterMember} totalCount={quadrants.q4.length} onCardClick={onCardClick} />
+      </div>
     </div>
   );
 }
