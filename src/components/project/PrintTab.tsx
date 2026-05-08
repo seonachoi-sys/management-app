@@ -83,7 +83,8 @@ function calcLabor(
     const totalInsComp = npComp + hiComp + ltcComp + eiComp + iaComp;
 
     const totalCost = salary + retirement + totalInsComp;
-    const total = Math.round(totalCost * rate / 100);
+    // 정부과제 인건비 집행은 천원 단위 round-down (엑셀 정산서식 관행)
+    const total = Math.floor((totalCost * rate / 100) / 1000) * 1000;
     // 참여형태: 'inKind' = 100% 현물, 그 외(default 'cash') = 100% 현금
     const cash = part.participationType === 'inKind' ? 0 : total;
     const inKind = total - cash;

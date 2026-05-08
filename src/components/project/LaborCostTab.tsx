@@ -130,7 +130,8 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
       );
 
       const totalCost = salary + retirement + companyBurden;
-      const total = Math.round(totalCost * rate / 100);
+      // 정부과제 인건비 집행은 천원 단위 round-down (엑셀 정산서식 관행)
+      const total = Math.floor((totalCost * rate / 100) / 1000) * 1000;
 
       // 참여형태: 'inKind' = 100% 현물, 그 외(default 'cash') = 100% 현금
       const cash = part.participationType === 'inKind' ? 0 : total;
@@ -173,7 +174,8 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
         const ret = 0; // 퇴직금 추계 미반영
         const ins = emp.insurance?.totalCompanyBurden || 0;
         const cost = salary + ret + ins;
-        const total = Math.round(cost * rate / 100);
+        // 천원 단위 round-down (정부과제 정산서식)
+        const total = Math.floor((cost * rate / 100) / 1000) * 1000;
 
         // 참여형태: 'inKind' = 100% 현물, default 'cash'
         const cashShare = part.participationType === 'inKind' ? 0 : total;
