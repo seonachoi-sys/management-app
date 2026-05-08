@@ -83,6 +83,56 @@
 .pt-doc-table-centered td { text-align: center; vertical-align: middle; }
 .pt-doc-table-centered td.money { text-align: right; }
 
+/* 인라인 편집 셀 (현금/현물 보정용) */
+.pt-edit-cell {
+  width: 100%;
+  border: 1px dashed transparent;
+  background: transparent;
+  font: inherit;
+  text-align: right;
+  padding: 2px 4px;
+  border-radius: 3px;
+  color: var(--text-primary);
+  font-family: var(--mono, monospace);
+}
+.pt-edit-cell:hover {
+  border-color: var(--border-default);
+  background: #fafbff;
+}
+.pt-edit-cell:focus {
+  outline: none;
+  border: 1px solid var(--accent);
+  background: #fffbe6;
+}
+/* 숫자 input 스피너 제거 */
+.pt-edit-cell::-webkit-outer-spin-button,
+.pt-edit-cell::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.pt-edit-cell[type="number"] { -moz-appearance: textfield; }
+
+/* 섹션 헤더 행 (제목 + 우측 버튼) */
+.pt-section-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 12px;
+}
+.pt-section-row .pt-doc-section-title { margin: 0; flex: 1; }
+.pt-reset-btn {
+  padding: 4px 10px; font-size: 11px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border-radius: 4px; cursor: pointer;
+  font-family: inherit;
+}
+.pt-reset-btn:hover {
+  border-color: var(--accent); color: var(--accent);
+}
+
+/* PDF 캡처 시 자동 숨김 클래스 */
+.pt-pdf-hide {}
+
 .pt-name { font-weight: 500; }
 .pt-nowrap { white-space: nowrap; font-size: 11px; }
 .pt-highlight { font-weight: 600; color: var(--accent); }

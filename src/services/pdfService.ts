@@ -63,6 +63,14 @@ export async function generatePdfFromElement(
     w.style.overflow = 'visible';
   });
 
+  // .pt-pdf-hide 요소들은 PDF 캡처 시 일시적으로 숨김 (예: 초기화 버튼)
+  const hideEls = element.querySelectorAll<HTMLElement>('.pt-pdf-hide');
+  const origDisplay: string[] = [];
+  hideEls.forEach((el) => {
+    origDisplay.push(el.style.display);
+    el.style.display = 'none';
+  });
+
   // 자연 너비 측정 (maxWidth 해제 후)
   element.style.maxWidth = 'none';
   element.style.minWidth = `${captureWidth}px`;
@@ -99,6 +107,7 @@ export async function generatePdfFromElement(
     element.style.minWidth = originalStyle.minWidth;
     element.style.margin = originalStyle.margin;
     wraps.forEach((w, i) => { w.style.overflow = origOverflow[i] || ''; });
+    hideEls.forEach((el, i) => { el.style.display = origDisplay[i] || ''; });
   }
 
   const imgWidth = canvas.width;   // px (scale 적용됨)

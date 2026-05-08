@@ -265,10 +265,27 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
     load();
   }, [yearMonth]);
 
-  const laborRows = useMemo(() => {
+  const baseLaborRows = useMemo(() => {
     if (!project) return [];
     return calcLabor(project, employees, participations, year, month, monthlyData);
   }, [project, employees, participations, year, month, monthlyData]);
+
+  // 사용자가 현금/현물 보정 가능 — 의존성 변경 시 base로 리셋
+  const [laborRows, setLaborRows] = useState<LaborRow[]>([]);
+  useEffect(() => {
+    setLaborRows(baseLaborRows);
+  }, [baseLaborRows]);
+
+  const updateRowAmount = (employeeNumber: string, field: 'cash' | 'inKind', value: number) => {
+    setLaborRows((prev) => prev.map((r) => {
+      if (r.emp.employeeNumber !== employeeNumber) return r;
+      const next = { ...r, [field]: Math.max(0, value || 0) };
+      next.total = next.cash + next.inKind;
+      return next;
+    }));
+  };
+
+  const resetLaborRows = () => setLaborRows(baseLaborRows);
 
   const downloadPdf = useCallback(async (type: 'participation' | 'payroll', proj: Project) => {
     if (!previewRef.current) return;
@@ -285,7 +302,10 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
   }, [yearMonth, user?.email]);
 
   const downloadFile = async (type: 'participation' | 'payroll', proj: Project) => {
-    const rows = calcLabor(proj, employees, participations, year, month, monthlyData);
+    // 현재 선택된 프로젝트는 보정값(laborRows) 적용, 다른 프로젝트는 새로 계산
+    const rows = (proj.projectId === selectedProjectId && laborRows.length > 0)
+      ? laborRows
+      : calcLabor(proj, employees, participations, year, month, monthlyData);
     let wb: XLSX.WorkBook;
     let filename: string;
 
@@ -424,7 +444,17 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
             </div>
 
             <div className="pt-doc-section">
-              <h5 className="pt-doc-section-title">2. 인건비 집행</h5>
+              <div className="pt-section-row">
+                <h5 className="pt-doc-section-title">2. 인건비 집행</h5>
+                <button
+                  type="button"
+                  className="pt-reset-btn pt-pdf-hide"
+                  onClick={resetLaborRows}
+                  title="수동 입력한 현금/현물 보정값 초기화"
+                >
+                  ↺ 초기화
+                </button>
+              </div>
               <div className="pt-table-wrap">
                 <table className="table pt-doc-table pt-doc-table-centered">
                   <thead>
@@ -438,8 +468,24 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
                         <td className="money">{formatWon(r.salary)}</td>
                         <td className="money">{formatWon(r.totalInsComp)}</td>
                         <td className="money">{r.rate}%</td>
-                        <td className="money">{formatWon(r.cash)}</td>
-                        <td className="money">{formatWon(r.inKind)}</td>
+                        <td className="money">
+                          <input
+                            type="number"
+                            className="pt-edit-cell"
+                            value={r.cash}
+                            onChange={(e) => updateRowAmount(r.emp.employeeNumber, 'cash', parseInt(e.target.value, 10) || 0)}
+                            title="현금 — 클릭하여 수정"
+                          />
+                        </td>
+                        <td className="money">
+                          <input
+                            type="number"
+                            className="pt-edit-cell"
+                            value={r.inKind}
+                            onChange={(e) => updateRowAmount(r.emp.employeeNumber, 'inKind', parseInt(e.target.value, 10) || 0)}
+                            title="현물 — 클릭하여 수정"
+                          />
+                        </td>
                         <td className="money">{formatWon(r.total)}</td>
                       </tr>
                     ))}
@@ -620,12 +666,13 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
                     </tfoot>
                   </table>
                 </div>
-                <p style={{ fontSize: 11, color: '#666', marginTop: 8, textAlign: 'left' }}>
-                  ※ 기본급 = 기본급 + 식대 + 차량유지비 + 연구수당 + 육아수당 통합
-                </p>
               </div>
             );
           })()}
+          {/* 안내 문구는 미리보기 영역 밖 — PDF 캡처에서 자동 제외 */}
+          <p style={{ fontSize: 11, color: '#666', marginTop: 8, textAlign: 'left' }}>
+            ※ 기본급 = 기본급 + 식대 + 차량유지비 + 연구수당 + 육아수당 통합 (PDF 출력에는 표시되지 않음)
+          </p>
         </>
       )}
 
