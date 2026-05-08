@@ -51,17 +51,17 @@
   font-size: 14px; font-weight: 600;
   margin: 0 0 12px;
   color: var(--text-primary);
-  text-align: center;
-  padding: 6px 0;
+  text-align: left;
+  padding: 6px 10px;
   background: #F8FAFC;
+  border-left: 3px solid var(--accent);
   border-radius: 4px;
 }
 .pt-doc-grid {
   display: grid; grid-template-columns: 120px 1fr; gap: 6px 16px;
   font-size: 13px; padding: 14px 18px;
   background: var(--bg-main); border-radius: var(--radius-md);
-  text-align: center;
-  justify-items: center;
+  text-align: left;
 }
 .pt-doc-grid span:nth-child(odd) { font-weight: 600; color: var(--text-secondary); }
 .pt-doc-grid span:nth-child(even) { font-weight: 500; }
@@ -73,11 +73,13 @@
 .pt-doc-table tfoot td,
 .pt-doc-foot td { background: #F1F5F9; border-top: 2px solid var(--border-default); font-weight: 600; }
 
-/* 표 셀 가운데 정렬 (표 모양 깔끔) */
-.pt-doc-table-centered th,
+/* 표 셀 정렬:
+   - 모든 헤더(th)는 가운데
+   - 데이터 본문(td.money)만 우측 (숫자 정렬)
+   - 텍스트 td는 가운데 */
+.pt-doc-table-centered th { text-align: center; vertical-align: middle; }
 .pt-doc-table-centered td { text-align: center; vertical-align: middle; }
-.pt-doc-table-centered td.money,
-.pt-doc-table-centered th.money { text-align: right; }
+.pt-doc-table-centered td.money { text-align: right; }
 
 .pt-name { font-weight: 500; }
 .pt-nowrap { white-space: nowrap; font-size: 11px; }

@@ -141,7 +141,7 @@ function createParticipationSheet(project: Project, laborRows: LaborRow[], yearM
   rows1.push([]);
 
   // 시트 2 데이터도 같은 시트에 추가
-  rows1.push(['3. 인건비 단가 상세']);
+  rows1.push(['3. 인건비 상세']);
   rows1.push(['성명', '직책', '월급여(A)', '퇴직금', '국민연금', '건강보험', '장기요양보험', '고용보험', '산재보험', '합계']);
   let sumSalary = 0, sumRetire = 0, sumNp = 0, sumHi = 0, sumLtc = 0, sumEi = 0, sumIa = 0, sumTotalCost = 0;
   for (const r of laborRows) {
@@ -457,7 +457,7 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
             </div>
 
             <div className="pt-doc-section">
-              <h5 className="pt-doc-section-title">3. 인건비 단가 상세</h5>
+              <h5 className="pt-doc-section-title">3. 인건비 상세</h5>
               <div className="pt-table-wrap">
                 <table className="table pt-doc-table pt-doc-table-centered">
                   <thead>

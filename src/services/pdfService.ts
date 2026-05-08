@@ -97,15 +97,27 @@ export async function generatePdfFromElement(
     // 다중 페이지: 캔버스를 페이지 단위로 슬라이스
     // 페이지당 캔버스 픽셀 높이
     const pageContentPx = (contentHeight / ratio) * scale;
-    // 안전 마진 — 행 중간 잘림 방지를 위해 살짝 줄임 (98%)
-    const safePagePx = Math.floor(pageContentPx * 0.98);
+    // 안전 마진 — 행 잘림 방지를 위해 90%로 시작 (남은 10%는 픽셀 분석으로 미세 조정)
+    const idealPagePx = Math.floor(pageContentPx * 0.90);
+
+    // 캔버스 컨텍스트 (행 잘림 분석용)
+    const srcCtx = canvas.getContext('2d');
 
     let yOffset = 0;
     let pageNum = 0;
     while (yOffset < imgHeight && pageNum < maxPages) {
       if (pageNum > 0) pdf.addPage();
 
-      const sliceHeightPx = Math.min(safePagePx, imgHeight - yOffset);
+      // 이상적 슬라이스 끝 위치
+      const idealEnd = Math.min(yOffset + idealPagePx, imgHeight);
+
+      // 마지막 페이지면 그대로, 아니면 흰색 가로줄 찾아서 그 위치에서 자르기
+      let actualEnd = idealEnd;
+      if (idealEnd < imgHeight && srcCtx) {
+        actualEnd = findWhitespaceLine(srcCtx, imgWidth, idealEnd, Math.floor(pageContentPx * 0.10));
+      }
+
+      const sliceHeightPx = actualEnd - yOffset;
       const sliceCanvas = document.createElement('canvas');
       sliceCanvas.width = imgWidth;
       sliceCanvas.height = sliceHeightPx;
@@ -120,12 +132,55 @@ export async function generatePdfFromElement(
       const dataUrl = sliceCanvas.toDataURL('image/jpeg', jpegQuality);
       pdf.addImage(dataUrl, 'JPEG', xPos, margin, contentWidth, sliceMm, undefined, 'FAST');
 
-      yOffset += sliceHeightPx;
+      yOffset = actualEnd;
       pageNum++;
     }
   }
 
   return pdf.output('blob');
+}
+
+/**
+ * 캔버스에서 idealEnd 근처의 가장 흰색에 가까운 가로줄(행 사이 공백) 찾기.
+ * idealEnd에서 위로 scanRange만큼 스캔하면서 평균 밝기가 가장 높은 y 위치 반환.
+ * 표 행 사이 공백에서 자르도록 하여 행 중간 잘림 방지.
+ */
+function findWhitespaceLine(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  idealEnd: number,
+  scanRange: number
+): number {
+  const minY = Math.max(0, idealEnd - scanRange);
+  let bestY = idealEnd;
+  let bestBrightness = -1;
+
+  // 2px 간격으로 스캔 (성능)
+  for (let y = idealEnd; y >= minY; y -= 2) {
+    try {
+      const data = ctx.getImageData(0, y, width, 1).data;
+      // 평균 밝기 계산 (R+G+B 평균)
+      let sum = 0;
+      const sampleStep = Math.max(1, Math.floor(width / 200)); // 200개만 샘플링 (성능)
+      let count = 0;
+      for (let x = 0; x < width; x += sampleStep) {
+        const idx = x * 4;
+        sum += data[idx] + data[idx + 1] + data[idx + 2];
+        count++;
+      }
+      const avg = sum / (count * 3);
+      // 흰색에 가까울수록 점수 높음 + 이상 위치에 가까울수록 약간 가산
+      const positionBonus = (1 - (idealEnd - y) / scanRange) * 5;
+      const score = avg + positionBonus;
+      if (score > bestBrightness) {
+        bestBrightness = score;
+        bestY = y;
+      }
+    } catch {
+      break;
+    }
+  }
+  return bestY;
 }
 
 /**
