@@ -518,66 +518,96 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
             </button>
           </div>
 
-          <div className="pt-preview card pt-preview-doc" ref={previewRef}>
-            <h4 className="pt-doc-title">{year}년 {String(month).padStart(2, '0')}월 급여대장</h4>
-            <div className="pt-table-wrap">
-              <table className="table pt-doc-table pt-payroll-table pt-doc-table-centered">
-                <thead>
-                  <tr><th>NO</th><th>성명</th><th className="money">기본급</th><th className="money">식대</th><th className="money">차량</th><th className="money">연구수당</th><th className="money">육아</th><th className="money">지급합계</th><th className="money">국민연금</th><th className="money">건강보험</th><th className="money">고용보험</th><th className="money">장기요양</th><th className="money">소득세</th><th className="money">지방세</th><th className="money">실지급액</th></tr>
-                </thead>
-                <tbody>
-                  {laborRows.map((r, i) => {
-                    const pay = monthlyData?.payroll?.data?.[r.emp.name] || {} as any;
-                    return (
-                      <tr key={r.emp.employeeNumber}>
-                        <td>{i + 1}</td><td className="pt-name">{r.emp.name}</td>
-                        <td className="money">{formatWon(pay.basePay || r.emp.salary?.basePay || 0)}</td>
-                        <td className="money">{formatWon(pay.mealAllowance || r.emp.salary?.mealAllowance || 0)}</td>
-                        <td className="money">{formatWon(pay.vehicleAllowance || r.emp.salary?.vehicleAllowance || 0)}</td>
-                        <td className="money">{formatWon(pay.researchAllowance || r.emp.salary?.researchAllowance || 0)}</td>
-                        <td className="money">{formatWon(pay.childcareAllowance || r.emp.salary?.childcareAllowance || 0)}</td>
-                        <td className="money pt-highlight">{formatWon(pay.totalPay || r.emp.salary?.totalPay || 0)}</td>
-                        <td className="money">{formatWon(pay.nationalPension || r.emp.insurance?.nationalPension || 0)}</td>
-                        <td className="money">{formatWon(pay.healthInsurance || r.emp.insurance?.healthInsurance || 0)}</td>
-                        <td className="money">{formatWon(pay.employmentInsurance || r.emp.insurance?.employmentInsurance || 0)}</td>
-                        <td className="money">{formatWon(pay.longTermCare || r.emp.insurance?.longTermCare || 0)}</td>
-                        <td className="money">{formatWon(pay.incomeTax || 0)}</td>
-                        <td className="money">{formatWon(pay.localTax || 0)}</td>
-                        <td className="money pt-highlight">{formatWon(pay.netPay || r.emp.netPay || 0)}</td>
+          {(() => {
+            // 기본급(통합) = 기본급 + 식대 + 차량 + 연구수당 + 육아
+            // 추가 항목(초과근로/휴일근로/야간근로)은 한 명이라도 값 있으면 컬럼 추가
+            const getPay = (r: typeof laborRows[number]) => monthlyData?.payroll?.data?.[r.emp.name] || ({} as any);
+            const calcBase = (r: typeof laborRows[number]) => {
+              const pay = getPay(r);
+              return (pay.basePay || r.emp.salary?.basePay || 0) +
+                (pay.mealAllowance || r.emp.salary?.mealAllowance || 0) +
+                (pay.vehicleAllowance || r.emp.salary?.vehicleAllowance || 0) +
+                (pay.researchAllowance || r.emp.salary?.researchAllowance || 0) +
+                (pay.childcareAllowance || r.emp.salary?.childcareAllowance || 0);
+            };
+            const showOvertime = laborRows.some((r) => (getPay(r).overtime || 0) > 0);
+            const showHoliday = laborRows.some((r) => (getPay(r).holidayWork || 0) > 0);
+            const showNight = laborRows.some((r) => (getPay(r).nightWork || 0) > 0);
+
+            const totals = laborRows.reduce((acc, r) => {
+              const pay = getPay(r);
+              acc.base += calcBase(r);
+              acc.overtime += pay.overtime || 0;
+              acc.holiday += pay.holidayWork || 0;
+              acc.night += pay.nightWork || 0;
+              acc.totalPay += pay.totalPay || r.emp.salary?.totalPay || 0;
+              acc.nationalPension += pay.nationalPension || r.emp.insurance?.nationalPension || 0;
+              acc.healthInsurance += pay.healthInsurance || r.emp.insurance?.healthInsurance || 0;
+              acc.employmentInsurance += pay.employmentInsurance || r.emp.insurance?.employmentInsurance || 0;
+              acc.longTermCare += pay.longTermCare || r.emp.insurance?.longTermCare || 0;
+              acc.incomeTax += pay.incomeTax || 0;
+              acc.localTax += pay.localTax || 0;
+              acc.netPay += pay.netPay || r.emp.netPay || 0;
+              return acc;
+            }, {
+              base: 0, overtime: 0, holiday: 0, night: 0, totalPay: 0,
+              nationalPension: 0, healthInsurance: 0, employmentInsurance: 0, longTermCare: 0,
+              incomeTax: 0, localTax: 0, netPay: 0,
+            });
+
+            return (
+              <div className="pt-preview card pt-preview-doc" ref={previewRef}>
+                <h4 className="pt-doc-title">{year}년 {String(month).padStart(2, '0')}월 급여대장</h4>
+                <div className="pt-table-wrap">
+                  <table className="table pt-doc-table pt-payroll-table pt-doc-table-centered">
+                    <thead>
+                      <tr>
+                        <th>NO</th>
+                        <th>성명</th>
+                        <th className="money">기본급</th>
+                        {showOvertime && <th className="money">초과근로</th>}
+                        {showHoliday && <th className="money">휴일근로</th>}
+                        {showNight && <th className="money">야간근로</th>}
+                        <th className="money">지급합계</th>
+                        <th className="money">국민연금</th>
+                        <th className="money">건강보험</th>
+                        <th className="money">고용보험</th>
+                        <th className="money">장기요양</th>
+                        <th className="money">소득세</th>
+                        <th className="money">지방세</th>
+                        <th className="money">실지급액</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot>
-                  {(() => {
-                    const totals = laborRows.reduce((acc, r) => {
-                      const pay = monthlyData?.payroll?.data?.[r.emp.name] || {} as any;
-                      acc.basePay += pay.basePay || r.emp.salary?.basePay || 0;
-                      acc.mealAllowance += pay.mealAllowance || r.emp.salary?.mealAllowance || 0;
-                      acc.vehicleAllowance += pay.vehicleAllowance || r.emp.salary?.vehicleAllowance || 0;
-                      acc.researchAllowance += pay.researchAllowance || r.emp.salary?.researchAllowance || 0;
-                      acc.childcareAllowance += pay.childcareAllowance || r.emp.salary?.childcareAllowance || 0;
-                      acc.totalPay += pay.totalPay || r.emp.salary?.totalPay || 0;
-                      acc.nationalPension += pay.nationalPension || r.emp.insurance?.nationalPension || 0;
-                      acc.healthInsurance += pay.healthInsurance || r.emp.insurance?.healthInsurance || 0;
-                      acc.employmentInsurance += pay.employmentInsurance || r.emp.insurance?.employmentInsurance || 0;
-                      acc.longTermCare += pay.longTermCare || r.emp.insurance?.longTermCare || 0;
-                      acc.incomeTax += pay.incomeTax || 0;
-                      acc.localTax += pay.localTax || 0;
-                      acc.netPay += pay.netPay || r.emp.netPay || 0;
-                      return acc;
-                    }, {
-                      basePay: 0, mealAllowance: 0, vehicleAllowance: 0, researchAllowance: 0, childcareAllowance: 0, totalPay: 0,
-                      nationalPension: 0, healthInsurance: 0, employmentInsurance: 0, longTermCare: 0, incomeTax: 0, localTax: 0, netPay: 0,
-                    });
-                    return (
+                    </thead>
+                    <tbody>
+                      {laborRows.map((r, i) => {
+                        const pay = getPay(r);
+                        return (
+                          <tr key={r.emp.employeeNumber}>
+                            <td>{i + 1}</td>
+                            <td className="pt-name">{r.emp.name}</td>
+                            <td className="money">{formatWon(calcBase(r))}</td>
+                            {showOvertime && <td className="money">{formatWon(pay.overtime || 0)}</td>}
+                            {showHoliday && <td className="money">{formatWon(pay.holidayWork || 0)}</td>}
+                            {showNight && <td className="money">{formatWon(pay.nightWork || 0)}</td>}
+                            <td className="money pt-highlight">{formatWon(pay.totalPay || r.emp.salary?.totalPay || 0)}</td>
+                            <td className="money">{formatWon(pay.nationalPension || r.emp.insurance?.nationalPension || 0)}</td>
+                            <td className="money">{formatWon(pay.healthInsurance || r.emp.insurance?.healthInsurance || 0)}</td>
+                            <td className="money">{formatWon(pay.employmentInsurance || r.emp.insurance?.employmentInsurance || 0)}</td>
+                            <td className="money">{formatWon(pay.longTermCare || r.emp.insurance?.longTermCare || 0)}</td>
+                            <td className="money">{formatWon(pay.incomeTax || 0)}</td>
+                            <td className="money">{formatWon(pay.localTax || 0)}</td>
+                            <td className="money pt-highlight">{formatWon(pay.netPay || r.emp.netPay || 0)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
                       <tr>
                         <td colSpan={2}><strong>합계</strong></td>
-                        <td className="money"><strong>{formatWon(totals.basePay)}</strong></td>
-                        <td className="money"><strong>{formatWon(totals.mealAllowance)}</strong></td>
-                        <td className="money"><strong>{formatWon(totals.vehicleAllowance)}</strong></td>
-                        <td className="money"><strong>{formatWon(totals.researchAllowance)}</strong></td>
-                        <td className="money"><strong>{formatWon(totals.childcareAllowance)}</strong></td>
+                        <td className="money"><strong>{formatWon(totals.base)}</strong></td>
+                        {showOvertime && <td className="money"><strong>{formatWon(totals.overtime)}</strong></td>}
+                        {showHoliday && <td className="money"><strong>{formatWon(totals.holiday)}</strong></td>}
+                        {showNight && <td className="money"><strong>{formatWon(totals.night)}</strong></td>}
                         <td className="money pt-highlight"><strong>{formatWon(totals.totalPay)}</strong></td>
                         <td className="money"><strong>{formatWon(totals.nationalPension)}</strong></td>
                         <td className="money"><strong>{formatWon(totals.healthInsurance)}</strong></td>
@@ -587,12 +617,15 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
                         <td className="money"><strong>{formatWon(totals.localTax)}</strong></td>
                         <td className="money pt-highlight"><strong>{formatWon(totals.netPay)}</strong></td>
                       </tr>
-                    );
-                  })()}
-                </tfoot>
-              </table>
-            </div>
-          </div>
+                    </tfoot>
+                  </table>
+                </div>
+                <p style={{ fontSize: 11, color: '#666', marginTop: 8, textAlign: 'left' }}>
+                  ※ 기본급 = 기본급 + 식대 + 차량유지비 + 연구수당 + 육아수당 통합
+                </p>
+              </div>
+            );
+          })()}
         </>
       )}
 
