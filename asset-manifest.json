@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/management-app/static/css/main.19d163ab.css",
-    "main.js": "/management-app/static/js/main.54033541.js",
+    "main.js": "/management-app/static/js/main.4376b53a.js",
     "static/css/419.dc1ef72c.chunk.css": "/management-app/static/css/419.dc1ef72c.chunk.css",
     "static/js/419.0685fc10.chunk.js": "/management-app/static/js/419.0685fc10.chunk.js",
     "static/css/441.96854491.chunk.css": "/management-app/static/css/441.96854491.chunk.css",
@@ -12,8 +12,8 @@
     "static/js/304.387c2693.chunk.js": "/management-app/static/js/304.387c2693.chunk.js",
     "static/css/830.4df00cd4.chunk.css": "/management-app/static/css/830.4df00cd4.chunk.css",
     "static/js/830.c9ae9841.chunk.js": "/management-app/static/js/830.c9ae9841.chunk.js",
-    "static/css/251.40991064.chunk.css": "/management-app/static/css/251.40991064.chunk.css",
-    "static/js/251.149d54c1.chunk.js": "/management-app/static/js/251.149d54c1.chunk.js",
+    "static/css/251.5f6405b9.chunk.css": "/management-app/static/css/251.5f6405b9.chunk.css",
+    "static/js/251.c69c3a80.chunk.js": "/management-app/static/js/251.c69c3a80.chunk.js",
     "static/js/37.2fd9ad24.chunk.js": "/management-app/static/js/37.2fd9ad24.chunk.js",
     "static/js/453.3832ffd8.chunk.js": "/management-app/static/js/453.3832ffd8.chunk.js",
     "static/js/977.72e5798f.chunk.js": "/management-app/static/js/977.72e5798f.chunk.js",
@@ -21,11 +21,11 @@
     "static/js/853.a92a62ed.chunk.js": "/management-app/static/js/853.a92a62ed.chunk.js",
     "static/js/539.9c335d42.chunk.js": "/management-app/static/js/539.9c335d42.chunk.js",
     "static/js/239.6a4f816c.chunk.js": "/management-app/static/js/239.6a4f816c.chunk.js",
-    "static/js/358.3163f473.chunk.js": "/management-app/static/js/358.3163f473.chunk.js",
+    "static/js/558.c2775574.chunk.js": "/management-app/static/js/558.c2775574.chunk.js",
     "static/js/934.99967f3e.chunk.js": "/management-app/static/js/934.99967f3e.chunk.js",
     "index.html": "/management-app/index.html",
     "main.19d163ab.css.map": "/management-app/static/css/main.19d163ab.css.map",
-    "main.54033541.js.map": "/management-app/static/js/main.54033541.js.map",
+    "main.4376b53a.js.map": "/management-app/static/js/main.4376b53a.js.map",
     "419.dc1ef72c.chunk.css.map": "/management-app/static/css/419.dc1ef72c.chunk.css.map",
     "419.0685fc10.chunk.js.map": "/management-app/static/js/419.0685fc10.chunk.js.map",
     "441.96854491.chunk.css.map": "/management-app/static/css/441.96854491.chunk.css.map",
@@ -36,8 +36,8 @@
     "304.387c2693.chunk.js.map": "/management-app/static/js/304.387c2693.chunk.js.map",
     "830.4df00cd4.chunk.css.map": "/management-app/static/css/830.4df00cd4.chunk.css.map",
     "830.c9ae9841.chunk.js.map": "/management-app/static/js/830.c9ae9841.chunk.js.map",
-    "251.40991064.chunk.css.map": "/management-app/static/css/251.40991064.chunk.css.map",
-    "251.149d54c1.chunk.js.map": "/management-app/static/js/251.149d54c1.chunk.js.map",
+    "251.5f6405b9.chunk.css.map": "/management-app/static/css/251.5f6405b9.chunk.css.map",
+    "251.c69c3a80.chunk.js.map": "/management-app/static/js/251.c69c3a80.chunk.js.map",
     "37.2fd9ad24.chunk.js.map": "/management-app/static/js/37.2fd9ad24.chunk.js.map",
     "453.3832ffd8.chunk.js.map": "/management-app/static/js/453.3832ffd8.chunk.js.map",
     "977.72e5798f.chunk.js.map": "/management-app/static/js/977.72e5798f.chunk.js.map",
@@ -45,11 +45,11 @@
     "853.a92a62ed.chunk.js.map": "/management-app/static/js/853.a92a62ed.chunk.js.map",
     "539.9c335d42.chunk.js.map": "/management-app/static/js/539.9c335d42.chunk.js.map",
     "239.6a4f816c.chunk.js.map": "/management-app/static/js/239.6a4f816c.chunk.js.map",
-    "358.3163f473.chunk.js.map": "/management-app/static/js/358.3163f473.chunk.js.map",
+    "558.c2775574.chunk.js.map": "/management-app/static/js/558.c2775574.chunk.js.map",
     "934.99967f3e.chunk.js.map": "/management-app/static/js/934.99967f3e.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.19d163ab.css",
-    "static/js/main.54033541.js"
+    "static/js/main.4376b53a.js"
   ]
 }
