@@ -52,6 +52,37 @@ const ParticipationUploadModal: React.FC<Props> = ({ projects, employees, existi
       const rowsFormatted = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { raw: false });
       const rowsRaw = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { raw: true });
 
+      // 정규화: 괄호/공백/특수문자 제거 + 소문자 → 부분 일치용
+      const normalize = (s: string) => String(s || '').replace(/[\s()[\]{}\-_,./()]/g, '').toLowerCase();
+
+      // 과제 매칭: 정확 → 정규화 정확 → 정규화 부분 일치
+      const findProject = (projectName: string) => {
+        if (!projectName) return undefined;
+        // 1) 정확 매칭
+        let proj = projects.find(p => p.shortName === projectName || p.projectId === projectName);
+        if (proj) return proj;
+        // 2) 정규화 후 정확 매칭
+        const normName = normalize(projectName);
+        proj = projects.find(p => normalize(p.shortName) === normName || normalize(p.projectId) === normName);
+        if (proj) return proj;
+        // 3) 정규화 후 부분 일치 (양방향: 엑셀이 시스템에 포함되거나 시스템이 엑셀에 포함)
+        proj = projects.find(p => {
+          const ps = normalize(p.shortName);
+          if (!ps || !normName) return false;
+          return ps.includes(normName) || normName.includes(ps);
+        });
+        return proj;
+      };
+
+      // 직원 매칭: 정확 → 정규화 정확
+      const findEmployee = (name: string) => {
+        if (!name) return undefined;
+        let emp = employees.find(e => e.name === name);
+        if (emp) return emp;
+        const normName = normalize(name);
+        return employees.find(e => normalize(e.name) === normName);
+      };
+
       const parsedRows: ParsedRow[] = [];
 
       for (let idx = 0; idx < rowsFormatted.length; idx++) {
@@ -62,8 +93,8 @@ const ParticipationUploadModal: React.FC<Props> = ({ projects, employees, existi
         const role = String(row['역할'] || '연구원').trim();
         if (!name || !projectName) continue;
 
-        const emp = employees.find(e => e.name === name);
-        const proj = projects.find(p => p.shortName === projectName || p.projectId === projectName);
+        const emp = findEmployee(name);
+        const proj = findProject(projectName);
 
         const rates: Record<string, number> = {};
         for (const m of MONTHS) {
