@@ -13,6 +13,7 @@ interface ParsedRow {
   project: string;
   role: string;
   rates: Record<string, number>;  // { "1": 20, ... }
+  participationType?: 'cash' | 'inKind';  // 미지정 시 cash
   matched: boolean;
   empId: string;
   projId: string;
@@ -133,9 +134,19 @@ const ParticipationUploadModal: React.FC<Props> = ({ projects, employees, existi
           }
         }
 
+        // 참여형태: "현물"/"현금"/"inKind"/"cash"/"K"/"C" 등 — 미지정 시 'cash'
+        const typeRaw = String(row['참여형태'] || row['형태'] || row['타입'] || row['fundType'] || '').trim().toLowerCase();
+        let participationType: 'cash' | 'inKind' | undefined;
+        if (typeRaw) {
+          if (/현물|inkind|in-kind|kind|k|in_kind/i.test(typeRaw)) participationType = 'inKind';
+          else if (/현금|cash|c/i.test(typeRaw)) participationType = 'cash';
+        }
+
         parsedRows.push({
           name, project: projectName, role,
-          rates, matched: !!(emp && proj),
+          rates,
+          participationType,
+          matched: !!(emp && proj),
           empId: emp?.employeeNumber || '',
           projId: proj?.projectId || '',
         });
@@ -169,6 +180,11 @@ const ParticipationUploadModal: React.FC<Props> = ({ projects, employees, existi
           ? { ...existing.monthlyRates, ...row.rates }
           : { ...row.rates };
 
+        // 참여형태: 엑셀에 명시되어 있으면 그것, 없으면 기존 값 유지 (병합 모드), 그것도 없으면 default 'cash'
+        const participationType =
+          row.participationType
+          ?? (mode === 'merge' ? existing?.participationType : undefined);
+
         await saveParticipation({
           id: `${row.projId}_${row.name}_${year}`,
           projectId: row.projId,
@@ -178,6 +194,7 @@ const ParticipationUploadModal: React.FC<Props> = ({ projects, employees, existi
           role: (row.role === '책임연구원' ? '책임연구원' : '연구원') as any,
           monthlyRates,
           averageRate: 0,
+          participationType,
         }, email);
 
         if (existing) changed++; else added++;

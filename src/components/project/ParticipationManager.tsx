@@ -7,7 +7,7 @@ import { useProjects } from '../../hooks/useProjects';
 import { useEmployees } from '../../hooks/useEmployees';
 import {
   subscribeYearlyParticipations, updateMonthlyRate, applyRateRange,
-  saveParticipation, deleteParticipation,
+  saveParticipation, deleteParticipation, updateParticipationType,
 } from '../../services/yearlyParticipationService';
 import { addEmployee } from '../../services/employeeService';
 import { YearlyParticipation, Project, Employee, EmployeeSalary, EmployeeInsurance } from '../../types/project';
@@ -199,8 +199,11 @@ function ValidationPanel({ v }: { v: ValidationSummary }) {
 }
 
 // ═══ 인라인 참여율 셀 ═══
-function RateCell({ value, disabled, onChange, highlight, warnMin }: {
-  value: number; disabled: boolean; onChange: (v: number) => void; highlight?: boolean; warnMin?: boolean;
+function RateCell({ value, disabled, onChange, highlight, warnMin, fundType, onFundTypeToggle }: {
+  value: number; disabled: boolean; onChange: (v: number) => void;
+  highlight?: boolean; warnMin?: boolean;
+  fundType?: 'cash' | 'inKind';
+  onFundTypeToggle?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [input, setInput] = useState('');
@@ -231,10 +234,21 @@ function RateCell({ value, disabled, onChange, highlight, warnMin }: {
     : value < 100 ? 'hm-99'
     : value === 100 ? 'hm-100' : 'hm-over';
 
+  const isInKind = fundType === 'inKind';
+
   return (
     <span className={`pm-rate-cell ${hm} ${highlight ? 'pm-highlight' : ''} ${warnMin ? 'pm-warn-min' : ''}`}
       onClick={startEdit}>
       {value > 0 ? value : '-'}
+      {value > 0 && onFundTypeToggle && (
+        <span
+          className={`pm-fund-badge ${isInKind ? 'is-inkind' : 'is-cash'}`}
+          onClick={(e) => { e.stopPropagation(); onFundTypeToggle(); }}
+          title={isInKind ? '현물 — 클릭하여 현금으로' : '현금 — 클릭하여 현물로'}
+        >
+          {isInKind ? '현물' : '현금'}
+        </span>
+      )}
     </span>
   );
 }
@@ -257,6 +271,12 @@ function SummaryView({
   const handleChange = async (emp: Employee, projId: string, rate: number) => {
     const existing = getRecord(emp.name, projId);
     await updateMonthlyRate(projId, emp.name, emp.employeeNumber, year, month, rate, '연구원', email, existing);
+  };
+
+  const handleToggleFundType = async (emp: Employee, projId: string) => {
+    const existing = getRecord(emp.name, projId);
+    const next = existing?.participationType === 'inKind' ? 'cash' : 'inKind';
+    await updateParticipationType(projId, emp.name, emp.employeeNumber, year, next, existing?.role || '연구원', email, existing);
   };
 
   // 최소 참여율 위반 체크
@@ -317,7 +337,9 @@ function SummaryView({
                       <RateCell value={getRate(emp.name, p.projectId)} disabled={!inRange}
                         highlight={recentChanges.has(changeKey)}
                         warnMin={isMinViolation(emp.name, p.projectId)}
-                        onChange={v => handleChange(emp, p.projectId, v)} />
+                        onChange={v => handleChange(emp, p.projectId, v)}
+                        fundType={getRecord(emp.name, p.projectId)?.participationType}
+                        onFundTypeToggle={() => handleToggleFundType(emp, p.projectId)} />
                     </td>
                   );
                 })}

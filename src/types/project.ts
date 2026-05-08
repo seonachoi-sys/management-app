@@ -158,6 +158,9 @@ export interface Participation {
   updatedAt: Timestamp;
 }
 
+/** 인건비 참여 형태 — cash(default): 현금 100% / inKind: 현물 100% */
+export type ParticipationFundType = 'cash' | 'inKind';
+
 /* ─── 연간 참여율 (새 구조) ─── */
 export interface YearlyParticipation {
   id: string;                     // "{projectId}_{employeeName}_{year}"
@@ -168,6 +171,8 @@ export interface YearlyParticipation {
   role: '책임연구원' | '연구원';
   monthlyRates: Record<string, number>;  // { "1": 20, "2": 20, ... "12": 20 }
   averageRate: number;            // 자동계산
+  /** 인건비 참여 형태 — 미지정 시 'cash' (현금)으로 처리 */
+  participationType?: ParticipationFundType;
   updatedAt: Timestamp;
   updatedBy: string;
 }

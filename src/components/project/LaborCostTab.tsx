@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import { Employee, Project, YearlyParticipation, isExecutive } from '../../types/project';
+import { Employee, Project, YearlyParticipation } from '../../types/project';
 import { calcLaborSalary } from '../../services/payrollParserService';
 import { updateBudgetDetail } from '../../services/budgetService';
 import { logAction } from '../../services/auditService';
@@ -98,16 +98,6 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
     const results: LaborCalcRow[] = [];
     const projParts = participations.filter(p => p.projectId === selectedProjectId);
 
-    // 연차별 예산에서 현금/현물 비율 산출
-    const curYear = project.years.find(y => {
-      const today = new Date().toISOString().slice(0, 10);
-      return today >= y.start && today <= y.end;
-    }) || project.years[0];
-    const cashBudget = curYear?.budget?.privateCash || 0;
-    const inkindBudget = curYear?.budget?.privateInKind || 0;
-    const budgetTotal = cashBudget + inkindBudget;
-    const cashRatio = budgetTotal > 0 ? cashBudget / budgetTotal : 0;
-
     for (const part of projParts) {
       const rate = part.monthlyRates[String(month)] || 0;
       if (rate === 0) continue;
@@ -142,8 +132,8 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
       const totalCost = salary + retirement + companyBurden;
       const total = Math.round(totalCost * rate / 100);
 
-      // 임원(박재민/문재훈/안준/신규보)은 100% 현물, 그 외는 과제 예산 비율
-      const cash = isExecutive(emp.name) ? 0 : Math.round(total * cashRatio);
+      // 참여형태: 'inKind' = 100% 현물, 그 외(default 'cash') = 100% 현금
+      const cash = part.participationType === 'inKind' ? 0 : total;
       const inKind = total - cash;
 
       results.push({ emp, rate, role: part.role, salary, retirement, insurance, totalCost, cash, inKind, total });
@@ -172,16 +162,6 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
       const projParts = participations.filter(p => p.projectId === selectedProjectId);
       let mCash = 0, mInKind = 0;
 
-      // 연차별 예산에서 현금/현물 비율 산출
-      const curY = project.years.find(y => {
-        const d = `${year}-${String(m).padStart(2, '0')}-15`;
-        return d >= y.start && d <= y.end;
-      }) || project.years[0];
-      const cBudget = curY?.budget?.privateCash || 0;
-      const iBudget = curY?.budget?.privateInKind || 0;
-      const bTotal = cBudget + iBudget;
-      const cRatio = bTotal > 0 ? cBudget / bTotal : 0;
-
       for (const part of projParts) {
         const rate = part.monthlyRates[String(m)] || 0;
         if (rate === 0) continue;
@@ -195,8 +175,8 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
         const cost = salary + ret + ins;
         const total = Math.round(cost * rate / 100);
 
-        // 임원은 100% 현물, 그 외는 과제 예산 비율
-        const cashShare = isExecutive(emp.name) ? 0 : Math.round(total * cRatio);
+        // 참여형태: 'inKind' = 100% 현물, default 'cash'
+        const cashShare = part.participationType === 'inKind' ? 0 : total;
         mCash += cashShare;
         mInKind += total - cashShare;
       }

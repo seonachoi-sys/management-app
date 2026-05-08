@@ -5,7 +5,7 @@ import { saveAs } from 'file-saver';
 import { FileText, Printer, Download, Package, FileDown } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import { Employee, Project, YearlyParticipation, isExecutive } from '../../types/project';
+import { Employee, Project, YearlyParticipation } from '../../types/project';
 import { logAction } from '../../services/auditService';
 import { calcLaborSalary } from '../../services/payrollParserService';
 import { downloadPdfFromElement, getPdfBlob } from '../../services/pdfService';
@@ -60,16 +60,6 @@ function calcLabor(
   const projParts = participations.filter(p => p.projectId === project.projectId);
   const yearInfo = getCurrentYearInfo(project, year, month);
 
-  // 연차별 예산에서 현금/현물 비율 산출
-  const curYear = project.years.find(y => {
-    const d = `${year}-${String(month).padStart(2, '0')}-15`;
-    return d >= y.start && d <= y.end;
-  }) || project.years[0];
-  const cashBudget = curYear?.budget?.privateCash || 0;
-  const inkindBudget = curYear?.budget?.privateInKind || 0;
-  const budgetTotal = cashBudget + inkindBudget;
-  const cashRatio = budgetTotal > 0 ? cashBudget / budgetTotal : 0;
-
   for (const part of projParts) {
     const rate = part.monthlyRates[String(month)] || 0;
     if (rate === 0) continue;
@@ -94,8 +84,8 @@ function calcLabor(
 
     const totalCost = salary + retirement + totalInsComp;
     const total = Math.round(totalCost * rate / 100);
-    // 임원(박재민/문재훈/안준/신규보)은 100% 현물, 그 외는 과제 예산 비율로 분배
-    const cash = isExecutive(emp.name) ? 0 : Math.round(total * cashRatio);
+    // 참여형태: 'inKind' = 100% 현물, 그 외(default 'cash') = 100% 현금
+    const cash = part.participationType === 'inKind' ? 0 : total;
     const inKind = total - cash;
 
     results.push({
