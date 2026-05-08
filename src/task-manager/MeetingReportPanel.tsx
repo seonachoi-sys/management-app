@@ -794,6 +794,16 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
                               <div className="rpt-compare-col-plan">
                                 <span className="rpt-compare-title">{t.title}</span>
                                 {dd && <span className="rpt-compare-assignee">마감 {format(dd, 'M.dd')}</span>}
+                                {t.actionItems && t.actionItems.length > 0 && (
+                                  <ul className="rpt-compare-checklist">
+                                    {t.actionItems.map((it) => (
+                                      <li key={it.id} className={it.done ? 'done' : ''}>
+                                        <span className="rpt-checklist-mark">{it.done ? '✓' : '☐'}</span>
+                                        <span className="rpt-checklist-text">{it.text}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
                               </div>
                               <div className="rpt-compare-col-result">
                                 {statusBadge(t)}
@@ -845,6 +855,16 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
                               <div className="rpt-compare-col-upcoming">
                                 <span className="rpt-compare-title">{t.title}</span>
                                 {dd && <span className="rpt-compare-assignee">마감 {format(dd, 'M.dd')}</span>}
+                                {t.actionItems && t.actionItems.length > 0 && (
+                                  <ul className="rpt-compare-checklist">
+                                    {t.actionItems.map((it) => (
+                                      <li key={it.id} className={it.done ? 'done' : ''}>
+                                        <span className="rpt-checklist-mark">{it.done ? '✓' : '☐'}</span>
+                                        <span className="rpt-checklist-text">{it.text}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
                                 {t.reportNote && (
                                   <span style={{ fontSize: 11, color: '#888', marginTop: 2 }}>└ {t.reportNote}</span>
                                 )}

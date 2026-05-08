@@ -1103,6 +1103,44 @@
 .rpt-compare-row-future { background: #fbfcff; }
 .rpt-compare-row-future:hover { background: #f3f6fd; }
 
+/* 회의자료 셀 안 체크리스트 (계획/앞으로 컬럼) */
+.rpt-compare-checklist {
+  list-style: none;
+  margin: 4px 0 0 0;
+  padding: 4px 6px 4px 8px;
+  border-left: 2px solid var(--c-line-light, #ececec);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.rpt-compare-checklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--c-text-2, #555);
+}
+.rpt-compare-checklist li.done {
+  color: var(--c-text-4, #aaa);
+  text-decoration: line-through;
+}
+.rpt-checklist-mark {
+  flex-shrink: 0;
+  width: 12px;
+  font-size: 10px;
+  color: var(--c-text-3, #888);
+  text-align: center;
+}
+.rpt-compare-checklist li.done .rpt-checklist-mark {
+  color: var(--c-green, #0d9f61);
+  text-decoration: none;
+}
+.rpt-checklist-text {
+  flex: 1;
+  word-break: break-word;
+}
+
 .rpt-compare-col-plan { display: flex; flex-direction: column; gap: 3px; min-width: 0; justify-content: center; }
 .rpt-compare-col-result { display: flex; flex-direction: column; gap: 4px; min-width: 0; justify-content: center; }
 
