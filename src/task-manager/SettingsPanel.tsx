@@ -4,6 +4,8 @@ import { useMembers } from '../hooks/useMembers';
 import { createMember, updateMember } from '../services/memberService';
 import { importCsvToFirestore } from '../utils/csvImport';
 import { checkMigration, runMigration } from '../utils/assigneeMigration';
+import { previewMigration, applyMigration, type MigrationPreview } from '../services/nameMigrationService';
+import { NAME_MAP } from '../utils/userNameNormalizer';
 
 interface Props {
   taskCategories: string[];
@@ -112,6 +114,9 @@ export default function SettingsPanel({
   const [editMember, setEditMember] = useState<Member | null>(null);
   const [migrationInfo, setMigrationInfo] = useState('');
   const [migrationRunning, setMigrationRunning] = useState(false);
+  const [namePreview, setNamePreview] = useState<MigrationPreview | null>(null);
+  const [nameMigrationRunning, setNameMigrationRunning] = useState(false);
+  const [nameMigrationResult, setNameMigrationResult] = useState('');
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState('');
   const [importResult, setImportResult] = useState('');
@@ -258,13 +263,102 @@ export default function SettingsPanel({
           </div>
         </div>
 
-        {/* 담당자 마이그레이션 */}
-        <div style={{ marginBottom: 24, padding: 16, background: 'var(--tm-surface-inset)', borderRadius: 'var(--tm-radius-sm)', border: '1px dashed var(--tm-border-default)' }}>
+        {/* 이름 통합 마이그레이션 (광범위 — NAME_MAP 기반) */}
+        <div style={{ marginBottom: 16, padding: 16, background: 'var(--tm-surface-inset)', borderRadius: 'var(--tm-radius-sm)', border: '1px dashed var(--tm-border-default)' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tm-ink-secondary)', marginBottom: 8 }}>
-            담당자 데이터 정리
+            영문 이름 → 한글 통합
           </div>
           <div style={{ fontSize: 11, color: 'var(--tm-ink-tertiary)', marginBottom: 10 }}>
-            SeonA Choi → 최선아 변환, 복수 담당자 → 첫번째만 유지
+            업무 / KPI / 회의록의 담당자·수정자·참석자 필드에 박힌 영문 이름을 한글로 일괄 변환합니다.
+          </div>
+          <div style={{ fontSize: 11, marginBottom: 10, padding: 8, background: '#fff', borderRadius: 4 }}>
+            <strong>매핑:</strong>{' '}
+            {Object.entries(NAME_MAP).map(([from, to]) => (
+              <span key={from} style={{ marginRight: 12 }}>
+                <code>{from}</code> → <strong>{to}</strong>
+              </span>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="tm-btn-add" style={{ padding: '7px 14px' }} disabled={nameMigrationRunning}
+              onClick={async () => {
+                setNameMigrationRunning(true);
+                setNameMigrationResult('');
+                try {
+                  const preview = await previewMigration();
+                  setNamePreview(preview);
+                } catch (err: any) {
+                  setNameMigrationResult(`오류: ${err.message}`);
+                } finally {
+                  setNameMigrationRunning(false);
+                }
+              }}>
+              {nameMigrationRunning && !namePreview ? '확인 중...' : '미리보기'}
+            </button>
+            <button className="tm-btn-save" style={{ padding: '7px 14px' }}
+              disabled={nameMigrationRunning || !namePreview || namePreview.total === 0}
+              onClick={async () => {
+                if (!namePreview || !userId) return;
+                if (!window.confirm(`총 ${namePreview.total}건을 변환합니다. 계속하시겠습니까?`)) return;
+                setNameMigrationRunning(true);
+                try {
+                  const result = await applyMigration(namePreview, userId);
+                  let msg = `완료! 업데이트 ${result.updated}건, 실패 ${result.failed}건`;
+                  if (result.errors.length > 0) {
+                    msg += '\n\n[에러]\n' + result.errors.slice(0, 5).join('\n');
+                  }
+                  setNameMigrationResult(msg);
+                  setNamePreview(null);
+                } catch (err: any) {
+                  setNameMigrationResult(`오류: ${err.message}`);
+                } finally {
+                  setNameMigrationRunning(false);
+                }
+              }}>
+              적용 ({namePreview?.total ?? 0}건)
+            </button>
+          </div>
+          {namePreview && (
+            <div style={{ marginTop: 8, fontSize: 11, padding: '8px 10px', background: '#fff', borderRadius: 4, maxHeight: 240, overflow: 'auto' }}>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>
+                변경 대상 총 {namePreview.total}건 — tasks {namePreview.byCollection.tasks} · kpis {namePreview.byCollection.kpis} · meetings {namePreview.byCollection.meetings}
+              </div>
+              {namePreview.total === 0 ? (
+                <div style={{ color: 'var(--tm-ink-tertiary)' }}>변환할 데이터가 없습니다 (이미 정리된 상태입니다)</div>
+              ) : (
+                <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.5 }}>
+                  {namePreview.changes.slice(0, 30).map((c, i) => (
+                    <li key={i}>
+                      <span style={{ color: 'var(--tm-ink-tertiary)' }}>[{c.collection}]</span>{' '}
+                      <strong>{c.title || c.docId}</strong>{' '}
+                      {c.changes.map((ch, j) => (
+                        <span key={j} style={{ marginLeft: 6 }}>
+                          {ch.field}: <code>{ch.before}</code> → <code>{ch.after}</code>
+                        </span>
+                      ))}
+                    </li>
+                  ))}
+                  {namePreview.changes.length > 30 && (
+                    <li style={{ color: 'var(--tm-ink-tertiary)' }}>... 외 {namePreview.changes.length - 30}건</li>
+                  )}
+                </ul>
+              )}
+            </div>
+          )}
+          {nameMigrationResult && (
+            <pre style={{ marginTop: 8, fontSize: 11, padding: '8px 10px', background: nameMigrationResult.startsWith('완료') ? '#e8f5e9' : '#fce4ec', borderRadius: 4, whiteSpace: 'pre-wrap' }}>
+              {nameMigrationResult}
+            </pre>
+          )}
+        </div>
+
+        {/* 담당자 마이그레이션 (이전 도구) */}
+        <div style={{ marginBottom: 24, padding: 16, background: 'var(--tm-surface-inset)', borderRadius: 'var(--tm-radius-sm)', border: '1px dashed var(--tm-border-default)' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tm-ink-secondary)', marginBottom: 8 }}>
+            담당자 데이터 정리 (이전 도구)
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--tm-ink-tertiary)', marginBottom: 10 }}>
+            SeonA Choi(대문자) → 최선아 변환, 복수 담당자 → 첫번째만 유지
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="tm-btn-add" style={{ padding: '7px 14px' }} disabled={migrationRunning}

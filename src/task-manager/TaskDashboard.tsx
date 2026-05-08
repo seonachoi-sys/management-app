@@ -30,6 +30,7 @@ import SettingsPanel from './SettingsPanel';
 import KpiPanel from './KpiPanel';
 import EisenhowerMatrix from './EisenhowerMatrix';
 import type { Quadrant } from './EisenhowerMatrix';
+import { normalizeUserName } from '../utils/userNameNormalizer';
 import './TaskManager.css';
 
 /* ─── 카테고리별 그룹 섹션 ─── */
@@ -180,6 +181,12 @@ export default function TaskDashboard() {
     if (!user?.email || members.length === 0) return null;
     return members.find((m) => m.email === user.email) || null;
   }, [user?.email, members]);
+
+  // 표준 한글 이름: 1) email 매칭된 팀원 이름 → 2) 정규화된 displayName → 3) email
+  const userName = useMemo(
+    () => mappedMember?.name || normalizeUserName(user?.displayName) || user?.email || '',
+    [mappedMember, user?.displayName, user?.email],
+  );
 
   // 로그인 시 최초 1회만 자동 매핑 (이후 수동 변경 보호)
   useEffect(() => {
@@ -547,7 +554,7 @@ export default function TaskDashboard() {
       if (!user) return;
       try {
         if (data.taskId) {
-          await update(data.taskId, data, user.uid, user.displayName || user.email || '');
+          await update(data.taskId, data, user.uid, userName);
         } else {
           const result = await create(data, user.uid);
           if (result.parentReactivated) {
@@ -579,7 +586,7 @@ export default function TaskDashboard() {
         data.progressRate = 100;
       }
       try {
-        await update(taskId, data, user.uid, user.displayName || user.email || '');
+        await update(taskId, data, user.uid, userName);
 
         // 하위업무 전체 완료 시 상위업무 자동 완료
         if (newStatus === '완료') {
@@ -651,7 +658,7 @@ export default function TaskDashboard() {
       }
 
       try {
-        await update(taskId, data, user.uid, user.displayName || user.email || '');
+        await update(taskId, data, user.uid, userName);
 
         // 하위업무 전체 완료 시 상위업무 자동 완료 (handleStatusChange와 동일 로직)
         if (allDone && target.status !== '완료' && target.parentTaskId) {
@@ -708,7 +715,7 @@ export default function TaskDashboard() {
         if (returnedId) {
           syncedIds.add(returnedId);
           if (!t.googleTaskId && user) {
-            await update(t.taskId, { googleTaskId: returnedId }, user.uid, user.displayName || user.email || '');
+            await update(t.taskId, { googleTaskId: returnedId }, user.uid, userName);
           }
         }
       }
@@ -734,7 +741,7 @@ export default function TaskDashboard() {
             title: gt.title,
             description: '',
             assignee: '',
-            assigneeName: user.displayName || '',
+            assigneeName: userName,
             category: categories[0] || '일반업무',
             status: gt.status === 'completed' ? '완료' : '대기',
             parentTaskId: null,
@@ -791,8 +798,6 @@ export default function TaskDashboard() {
       </div>
     );
   }
-
-  const userName = user.displayName || user.email || '';
 
   return (
     <div className="tm">
@@ -1100,7 +1105,7 @@ export default function TaskDashboard() {
               updates.priority = isImportant ? '높음' : '보통';
 
               try {
-                await update(taskId, updates, user.uid, user.displayName || user.email || '');
+                await update(taskId, updates, user.uid, userName);
                 // 토스트 메시지
                 if (updates.dueDate) {
                   const d = newDue;

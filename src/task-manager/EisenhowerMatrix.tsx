@@ -6,7 +6,6 @@ import { saveBinaryFile, saveNote } from '../services/obsidianService';
 import {
   DndContext,
   DragEndEvent,
-  DragOverlay,
   DragStartEvent,
   useDroppable,
   useDraggable,
@@ -14,6 +13,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import type { Task, TaskStatus } from '../types';
 import { formatShort, dDayLabel } from '../utils/dateUtils';
 
@@ -58,7 +58,7 @@ function classifyTask(task: Task): Quadrant {
   return 'q4';
 }
 
-/* ─── 드래그 가능한 카드 ─── */
+/* ─── 드래그 가능한 카드 (inline transform 방식 — 원본 카드 자체가 이동) ─── */
 function DraggableCard({
   task,
   dimmed,
@@ -68,7 +68,7 @@ function DraggableCard({
   dimmed: boolean;
   onClick?: (task: Task) => void;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.taskId,
     data: { task },
   });
@@ -85,18 +85,26 @@ function DraggableCard({
     onClick?.(task);
   };
 
+  // 카드를 마우스 따라 이동 (inline transform — DragOverlay 미사용)
+  const style: React.CSSProperties = {
+    borderLeftColor: color.border,
+    opacity: dimmed ? 0.25 : 1,
+    cursor: isDragging ? 'grabbing' : 'pointer',
+    transform: CSS.Translate.toString(transform),
+    zIndex: isDragging ? 1000 : undefined,
+    boxShadow: isDragging ? '0 12px 28px rgba(0,0,0,0.22)' : undefined,
+    transition: isDragging ? 'none' : 'box-shadow 0.15s, opacity 0.2s',
+    touchAction: 'none', // 모바일 스크롤 방지 (PC는 영향 없음)
+  };
+
   return (
     <div
       ref={setNodeRef}
       {...attributes}
       {...listeners}
       onClick={handleClick}
-      className={`em-card ${isDelayed ? 'em-card-delayed' : ''} ${isDragging ? 'em-card-dragging' : ''}`}
-      style={{
-        borderLeftColor: color.border,
-        opacity: dimmed ? 0.25 : 1,
-        cursor: isDragging ? 'grabbing' : 'pointer',
-      }}
+      className={`em-card ${isDelayed ? 'em-card-delayed' : ''} ${isDragging ? 'em-card-dragging-inline' : ''}`}
+      style={style}
     >
       <div className="em-card-header">
         <span className="em-card-title">{task.title}</span>
@@ -116,34 +124,6 @@ function DraggableCard({
       {task.reportNote && (
         <div className="em-card-tooltip" title={task.reportNote}>📋</div>
       )}
-    </div>
-  );
-}
-
-/* ─── 카드 오버레이 (드래그 중 표시) ─── */
-function CardOverlay({ task }: { task: Task }) {
-  const color = getMemberColor(task.assigneeName);
-  const dueDate = task.dueDate instanceof Timestamp ? task.dueDate.toDate() : null;
-  return (
-    <div
-      className="em-card em-card-overlay"
-      style={{ borderLeftColor: color.border }}
-    >
-      <div className="em-card-header">
-        <span className="em-card-title">{task.title}</span>
-        {(task.reportTo === 'ceo' || task.reportTo === 'both') && <span className="em-card-ceo">CEO</span>}
-      </div>
-      <div className="em-card-meta">
-        <span className="em-card-assignee" style={{ color: color.text }}>{task.assigneeName || '미배정'}</span>
-        {dueDate && (
-          <span className="em-card-dday">
-            {`${dueDate.getMonth()+1}.${String(dueDate.getDate()).padStart(2,'0')}`}
-          </span>
-        )}
-        {task.progressRate > 0 && (
-          <span className="em-card-progress">{task.progressRate}%</span>
-        )}
-      </div>
     </div>
   );
 }
@@ -203,7 +183,6 @@ interface Props {
 
 export default function EisenhowerMatrix({ tasks, onQuadrantChange, onCardClick }: Props) {
   const [filterMember, setFilterMember] = useState('');
-  const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [capturing, setCapturing] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -237,13 +216,11 @@ export default function EisenhowerMatrix({ tasks, onQuadrantChange, onCardClick 
     return Array.from(names);
   }, [activeTasks]);
 
-  const handleDragStart = (event: DragStartEvent) => {
-    const task = activeTasks.find((t) => t.taskId === event.active.id);
-    setActiveTask(task || null);
+  const handleDragStart = (_event: DragStartEvent) => {
+    // inline transform 방식 — overlay 없음
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    setActiveTask(null);
     const { active, over } = event;
     if (!over) return;
 
@@ -358,9 +335,6 @@ export default function EisenhowerMatrix({ tasks, onQuadrantChange, onCardClick 
           <QuadrantZone quadrant="q4" tasks={quadrants.q4} filterMember={filterMember} totalCount={quadrants.q4.length} onCardClick={onCardClick} />
         </div>
 
-        <DragOverlay>
-          {activeTask && <CardOverlay task={activeTask} />}
-        </DragOverlay>
       </DndContext>
     </div>
   );
