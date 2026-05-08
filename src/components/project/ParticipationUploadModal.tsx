@@ -135,7 +135,10 @@ const ParticipationUploadModal: React.FC<Props> = ({ projects, employees, existi
         }
 
         // 참여형태: "현물"/"현금"/"inKind"/"cash"/"K"/"C" 등 — 미지정 시 'cash'
-        const typeRaw = String(row['참여형태'] || row['형태'] || row['타입'] || row['fundType'] || '').trim().toLowerCase();
+        // 컬럼명 후보: 참여형태, 형태, 타입, 구분, fundType
+        const typeRaw = String(
+          row['참여형태'] || row['형태'] || row['타입'] || row['구분'] || row['fundType'] || ''
+        ).trim().toLowerCase();
         let participationType: 'cash' | 'inKind' | undefined;
         if (typeRaw) {
           if (/현물|inkind|in-kind|kind|k|in_kind/i.test(typeRaw)) participationType = 'inKind';
