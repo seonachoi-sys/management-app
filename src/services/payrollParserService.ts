@@ -1,7 +1,10 @@
 /**
- * 급여대장 + 4대보험 CSV 파싱 서비스
- * EUC-KR / UTF-8 / CP949 자동 감지
+ * 급여대장 + 4대보험 CSV/XLSX 파싱 서비스
+ * - CSV: EUC-KR / UTF-8 / CP949 자동 감지
+ * - XLSX: SheetJS로 첫 시트 읽음
+ * - 데이터 행 자동 감지 (row[0]이 숫자) + 헤더 키워드 매핑
  */
+import * as XLSX from 'xlsx';
 
 // ═══ CSV 라인 파서 (쌍따옴표 처리) ═══
 function parseCSVLine(line: string): string[] {
@@ -21,6 +24,63 @@ function parseCSVLine(line: string): string[] {
 function parseNumber(s: string): number {
   if (!s) return 0;
   return parseInt(s.replace(/,/g, '').replace(/"/g, ''), 10) || 0;
+}
+
+// ═══ 파일 → 행 배열 통합 (CSV/XLSX 모두 지원) ═══
+/** 파일이 .xlsx/.xls면 SheetJS, 그 외에는 CSV로 파싱 → string[][] 반환 */
+async function readFileAsRows(file: File): Promise<string[][]> {
+  const ext = file.name.toLowerCase().split('.').pop() || '';
+  if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm') {
+    const buffer = await file.arrayBuffer();
+    const wb = XLSX.read(buffer, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+    return data.map((row) => (Array.isArray(row) ? row : []).map((c) => String(c ?? '').trim()));
+  }
+  // CSV
+  const text = await decodeFile(file);
+  return text.split('\n').map((l) => parseCSVLine(l));
+}
+
+/** 헤더 영역(데이터 행 시작 직전까지)을 컬럼별로 합쳐 키워드 매핑용 배열 반환 */
+function buildColumnHeaders(rows: string[][]): string[] {
+  // 데이터 행 시작 위치 찾기: row[0]이 1자리 이상 숫자
+  let dataStart = -1;
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    const c0 = String(rows[i][0] || '').trim();
+    if (/^\d+$/.test(c0)) { dataStart = i; break; }
+  }
+  if (dataStart < 0) dataStart = 1; // 데이터 행 못 찾으면 첫 행만 헤더
+
+  const numCols = Math.max(...rows.slice(0, dataStart).map((r) => (r ? r.length : 0)), 0);
+  const headers: string[] = [];
+  for (let c = 0; c < numCols; c++) {
+    const parts: string[] = [];
+    for (let r = 0; r < dataStart; r++) {
+      const cell = String(rows[r]?.[c] || '').replace(/\s+/g, '');
+      if (cell && !parts.includes(cell)) parts.push(cell);
+    }
+    headers.push(parts.join('|'));
+  }
+  return headers;
+}
+
+/** 헤더에서 키워드로 컬럼 인덱스 찾기 (첫 매칭 반환) */
+function findCol(headers: string[], keywords: string[]): number {
+  for (let c = 0; c < headers.length; c++) {
+    const h = headers[c];
+    if (keywords.some((k) => h.includes(k.replace(/\s+/g, '')))) return c;
+  }
+  return -1;
+}
+
+/** 데이터 행만 추출 (row[0]이 숫자, 합계/총계 제외) */
+function extractDataRows(rows: string[][]): string[][] {
+  return rows.filter((r) => {
+    const c0 = String(r[0] || '').trim();
+    if (!/^\d+$/.test(c0)) return false;
+    return true;
+  });
 }
 
 // ═══ 인코딩 자동 감지 + 텍스트 변환 ═══
@@ -129,35 +189,40 @@ export interface HealthInsuranceEntry {
 }
 
 export async function parseHealthInsuranceCSV(file: File): Promise<HealthInsuranceEntry[]> {
-  const text = await decodeFile(file);
-  const lines = text.split('\n').map(l => parseCSVLine(l));
+  const rows = await readFileAsRows(file);
   const results: HealthInsuranceEntry[] = [];
 
-  // CSV 구조 (건강보험공단 EDI):
-  //   row[0] 순번, [1] 증번호, [2] 주민번호, [3] 성명, [4] 보수월액,
-  //   ── 건강보험: [5] 구분, [6] 산출, [7] 정산, [8] 정산사유, [9] 정산기간,
-  //              [10] 감면사유, [11] 연말정산, [12] 환급이자, [13] 고지보험료,
-  //              [14] 회계, [15] 영업소, [16] 직종, [17] 취득/상실일,
-  //   ── 장기요양: [18] 구분, [19] 산출, [20] 정산, [21] 사유, [22] 기간,
-  //              [23] 감면사유, [24] 연말정산, [25] 환급, [26] 고지보험료,
-  //              [27] 회계, [28] 영업소, [29] 직종, [30] 취득/상실일
-  //
-  // 회사 부담분 = 고지보험료 (회사로 청구되는 금액) — 본인 부담은 별도 (보통 50:50)
+  // 건강보험공단 EDI 구조: 31개 컬럼, 건강(0~17) + 장기요양(18~30) 나란히
+  // 같은 헤더("산출보험료", "고지보험료" 등)가 두 번씩 나오므로 첫 번째=건강, 두 번째=장기요양
+  // 헤더 텍스트로 첫 두 개의 "고지보험료" 컬럼 인덱스 찾기 (양식 변경에 강건)
+  const headers = buildColumnHeaders(rows);
+  const nameCol = findCol(headers, ['성명']);
+  const ssnCol = findCol(headers, ['주민번호', '주민등록번호']);
 
-  for (const row of lines) {
-    if (row.length < 14) continue; // 헤더/빈 행/주석 행 스킵
-    const name = (row[3] || '').trim();
-    if (!name || name === '성명' || name === '합계' || name === '총계' || name === '소계') continue;
-    // 주민번호 패턴이 row[2]에 없으면 데이터 행이 아님
-    if (!/\d{6}-/.test(row[2] || '')) continue;
+  // "고지보험료" 컬럼 모두 찾기
+  const noticeCols: number[] = [];
+  for (let c = 0; c < headers.length; c++) {
+    if (headers[c].includes('고지보험료')) noticeCols.push(c);
+  }
+  // 첫 번째 = 건강, 두 번째 = 장기요양
+  const hiCol = noticeCols[0] ?? 13;
+  const ltcCol = noticeCols[1] ?? 26;
 
-    const hiCompany = parseNumber(row[13]);   // 건강 고지보험료 (회사 부담)
-    const ltcCompany = parseNumber(row[26]);  // 장기요양 고지보험료 (회사 부담)
+  for (const row of extractDataRows(rows)) {
+    const name = String(row[nameCol >= 0 ? nameCol : 3] || '').trim();
+    if (!name) continue;
+    // 주민번호 패턴 검증 (있으면)
+    if (ssnCol >= 0) {
+      const ssn = String(row[ssnCol] || '');
+      if (!/\d{6}-/.test(ssn)) continue;
+    }
+    const hiCompany = parseNumber(row[hiCol]);
+    const ltcCompany = parseNumber(row[ltcCol]);
     if (hiCompany === 0 && ltcCompany === 0) continue;
 
     results.push({
       name,
-      healthInsurance: hiCompany,        // 본인 부담분은 별도 (50:50 추정 가능)
+      healthInsurance: hiCompany,
       healthInsuranceCompany: hiCompany,
       longTermCare: ltcCompany,
       longTermCareCompany: ltcCompany,
@@ -174,20 +239,23 @@ export interface PensionEntry {
 }
 
 export async function parsePensionCSV(file: File): Promise<PensionEntry[]> {
-  const text = await decodeFile(file);
-  const lines = text.split('\n').map(l => parseCSVLine(l));
+  const rows = await readFileAsRows(file);
   const results: PensionEntry[] = [];
 
-  for (const row of lines) {
-    if (row[0] && /^\d+$/.test(row[0].trim()) && row[1]) {
-      const name = row[1].trim();
-      if (name === '합계') continue;
-      results.push({
-        name,
-        nationalPension: parseNumber(row[5]),
-        nationalPensionCompany: parseNumber(row[6]),
-      });
-    }
+  // 헤더 키워드: 성명 / 근로자기여금 (본인) / 사용자부담금 (회사)
+  const headers = buildColumnHeaders(rows);
+  const nameCol = findCol(headers, ['성명', '근로자명']);
+  const empCol = findCol(headers, ['근로자기여금']);
+  const compCol = findCol(headers, ['사용자부담금']);
+
+  for (const row of extractDataRows(rows)) {
+    const name = String(row[nameCol >= 0 ? nameCol : 1] || '').trim();
+    if (!name || name === '합계') continue;
+    results.push({
+      name,
+      nationalPension: parseNumber(row[empCol >= 0 ? empCol : 5]),
+      nationalPensionCompany: parseNumber(row[compCol >= 0 ? compCol : 6]),
+    });
   }
   return results;
 }
@@ -200,20 +268,32 @@ export interface EmploymentInsuranceEntry {
 }
 
 export async function parseEmploymentInsuranceCSV(file: File): Promise<EmploymentInsuranceEntry[]> {
-  const text = await decodeFile(file);
-  const lines = text.split('\n').map(l => parseCSVLine(l));
+  const rows = await readFileAsRows(file);
   const results: EmploymentInsuranceEntry[] = [];
 
-  for (const row of lines) {
-    if (row[0] && /^\d+$/.test(row[0].trim()) && row[2]) {
-      const name = row[2].trim();
-      if (name === '합계') continue;
-      results.push({
-        name,
-        employmentInsurance: parseNumber(row[9]),
-        employmentInsCompany: parseNumber(row[10]) + parseNumber(row[11]),
-      });
-    }
+  // 헤더는 보통 2행 병합 — buildColumnHeaders가 합쳐서 처리
+  // 키워드:
+  //   근로자명/성명, 근로자실업급여보험료 (본인 부담),
+  //   사업주실업급여보험료 + 사업주고안직능보험료 (사업주 부담)
+  // 같은 키워드가 여러 번 나오면 (해당월/재산정/정산), findCol은 첫 번째만 반환 — 해당월이 첫 번째라 OK
+  const headers = buildColumnHeaders(rows);
+  const nameCol = findCol(headers, ['근로자명', '성명']);
+  const empCol = findCol(headers, ['근로자실업급여']);
+  const compEmpInsCol = findCol(headers, ['사업주실업급여']);
+  const compStabilityCol = findCol(headers, ['사업주고안', '고안직능']);
+
+  for (const row of extractDataRows(rows)) {
+    const name = String(row[nameCol >= 0 ? nameCol : 2] || '').trim();
+    if (!name || name === '합계') continue;
+    const empBurden = parseNumber(row[empCol >= 0 ? empCol : 9]);
+    const compBurden =
+      parseNumber(row[compEmpInsCol >= 0 ? compEmpInsCol : 10]) +
+      parseNumber(row[compStabilityCol >= 0 ? compStabilityCol : 11]);
+    results.push({
+      name,
+      employmentInsurance: empBurden,
+      employmentInsCompany: compBurden,
+    });
   }
   return results;
 }
@@ -225,19 +305,21 @@ export interface AccidentInsuranceEntry {
 }
 
 export async function parseAccidentInsuranceCSV(file: File): Promise<AccidentInsuranceEntry[]> {
-  const text = await decodeFile(file);
-  const lines = text.split('\n').map(l => parseCSVLine(l));
+  const rows = await readFileAsRows(file);
   const results: AccidentInsuranceEntry[] = [];
 
-  for (const row of lines) {
-    if (row[0] && /^\d+$/.test(row[0].trim()) && row[2]) {
-      const name = row[2].trim();
-      if (name === '합계') continue;
-      results.push({
-        name,
-        industrialAccident: parseNumber(row[9]),
-      });
-    }
+  // 헤더: 근로자명/성명, 산정보험료(해당월) — 산재는 회사 100% 부담
+  const headers = buildColumnHeaders(rows);
+  const nameCol = findCol(headers, ['근로자명', '성명']);
+  const compCol = findCol(headers, ['산정보험료']);
+
+  for (const row of extractDataRows(rows)) {
+    const name = String(row[nameCol >= 0 ? nameCol : 2] || '').trim();
+    if (!name || name === '합계') continue;
+    results.push({
+      name,
+      industrialAccident: parseNumber(row[compCol >= 0 ? compCol : 9]),
+    });
   }
   return results;
 }
