@@ -1,0 +1,60 @@
+/* ═══ DataUploadTab ═══ */
+.dut-container {}
+
+/* Upload Grid */
+.dut-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+@media (max-width: 900px) { .dut-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .dut-grid { grid-template-columns: 1fr; } }
+
+.dut-slot {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 20px 16px; text-align: center; transition: all 0.15s; min-height: 160px;
+  justify-content: center;
+}
+.dut-slot.drag-over { border-color: var(--accent); background: #F8FAFF; }
+.dut-slot.applied { border-color: var(--success); background: #F0FDF4; }
+
+.dut-slot-header { display: flex; align-items: center; gap: 6px; width: 100%; justify-content: center; }
+.dut-slot-label { font-size: 14px; font-weight: 600; }
+.dut-optional { font-size: 10px; padding: 1px 6px; border-radius: 999px; background: #FEF3C7; color: #92400E; }
+.dut-applied-icon { color: var(--success); }
+.dut-slot-desc { font-size: 11px; color: var(--text-hint); margin: 0; }
+.dut-upload-icon { color: var(--text-hint); margin: 4px 0; }
+.dut-file-btn { height: 30px; font-size: 12px; cursor: pointer; }
+.dut-processing { font-size: 13px; color: var(--accent); }
+
+/* Parse Result */
+.dut-result { width: 100%; text-align: left; }
+.dut-result-summary { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--success); margin-bottom: 6px; }
+.dut-ok { color: var(--success); }
+.dut-unmatched { font-size: 11px; color: var(--warning); display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+
+.dut-preview { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+.dut-preview-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); padding: 2px 0; }
+.dut-preview-more { font-size: 10px; color: var(--text-hint); text-align: center; }
+.dut-apply-btn { flex: 1; height: 30px; font-size: 12px; }
+.dut-result-actions { display: flex; gap: 6px; margin-top: 6px; }
+.dut-replace-btn {
+  flex: 0 0 auto; height: 30px; font-size: 11px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  cursor: pointer; padding: 0 12px;
+  background: var(--bg-surface); border: 1px solid var(--border-default);
+  color: var(--text-secondary); border-radius: 4px;
+  white-space: nowrap;
+}
+.dut-replace-btn:hover {
+  border-color: var(--accent); color: var(--accent);
+}
+
+/* Changes */
+.dut-changes { margin-top: 8px; }
+.dut-changes h4 { font-size: 14px; font-weight: 600; margin: 0 0 10px; }
+.dut-no-changes { font-size: 13px; color: var(--text-hint); }
+.dut-changes-table-wrap { overflow-x: auto; border: 1px solid var(--border-default); border-radius: var(--radius-md); }
+.dut-changes-table { font-size: 13px; }
+.dut-changes-table td, .dut-changes-table th { padding: 8px 12px; }
+.dut-emp { font-weight: 500; white-space: nowrap; }
+.dut-diff { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.dut-diff.increase { color: var(--accent); }
+.dut-diff.decrease { color: var(--danger); }
+.dut-diff.new { color: var(--success); }
