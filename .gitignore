@@ -30,5 +30,22 @@ client_secret_*.json
 .claude/settings.json
 .claude/settings.local.json
 .claude/settings.json.tmp.*
+.claude/settings.local.json.tmp.*
 .claude/worktrees/
+.claude/plans/
 CLAUDE.local.md
+.mcp.json
+
+# 에디터 임시 백업
+**/*.tmp.*
+
+# 데이터 / 배포 작업본
+data/
+deploy-temp/
+
+# 개인 작업 문서 (기획서/회의록/스냅샷)
+Phase*.md
+경영관리팀*.txt
+과제현황*.xlsx*
+국책과제_*.md
+캡쳐.png

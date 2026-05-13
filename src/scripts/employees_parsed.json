@@ -1,0 +1,870 @@
+[
+  {
+    "employeeNumber": "2006001",
+    "name": "박재민",
+    "position": "대표이사",
+    "department": "(주)타이로스코프",
+    "hireDate": "2020-04-27",
+    "salary": {
+      "basePay": 8320835,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 200000,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 8720835
+    },
+    "insurance": {
+      "nationalPension": 302570,
+      "nationalPensionCompany": 302570,
+      "healthInsurance": 250830,
+      "healthInsuranceCompany": 250830,
+      "longTermCare": 32960,
+      "longTermCareCompany": 32960,
+      "employmentInsurance": 0,
+      "employmentInsCompany": 0,
+      "industrialAccident": 0,
+      "totalCompanyBurden": 586360
+    },
+    "netPay": 6979195
+  },
+  {
+    "employeeNumber": "2007001",
+    "name": "문재훈",
+    "position": "이사",
+    "department": "R&D본부",
+    "hireDate": "2020-04-27",
+    "salary": {
+      "basePay": 5940880,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 6140880
+    },
+    "insurance": {
+      "nationalPension": 0,
+      "nationalPensionCompany": 0,
+      "healthInsurance": 190680,
+      "healthInsuranceCompany": 190680,
+      "longTermCare": 25050,
+      "longTermCareCompany": 25050,
+      "employmentInsurance": 0,
+      "employmentInsCompany": 0,
+      "industrialAccident": 0,
+      "totalCompanyBurden": 215730
+    },
+    "netPay": 5383620
+  },
+  {
+    "employeeNumber": "2007002",
+    "name": "안준",
+    "position": "이사",
+    "department": "제품개발본부",
+    "hireDate": "2020-04-27",
+    "salary": {
+      "basePay": 7753600,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 200000,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 8153600
+    },
+    "insurance": {
+      "nationalPension": 302570,
+      "nationalPensionCompany": 302570,
+      "healthInsurance": 239660,
+      "healthInsuranceCompany": 239660,
+      "longTermCare": 31490,
+      "longTermCareCompany": 31490,
+      "employmentInsurance": 0,
+      "employmentInsCompany": 0,
+      "industrialAccident": 0,
+      "totalCompanyBurden": 573720
+    },
+    "netPay": 6569290
+  },
+  {
+    "employeeNumber": "2102001",
+    "name": "신규보",
+    "position": "이사",
+    "department": "AI연구소",
+    "hireDate": "2021-02-01",
+    "salary": {
+      "basePay": 7322000,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 200000,
+      "childcareAllowance": 0,
+      "totalPay": 7722000
+    },
+    "insurance": {
+      "nationalPension": 302570,
+      "nationalPensionCompany": 302570,
+      "healthInsurance": 235620,
+      "healthInsuranceCompany": 235620,
+      "longTermCare": 30960,
+      "longTermCareCompany": 30960,
+      "employmentInsurance": 0,
+      "employmentInsCompany": 0,
+      "industrialAccident": 0,
+      "totalCompanyBurden": 569150
+    },
+    "netPay": 6247050
+  },
+  {
+    "employeeNumber": "2107001",
+    "name": "박지훈",
+    "position": "사원",
+    "department": "소프트웨어개발팀",
+    "hireDate": "2021-07-01",
+    "salary": {
+      "basePay": 3702200,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 200000,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 4161081
+    },
+    "insurance": {
+      "nationalPension": 172090,
+      "nationalPensionCompany": 172090,
+      "healthInsurance": 132420,
+      "healthInsuranceCompany": 132420,
+      "longTermCare": 17400,
+      "longTermCareCompany": 17400,
+      "employmentInsurance": 33150,
+      "employmentInsCompany": 42350,
+      "industrialAccident": 27840,
+      "totalCompanyBurden": 392100
+    },
+    "netPay": 3605711
+  },
+  {
+    "employeeNumber": "2201001",
+    "name": "송은정",
+    "position": "사원",
+    "department": "경영관리팀",
+    "hireDate": "2022-01-10",
+    "salary": {
+      "basePay": 2552495,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 200000,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 3153790
+    },
+    "insurance": {
+      "nationalPension": 127440,
+      "nationalPensionCompany": 127440,
+      "healthInsurance": 98070,
+      "healthInsuranceCompany": 98070,
+      "longTermCare": 12880,
+      "longTermCareCompany": 12880,
+      "employmentInsurance": 24550,
+      "employmentInsCompany": 31370,
+      "industrialAccident": 20620,
+      "totalCompanyBurden": 290380
+    },
+    "netPay": 2813070
+  },
+  {
+    "employeeNumber": "2201002",
+    "name": "김현지",
+    "position": "선임",
+    "department": "전략기획실",
+    "hireDate": "2022-01-10",
+    "salary": {
+      "basePay": 2200000,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 200000,
+      "researchAllowance": 0,
+      "childcareAllowance": 200000,
+      "totalPay": 3094260
+    },
+    "insurance": {
+      "nationalPension": 96370,
+      "nationalPensionCompany": 96370,
+      "healthInsurance": 72940,
+      "healthInsuranceCompany": 72940,
+      "longTermCare": 9580,
+      "longTermCareCompany": 9580,
+      "employmentInsurance": 29700,
+      "employmentInsCompany": 37950,
+      "industrialAccident": 24940,
+      "totalCompanyBurden": 241780
+    },
+    "netPay": 2826880
+  },
+  {
+    "employeeNumber": "2201003",
+    "name": "김종찬",
+    "position": "선임",
+    "department": "AI연구1팀",
+    "hireDate": "2022-01-17",
+    "salary": {
+      "basePay": 5236743,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 200000,
+      "childcareAllowance": 200000,
+      "totalPay": 6025250
+    },
+    "insurance": {
+      "nationalPension": 227620,
+      "nationalPensionCompany": 227620,
+      "healthInsurance": 175170,
+      "healthInsuranceCompany": 175170,
+      "longTermCare": 23010,
+      "longTermCareCompany": 23010,
+      "employmentInsurance": 43850,
+      "employmentInsCompany": 56030,
+      "industrialAccident": 36830,
+      "totalCompanyBurden": 518660
+    },
+    "netPay": 5101800
+  },
+  {
+    "employeeNumber": "2202001",
+    "name": "김선열",
+    "position": "선임",
+    "department": "소프트웨어개발팀",
+    "hireDate": "2022-02-03",
+    "salary": {
+      "basePay": 4980900,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 200000,
+      "childcareAllowance": 200000,
+      "totalPay": 5580900
+    },
+    "insurance": {
+      "nationalPension": 230470,
+      "nationalPensionCompany": 230470,
+      "healthInsurance": 177370,
+      "healthInsuranceCompany": 177370,
+      "longTermCare": 23300,
+      "longTermCareCompany": 23300,
+      "employmentInsurance": 44400,
+      "employmentInsCompany": 56730,
+      "industrialAccident": 37300,
+      "totalCompanyBurden": 525170
+    },
+    "netPay": 4719440
+  },
+  {
+    "employeeNumber": "2204001",
+    "name": "문상아",
+    "position": "선임",
+    "department": "전략기획실",
+    "hireDate": "2022-04-20",
+    "salary": {
+      "basePay": 4220000,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 4451722
+    },
+    "insurance": {
+      "nationalPension": 188380,
+      "nationalPensionCompany": 188380,
+      "healthInsurance": 144980,
+      "healthInsuranceCompany": 144980,
+      "longTermCare": 19050,
+      "longTermCareCompany": 19050,
+      "employmentInsurance": 36290,
+      "employmentInsCompany": 46370,
+      "industrialAccident": 30480,
+      "totalCompanyBurden": 429260
+    },
+    "netPay": 3812222
+  },
+  {
+    "employeeNumber": "2205001",
+    "name": "김여진",
+    "position": "선임",
+    "department": "전략기획실",
+    "hireDate": "2022-05-30",
+    "salary": {
+      "basePay": 4224630,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 200000,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 5509710
+    },
+    "insurance": {
+      "nationalPension": 198450,
+      "nationalPensionCompany": 198450,
+      "healthInsurance": 152700,
+      "healthInsuranceCompany": 152700,
+      "longTermCare": 20060,
+      "longTermCareCompany": 20060,
+      "employmentInsurance": 38220,
+      "employmentInsCompany": 48830,
+      "industrialAccident": 32110,
+      "totalCompanyBurden": 452150
+    },
+    "netPay": 4695850
+  },
+  {
+    "employeeNumber": "2206001",
+    "name": "김근영",
+    "position": "사원",
+    "department": "소프트웨어개발팀",
+    "hireDate": "2022-06-13",
+    "salary": {
+      "basePay": 2834667,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 200000,
+      "researchAllowance": 0,
+      "childcareAllowance": 200000,
+      "totalPay": 3434667
+    },
+    "insurance": {
+      "nationalPension": 136130,
+      "nationalPensionCompany": 136130,
+      "healthInsurance": 103050,
+      "healthInsuranceCompany": 103050,
+      "longTermCare": 13540,
+      "longTermCareCompany": 13540,
+      "employmentInsurance": 22200,
+      "employmentInsCompany": 28360,
+      "industrialAccident": 18640,
+      "totalCompanyBurden": 299720
+    },
+    "netPay": 3074447
+  },
+  {
+    "employeeNumber": "2210001",
+    "name": "이웅해",
+    "position": "선임",
+    "department": "경영관리팀",
+    "hireDate": "2022-10-17",
+    "salary": {
+      "basePay": 3494800,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 200000,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 4453850
+    },
+    "insurance": {
+      "nationalPension": 178360,
+      "nationalPensionCompany": 178360,
+      "healthInsurance": 137240,
+      "healthInsuranceCompany": 137240,
+      "longTermCare": 18030,
+      "longTermCareCompany": 18030,
+      "employmentInsurance": 34350,
+      "employmentInsCompany": 43890,
+      "industrialAccident": 28860,
+      "totalCompanyBurden": 406380
+    },
+    "netPay": 3844440
+  },
+  {
+    "employeeNumber": "2301002",
+    "name": "정예원",
+    "position": "사원",
+    "department": "AI연구2팀",
+    "hireDate": "2023-01-09",
+    "salary": {
+      "basePay": 3349200,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 200000,
+      "childcareAllowance": 0,
+      "totalPay": 3829921
+    },
+    "insurance": {
+      "nationalPension": 148530,
+      "nationalPensionCompany": 148530,
+      "healthInsurance": 114300,
+      "healthInsuranceCompany": 114300,
+      "longTermCare": 15010,
+      "longTermCareCompany": 15010,
+      "employmentInsurance": 28610,
+      "employmentInsCompany": 36550,
+      "industrialAccident": 24030,
+      "totalCompanyBurden": 338420
+    },
+    "netPay": 3374291
+  },
+  {
+    "employeeNumber": "2306002",
+    "name": "강상현",
+    "position": "본부장",
+    "department": "서비스본부",
+    "hireDate": "2023-06-12",
+    "salary": {
+      "basePay": 8511250,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 8711250
+    },
+    "insurance": {
+      "nationalPension": 302570,
+      "nationalPensionCompany": 302570,
+      "healthInsurance": 286970,
+      "healthInsuranceCompany": 286970,
+      "longTermCare": 37700,
+      "longTermCareCompany": 37700,
+      "employmentInsurance": 71840,
+      "employmentInsCompany": 91790,
+      "industrialAccident": 60340,
+      "totalCompanyBurden": 779370
+    },
+    "netPay": 6830580
+  },
+  {
+    "employeeNumber": "2308001",
+    "name": "김주희",
+    "position": "사원",
+    "department": "소프트웨어개발팀",
+    "hireDate": "2023-08-21",
+    "salary": {
+      "basePay": 2748200,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 200000,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 3182091
+    },
+    "insurance": {
+      "nationalPension": 115660,
+      "nationalPensionCompany": 115660,
+      "healthInsurance": 89000,
+      "healthInsuranceCompany": 89000,
+      "longTermCare": 11690,
+      "longTermCareCompany": 11690,
+      "employmentInsurance": 22280,
+      "employmentInsCompany": 28460,
+      "industrialAccident": 18710,
+      "totalCompanyBurden": 263520
+    },
+    "netPay": 2862871
+  },
+  {
+    "employeeNumber": "2310001",
+    "name": "박준현",
+    "position": "선임",
+    "department": "AI연구1팀",
+    "hireDate": "2023-10-04",
+    "salary": {
+      "basePay": 6416167,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 6616167
+    },
+    "insurance": {
+      "nationalPension": 269460,
+      "nationalPensionCompany": 269460,
+      "healthInsurance": 207340,
+      "healthInsuranceCompany": 207340,
+      "longTermCare": 27240,
+      "longTermCareCompany": 27240,
+      "employmentInsurance": 51900,
+      "employmentInsCompany": 66310,
+      "industrialAccident": 43600,
+      "totalCompanyBurden": 613950
+    },
+    "netPay": 5403947
+  },
+  {
+    "employeeNumber": "2311001",
+    "name": "이정태",
+    "position": "책임",
+    "department": "영업팀",
+    "hireDate": "2023-11-06",
+    "salary": {
+      "basePay": 6623750,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 6823750
+    },
+    "insurance": {
+      "nationalPension": 294920,
+      "nationalPensionCompany": 294920,
+      "healthInsurance": 226950,
+      "healthInsuranceCompany": 226950,
+      "longTermCare": 29820,
+      "longTermCareCompany": 29820,
+      "employmentInsurance": 56810,
+      "employmentInsCompany": 72590,
+      "industrialAccident": 47720,
+      "totalCompanyBurden": 672000
+    },
+    "netPay": 5504080
+  },
+  {
+    "employeeNumber": "2312001",
+    "name": "이상신",
+    "position": "사원",
+    "department": "영업팀",
+    "hireDate": "2023-12-26",
+    "salary": {
+      "basePay": 4259000,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 4459000
+    },
+    "insurance": {
+      "nationalPension": 189660,
+      "nationalPensionCompany": 189660,
+      "healthInsurance": 145970,
+      "healthInsuranceCompany": 145970,
+      "longTermCare": 19180,
+      "longTermCareCompany": 19180,
+      "employmentInsurance": 36540,
+      "employmentInsCompany": 46690,
+      "industrialAccident": 30690,
+      "totalCompanyBurden": 432190
+    },
+    "netPay": 3816850
+  },
+  {
+    "employeeNumber": "2401001",
+    "name": "탁윤원",
+    "position": "선임",
+    "department": "소프트웨어개발팀",
+    "hireDate": "2024-01-02",
+    "salary": {
+      "basePay": 6666667,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 200000,
+      "childcareAllowance": 0,
+      "totalPay": 7066667
+    },
+    "insurance": {
+      "nationalPension": 302570,
+      "nationalPensionCompany": 302570,
+      "healthInsurance": 233780,
+      "healthInsuranceCompany": 233780,
+      "longTermCare": 30710,
+      "longTermCareCompany": 30710,
+      "employmentInsurance": 58520,
+      "employmentInsCompany": 74770,
+      "industrialAccident": 49160,
+      "totalCompanyBurden": 690990
+    },
+    "netPay": 5699947
+  },
+  {
+    "employeeNumber": "2402001",
+    "name": "이경준",
+    "position": "선임",
+    "department": "영업팀",
+    "hireDate": "2024-02-05",
+    "salary": {
+      "basePay": 6050000,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 6250000
+    },
+    "insurance": {
+      "nationalPension": 269840,
+      "nationalPensionCompany": 269840,
+      "healthInsurance": 204880,
+      "healthInsuranceCompany": 204880,
+      "longTermCare": 26920,
+      "longTermCareCompany": 26920,
+      "employmentInsurance": 51290,
+      "employmentInsCompany": 65530,
+      "industrialAccident": 43080,
+      "totalCompanyBurden": 610250
+    },
+    "netPay": 5130600
+  },
+  {
+    "employeeNumber": "2402002",
+    "name": "임도균",
+    "position": "책임",
+    "department": "품질경영팀",
+    "hireDate": "2024-02-21",
+    "salary": {
+      "basePay": 7747667,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 7947667
+    },
+    "insurance": {
+      "nationalPension": 302570,
+      "nationalPensionCompany": 302570,
+      "healthInsurance": 232940,
+      "healthInsuranceCompany": 232940,
+      "longTermCare": 30600,
+      "longTermCareCompany": 30600,
+      "employmentInsurance": 62310,
+      "employmentInsCompany": 79620,
+      "industrialAccident": 52340,
+      "totalCompanyBurden": 698070
+    },
+    "netPay": 6328657
+  },
+  {
+    "employeeNumber": "2407001",
+    "name": "강민정",
+    "position": "사원",
+    "department": "소프트웨어개발팀",
+    "hireDate": "2024-07-01",
+    "salary": {
+      "basePay": 2662000,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 2862000
+    },
+    "insurance": {
+      "nationalPension": 118080,
+      "nationalPensionCompany": 118080,
+      "healthInsurance": 91370,
+      "healthInsuranceCompany": 91370,
+      "longTermCare": 12000,
+      "longTermCareCompany": 12000,
+      "employmentInsurance": 22870,
+      "employmentInsCompany": 29220,
+      "industrialAccident": 19210,
+      "totalCompanyBurden": 269880
+    },
+    "netPay": 2568380
+  },
+  {
+    "employeeNumber": "2409001",
+    "name": "임아란",
+    "position": "사원",
+    "department": "품질경영팀",
+    "hireDate": "2024-09-02",
+    "salary": {
+      "basePay": 3655600,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 4422845
+    },
+    "insurance": {
+      "nationalPension": 155320,
+      "nationalPensionCompany": 155320,
+      "healthInsurance": 118540,
+      "healthInsuranceCompany": 118540,
+      "longTermCare": 15570,
+      "longTermCareCompany": 15570,
+      "employmentInsurance": 29670,
+      "employmentInsCompany": 37910,
+      "industrialAccident": 24920,
+      "totalCompanyBurden": 352260
+    },
+    "netPay": 3855885
+  },
+  {
+    "employeeNumber": "2409002",
+    "name": "김세은",
+    "position": "사원",
+    "department": "전략기획실",
+    "hireDate": "2024-09-02",
+    "salary": {
+      "basePay": 3187000,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 200000,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 4101860
+    },
+    "insurance": {
+      "nationalPension": 136460,
+      "nationalPensionCompany": 136460,
+      "healthInsurance": 104150,
+      "healthInsuranceCompany": 104150,
+      "longTermCare": 13680,
+      "longTermCareCompany": 13680,
+      "employmentInsurance": 26070,
+      "employmentInsCompany": 33310,
+      "industrialAccident": 21900,
+      "totalCompanyBurden": 309500
+    },
+    "netPay": 3654670
+  },
+  {
+    "employeeNumber": "2409003",
+    "name": "김도형",
+    "position": "사원",
+    "department": "품질경영팀",
+    "hireDate": "2024-09-23",
+    "salary": {
+      "basePay": 4042000,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 4622550
+    },
+    "insurance": {
+      "nationalPension": 176890,
+      "nationalPensionCompany": 176890,
+      "healthInsurance": 111560,
+      "healthInsuranceCompany": 111560,
+      "longTermCare": 14650,
+      "longTermCareCompany": 14650,
+      "employmentInsurance": 34260,
+      "employmentInsCompany": 43770,
+      "industrialAccident": 28770,
+      "totalCompanyBurden": 375640
+    },
+    "netPay": 3850505
+  },
+  {
+    "employeeNumber": "2410001",
+    "name": "최선아",
+    "position": "선임",
+    "department": "경영관리팀",
+    "hireDate": "2024-10-02",
+    "salary": {
+      "basePay": 2201584,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 200000,
+      "researchAllowance": 0,
+      "childcareAllowance": 400000,
+      "totalPay": 3116292
+    },
+    "insurance": {
+      "nationalPension": 155650,
+      "nationalPensionCompany": 155650,
+      "healthInsurance": 119130,
+      "healthInsuranceCompany": 119130,
+      "longTermCare": 15650,
+      "longTermCareCompany": 15650,
+      "employmentInsurance": 29820,
+      "employmentInsCompany": 38100,
+      "industrialAccident": 25050,
+      "totalCompanyBurden": 353580
+    },
+    "netPay": 2743622
+  },
+  {
+    "employeeNumber": "2411001",
+    "name": "류성현",
+    "position": "사원",
+    "department": "영업팀",
+    "hireDate": "2024-11-26",
+    "salary": {
+      "basePay": 4058334,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 0,
+      "childcareAllowance": 200000,
+      "totalPay": 4458334
+    },
+    "insurance": {
+      "nationalPension": 183160,
+      "nationalPensionCompany": 183160,
+      "healthInsurance": 83180,
+      "healthInsuranceCompany": 83180,
+      "longTermCare": 10930,
+      "longTermCareCompany": 10930,
+      "employmentInsurance": 35860,
+      "employmentInsCompany": 45820,
+      "industrialAccident": 30120,
+      "totalCompanyBurden": 353210
+    },
+    "netPay": 3923774
+  },
+  {
+    "employeeNumber": "2412001",
+    "name": "윤혁",
+    "position": "사원",
+    "department": "소프트웨어개발팀",
+    "hireDate": "2024-12-11",
+    "salary": {
+      "basePay": 3266667,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 200000,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 3666667
+    },
+    "insurance": {
+      "nationalPension": 123500,
+      "nationalPensionCompany": 123500,
+      "healthInsurance": 93470,
+      "healthInsuranceCompany": 93470,
+      "longTermCare": 12280,
+      "longTermCareCompany": 12280,
+      "employmentInsurance": 15850,
+      "employmentInsCompany": 20250,
+      "industrialAccident": 13310,
+      "totalCompanyBurden": 262810
+    },
+    "netPay": 3293907
+  },
+  {
+    "employeeNumber": "2501002",
+    "name": "임동철",
+    "position": "사원",
+    "department": "AI연구2팀",
+    "hireDate": "2025-01-20",
+    "salary": {
+      "basePay": 5608334,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 200000,
+      "childcareAllowance": 0,
+      "totalPay": 6008334
+    },
+    "insurance": {
+      "nationalPension": 197310,
+      "nationalPensionCompany": 197310,
+      "healthInsurance": 149340,
+      "healthInsuranceCompany": 149340,
+      "longTermCare": 19620,
+      "longTermCareCompany": 19620,
+      "employmentInsurance": 37380,
+      "employmentInsCompany": 47760,
+      "industrialAccident": 31400,
+      "totalCompanyBurden": 445430
+    },
+    "netPay": 5123104
+  },
+  {
+    "employeeNumber": "2512001",
+    "name": "송채원",
+    "position": "사원",
+    "department": "AI연구소",
+    "hireDate": "2025-12-29",
+    "salary": {
+      "basePay": 3000000,
+      "mealAllowance": 200000,
+      "vehicleAllowance": 0,
+      "researchAllowance": 0,
+      "childcareAllowance": 0,
+      "totalPay": 3200000
+    },
+    "insurance": {
+      "nationalPension": 142500,
+      "nationalPensionCompany": 142500,
+      "healthInsurance": 107850,
+      "healthInsuranceCompany": 107850,
+      "longTermCare": 14170,
+      "longTermCareCompany": 14170,
+      "employmentInsurance": 27000,
+      "employmentInsCompany": 34500,
+      "industrialAccident": 22680,
+      "totalCompanyBurden": 321700
+    },
+    "netPay": 2826700
+  }
+]
