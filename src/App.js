@@ -1,7 +1,5 @@
-import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import TaskDashboard from './task-manager/TaskDashboard';
-import ProjectOverview from './components/project/ProjectOverview';
+import React, { useState, Suspense, lazy } from 'react';
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/layout/Sidebar';
 import LoginPage from './components/auth/LoginPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -9,14 +7,18 @@ import Breadcrumb from './components/common/Breadcrumb';
 import GlobalSearch from './components/common/GlobalSearch';
 import { ToastProvider } from './components/common/Toast';
 import { SaveIndicatorProvider } from './components/common/SaveIndicator';
-import WelcomePage from './components/home/WelcomePage';
-import ParticipationManager from './components/project/ParticipationManager';
-import PayrollProof from './components/project/PayrollProof';
-import Simulator from './components/project/Simulator';
-import SeedRunner from './scripts/SeedRunner';
 import { useAuth } from './hooks/useAuth';
 import './styles/designSystem.css';
 import './App.css';
+
+// Lazy load — 각 페이지를 별도 청크로 분리
+const WelcomePage = lazy(() => import('./components/home/WelcomePage'));
+const ProjectOverview = lazy(() => import('./components/project/ProjectOverview'));
+const ParticipationManager = lazy(() => import('./components/project/ParticipationManager'));
+const PayrollProof = lazy(() => import('./components/project/PayrollProof'));
+const Simulator = lazy(() => import('./components/project/Simulator'));
+const TaskDashboard = lazy(() => import('./task-manager/TaskDashboard'));
+const SeedRunner = lazy(() => import('./scripts/SeedRunner'));
 
 const PAGE_TITLES = {
   '/': '',
@@ -26,6 +28,12 @@ const PAGE_TITLES = {
   '/project/simulator': '시뮬레이터',
   '/tasks': '업무관리',
 };
+
+const Loading = () => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh', color: 'var(--text-hint)', fontSize: 14 }}>
+    로딩 중...
+  </div>
+);
 
 function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -50,51 +58,48 @@ function AppLayout() {
           </header>
         )}
         <div className="content-area">
-          <Routes>
-            <Route path="/" element={<WelcomePage />} />
+          <Suspense fallback={<Loading />}>
+            <Routes>
+              <Route path="/" element={<WelcomePage />} />
 
-            {/* 국책과제 관리 — projectManagement 권한 필요 */}
-            <Route
-              path="/project/overview"
-              element={
-                <ProtectedRoute requiredAccess="projectManagement">
-                  <ProjectOverview />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/project/participation"
-              element={
-                <ProtectedRoute requiredAccess="projectManagement">
-                  <ParticipationManager />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/project/payroll"
-              element={
-                <ProtectedRoute requiredAccess="payrollAccess">
-                  <PayrollProof />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/project/simulator"
-              element={
-                <ProtectedRoute requiredAccess="projectManagement">
-                  <Simulator />
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/project/overview"
+                element={
+                  <ProtectedRoute requiredAccess="projectManagement">
+                    <ProjectOverview />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/project/participation"
+                element={
+                  <ProtectedRoute requiredAccess="projectManagement">
+                    <ParticipationManager />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/project/payroll"
+                element={
+                  <ProtectedRoute requiredAccess="payrollAccess">
+                    <PayrollProof />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/project/simulator"
+                element={
+                  <ProtectedRoute requiredAccess="projectManagement">
+                    <Simulator />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* 업무관리 — 로그인만 하면 접근 가능 */}
-            <Route path="/tasks" element={<TaskDashboard />} />
-
-            {/* 시딩 (관리자 전용) */}
-            <Route path="/seed" element={<SeedRunner />} />
-
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              <Route path="/tasks" element={<TaskDashboard />} />
+              <Route path="/seed" element={<SeedRunner />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </div>
       </main>
       <GlobalSearch />
@@ -130,13 +135,13 @@ function AuthGate() {
 
 function App() {
   return (
-    <BrowserRouter basename="/management-app">
+    <HashRouter>
       <ToastProvider>
         <SaveIndicatorProvider>
           <AuthGate />
         </SaveIndicatorProvider>
       </ToastProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
