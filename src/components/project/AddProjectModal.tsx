@@ -1,12 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { X } from 'lucide-react';
-import { addProject } from '../../services/projectService';
+import { X, Plus, Trash2 } from 'lucide-react';
+import { addProject, updateProject } from '../../services/projectService';
 import { useEmployees } from '../../hooks/useEmployees';
+import { useToast } from '../common/Toast';
+import { Project } from '../../types/project';
 
 interface AddProjectModalProps {
   open: boolean;
   onClose: () => void;
+  editProject?: Project | null;
+}
+
+// 천단위 콤마 포맷
+function fmtComma(n: number): string {
+  if (!n) return '';
+  return n.toLocaleString('ko-KR');
+}
+function parseComma(s: string): number {
+  return parseInt(s.replace(/[^0-9]/g, ''), 10) || 0;
+}
+
+interface YearBudget {
+  yearNumber: number;
+  start: string;
+  end: string;
+  government: number;
+  privateCash: number;
+  privateInKind: number;
 }
 
 const INITIAL = {
@@ -22,25 +43,130 @@ const INITIAL = {
   piRole: '책임' as const,
   totalStart: '',
   totalEnd: '',
-  yearCount: 1,
-  government: 0,
-  privateCash: 0,
-  privateInKind: 0,
   contactManager: '',
   contactPhone: '',
   contactEmail: '',
   excludeReason: '',
 };
 
-const AddProjectModal: React.FC<AddProjectModalProps> = ({ open, onClose }) => {
+function MoneyInput({ value, onChange, placeholder, style }: {
+  value: number; onChange: (v: number) => void; placeholder?: string; style: React.CSSProperties;
+}) {
+  const [display, setDisplay] = useState(fmtComma(value));
+
+  useEffect(() => { setDisplay(fmtComma(value)); }, [value]);
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      style={style}
+      value={display}
+      placeholder={placeholder || '0'}
+      onChange={e => {
+        const raw = e.target.value.replace(/[^0-9]/g, '');
+        const num = parseInt(raw, 10) || 0;
+        setDisplay(num ? num.toLocaleString('ko-KR') : '');
+        onChange(num);
+      }}
+    />
+  );
+}
+
+const AddProjectModal: React.FC<AddProjectModalProps> = ({ open, onClose, editProject }) => {
   const { employees } = useEmployees();
+  const { addToast } = useToast();
   const [form, setForm] = useState(INITIAL);
+  const [yearBudgets, setYearBudgets] = useState<YearBudget[]>([
+    { yearNumber: 1, start: '', end: '', government: 0, privateCash: 0, privateInKind: 0 },
+  ]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [activeYearTab, setActiveYearTab] = useState(0);
+
+  const isEdit = !!editProject;
+
+  // 수정 모드: 기존 데이터로 폼 채우기
+  useEffect(() => {
+    if (editProject && open) {
+      const p = editProject;
+      setForm({
+        status: (p.status as any) || '진행',
+        category: (p.category as any) || 'R&D사업',
+        programName: p.programName || '',
+        projectName: p.projectName || '',
+        shortName: p.shortName || '',
+        agency: p.agency || '',
+        hostOrg: p.hostOrg || '타이로스코프',
+        participationType: (p.participationType as any) || '주관',
+        pi: p.pi || '',
+        piRole: (p.piRole as any) || '책임',
+        totalStart: p.period?.totalStart || '',
+        totalEnd: p.period?.totalEnd || '',
+        contactManager: p.contact?.manager || '',
+        contactPhone: p.contact?.phone || '',
+        contactEmail: p.contact?.email || '',
+        excludeReason: (p as any).excludeReason || '',
+      });
+      if (p.years && p.years.length > 0) {
+        setYearBudgets(p.years.map(y => ({
+          yearNumber: y.yearNumber,
+          start: y.start,
+          end: y.end,
+          government: y.budget.government || 0,
+          privateCash: y.budget.privateCash || 0,
+          privateInKind: y.budget.privateInKind || 0,
+        })));
+      }
+      setActiveYearTab(0);
+    } else if (!open) {
+      setForm(INITIAL);
+      setYearBudgets([{ yearNumber: 1, start: '', end: '', government: 0, privateCash: 0, privateInKind: 0 }]);
+      setError('');
+      setActiveYearTab(0);
+    }
+  }, [editProject, open]);
 
   if (!open) return null;
 
   const set = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }));
+
+  const updateYearBudget = (idx: number, key: keyof YearBudget, value: any) => {
+    setYearBudgets(prev => prev.map((y, i) => i === idx ? { ...y, [key]: value } : y));
+  };
+
+  const addYear = () => {
+    const last = yearBudgets[yearBudgets.length - 1];
+    let newStart = '';
+    let newEnd = '';
+    if (last?.end) {
+      const d = new Date(last.end);
+      d.setDate(d.getDate() + 1);
+      newStart = d.toISOString().slice(0, 10);
+      const e = new Date(d);
+      e.setFullYear(e.getFullYear() + 1);
+      e.setDate(e.getDate() - 1);
+      newEnd = e.toISOString().slice(0, 10);
+    }
+    setYearBudgets(prev => [...prev, {
+      yearNumber: prev.length + 1, start: newStart, end: newEnd,
+      government: 0, privateCash: 0, privateInKind: 0,
+    }]);
+    setActiveYearTab(yearBudgets.length);
+  };
+
+  const removeYear = (idx: number) => {
+    if (yearBudgets.length <= 1) return;
+    setYearBudgets(prev => prev.filter((_, i) => i !== idx).map((y, i) => ({ ...y, yearNumber: i + 1 })));
+    setActiveYearTab(Math.max(0, activeYearTab - 1));
+  };
+
+  // 합계
+  const totals = yearBudgets.reduce((acc, y) => ({
+    gov: acc.gov + y.government,
+    cash: acc.cash + y.privateCash,
+    inKind: acc.inKind + y.privateInKind,
+  }), { gov: 0, cash: 0, inKind: 0 });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,48 +174,29 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({ open, onClose }) => {
 
     if (!form.projectName.trim()) { setError('과제명을 입력해주세요.'); return; }
     if (!form.shortName.trim()) { setError('약어를 입력해주세요.'); return; }
-    if (!form.totalStart || !form.totalEnd) { setError('사업기간을 입력해주세요.'); return; }
+
+    // 연차별 날짜 검증
+    for (const yb of yearBudgets) {
+      if (!yb.start || !yb.end) { setError(`${yb.yearNumber}차 기간을 입력해주세요.`); return; }
+    }
 
     setSaving(true);
     try {
-      // 연차 자동 생성
-      const years = [];
-      const startDate = new Date(form.totalStart);
-      const total = form.government + form.privateCash + form.privateInKind;
-      const govPerYear = Math.round(form.government / form.yearCount);
-      const cashPerYear = Math.round(form.privateCash / form.yearCount);
-      const inkindPerYear = Math.round(form.privateInKind / form.yearCount);
+      const years = yearBudgets.map(yb => ({
+        yearNumber: yb.yearNumber,
+        start: yb.start,
+        end: yb.end,
+        months: Math.max(1, Math.round((new Date(yb.end).getTime() - new Date(yb.start).getTime()) / (1000 * 60 * 60 * 24 * 30))),
+        budget: {
+          government: yb.government,
+          privateCash: yb.privateCash,
+          privateInKind: yb.privateInKind,
+          total: yb.government + yb.privateCash + yb.privateInKind,
+        },
+        budgetExecution: { executed: 0, planned: 0, unplanned: 0, remaining: yb.government + yb.privateCash + yb.privateInKind },
+      }));
 
-      for (let i = 0; i < form.yearCount; i++) {
-        const yStart = new Date(startDate);
-        yStart.setFullYear(yStart.getFullYear() + i);
-        const yEnd = new Date(yStart);
-        yEnd.setFullYear(yEnd.getFullYear() + 1);
-        yEnd.setDate(yEnd.getDate() - 1);
-
-        // 마지막 연차는 totalEnd를 넘지 않도록
-        const endDate = new Date(form.totalEnd);
-        const actualEnd = yEnd > endDate ? endDate : yEnd;
-
-        const diffMs = actualEnd.getTime() - yStart.getTime();
-        const months = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24 * 30)));
-
-        years.push({
-          yearNumber: i + 1,
-          start: yStart.toISOString().slice(0, 10),
-          end: actualEnd.toISOString().slice(0, 10),
-          months,
-          budget: {
-            government: govPerYear,
-            privateCash: cashPerYear,
-            privateInKind: inkindPerYear,
-            total: govPerYear + cashPerYear + inkindPerYear,
-          },
-          budgetExecution: { executed: 0, planned: 0, unplanned: 0, remaining: govPerYear + cashPerYear + inkindPerYear },
-        });
-      }
-
-      await addProject({
+      const projectData = {
         status: form.status,
         category: form.category,
         programName: form.programName,
@@ -100,16 +207,33 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({ open, onClose }) => {
         participationType: form.participationType,
         pi: form.pi,
         piRole: form.piRole,
-        period: { totalStart: form.totalStart, totalEnd: form.totalEnd },
+        period: { totalStart: yearBudgets[0]?.start || '', totalEnd: yearBudgets[yearBudgets.length - 1]?.end || '' },
         years,
+        totalBudget: {
+          government: totals.gov,
+          privateCash: totals.cash,
+          privateInKind: totals.inKind,
+          total: totals.gov + totals.cash + totals.inKind,
+        },
         contact: { manager: form.contactManager, phone: form.contactPhone, email: form.contactEmail },
         excludeReason: form.excludeReason,
-      });
+      };
+
+      if (isEdit && editProject) {
+        await updateProject(editProject.projectId, projectData);
+        addToast('과제가 수정되었습니다', 'success');
+      } else {
+        await addProject(projectData);
+        addToast('과제가 추가되었습니다', 'success');
+      }
 
       setForm(INITIAL);
+      setYearBudgets([{ yearNumber: 1, start: '', end: '', government: 0, privateCash: 0, privateInKind: 0 }]);
       onClose();
     } catch (err: any) {
+      console.error('과제 저장 실패:', err);
       setError(err.message || '저장 실패');
+      addToast(isEdit ? '과제 수정에 실패했습니다' : '과제 저장에 실패했습니다', 'error');
     } finally {
       setSaving(false);
     }
@@ -120,7 +244,7 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({ open, onClose }) => {
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
   };
   const modal: React.CSSProperties = {
-    background: '#fff', borderRadius: 12, width: '95%', maxWidth: 640,
+    background: '#fff', borderRadius: 12, width: '95%', maxWidth: 720,
     maxHeight: '90vh', overflowY: 'auto', padding: 28, position: 'relative',
     boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
   };
@@ -133,6 +257,8 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({ open, onClose }) => {
   const row3: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 };
   const full: React.CSSProperties = { marginBottom: 14 };
 
+  const cur = yearBudgets[activeYearTab];
+
   return ReactDOM.createPortal(
     <div style={overlay} onClick={onClose}>
       <div style={modal} onClick={e => e.stopPropagation()}>
@@ -141,7 +267,9 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({ open, onClose }) => {
           border: 'none', cursor: 'pointer', color: '#9CA3AF',
         }}><X size={20} /></button>
 
-        <h2 style={{ margin: '0 0 20px', fontSize: 18, fontWeight: 700, color: '#111827' }}>신규 과제 추가</h2>
+        <h2 style={{ margin: '0 0 20px', fontSize: 18, fontWeight: 700, color: '#111827' }}>
+          {isEdit ? '과제 정보 수정' : '신규 과제 추가'}
+        </h2>
 
         {error && <div style={{ background: '#FEE2E2', color: '#DC2626', padding: '8px 12px', borderRadius: 6, marginBottom: 14, fontSize: 13 }}>{error}</div>}
 
@@ -215,38 +343,88 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({ open, onClose }) => {
             </div>
           </div>
 
-          {/* 기간 */}
-          <div style={row3}>
-            <div>
-              <label style={label}>시작일 *</label>
-              <input type="date" style={input} value={form.totalStart} onChange={e => set('totalStart', e.target.value)} />
+          {/* ═══ 연차별 예산 ═══ */}
+          <div style={{ background: '#F9FAFB', borderRadius: 8, padding: 16, marginBottom: 14, border: '1px solid #E5E7EB' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>연차별 예산</span>
+              <button type="button" onClick={addYear} style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
+                background: '#EFF6FF', color: '#3B82F6', border: '1px solid #BFDBFE',
+                borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              }}><Plus size={14} /> 연차 추가</button>
             </div>
-            <div>
-              <label style={label}>종료일 *</label>
-              <input type="date" style={input} value={form.totalEnd} onChange={e => set('totalEnd', e.target.value)} />
-            </div>
-            <div>
-              <label style={label}>연차 수</label>
-              <select style={input} value={form.yearCount} onChange={e => set('yearCount', Number(e.target.value))}>
-                {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}개년</option>)}
-              </select>
-            </div>
-          </div>
 
-          {/* 예산 */}
-          <div style={row3}>
-            <div>
-              <label style={label}>정부출연금 (원)</label>
-              <input type="number" style={input} value={form.government || ''} onChange={e => set('government', Number(e.target.value))} placeholder="0" />
+            {/* 연차 탭 */}
+            <div style={{ display: 'flex', gap: 4, marginBottom: 12, flexWrap: 'wrap' }}>
+              {yearBudgets.map((yb, i) => (
+                <button key={i} type="button" onClick={() => setActiveYearTab(i)} style={{
+                  padding: '6px 14px', fontSize: 13, fontWeight: activeYearTab === i ? 700 : 500,
+                  background: activeYearTab === i ? '#3B82F6' : '#fff',
+                  color: activeYearTab === i ? '#fff' : '#6B7280',
+                  border: `1px solid ${activeYearTab === i ? '#3B82F6' : '#D1D5DB'}`,
+                  borderRadius: 6, cursor: 'pointer',
+                }}>{yb.yearNumber}차</button>
+              ))}
             </div>
-            <div>
-              <label style={label}>기업부담 현금 (원)</label>
-              <input type="number" style={input} value={form.privateCash || ''} onChange={e => set('privateCash', Number(e.target.value))} placeholder="0" />
-            </div>
-            <div>
-              <label style={label}>기업부담 현물 (원)</label>
-              <input type="number" style={input} value={form.privateInKind || ''} onChange={e => set('privateInKind', Number(e.target.value))} placeholder="0" />
-            </div>
+
+            {/* 현재 연차 편집 */}
+            {cur && (
+              <div>
+                <div style={row}>
+                  <div>
+                    <label style={label}>{cur.yearNumber}차 시작일</label>
+                    <input type="date" style={input} value={cur.start}
+                      onChange={e => updateYearBudget(activeYearTab, 'start', e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={label}>{cur.yearNumber}차 종료일</label>
+                    <input type="date" style={input} value={cur.end}
+                      onChange={e => updateYearBudget(activeYearTab, 'end', e.target.value)} />
+                  </div>
+                </div>
+                <div style={row3}>
+                  <div>
+                    <label style={label}>정부출연금</label>
+                    <MoneyInput style={input} value={cur.government}
+                      onChange={v => updateYearBudget(activeYearTab, 'government', v)} />
+                  </div>
+                  <div>
+                    <label style={label}>기업부담 현금</label>
+                    <MoneyInput style={input} value={cur.privateCash}
+                      onChange={v => updateYearBudget(activeYearTab, 'privateCash', v)} />
+                  </div>
+                  <div>
+                    <label style={label}>기업부담 현물</label>
+                    <MoneyInput style={input} value={cur.privateInKind}
+                      onChange={v => updateYearBudget(activeYearTab, 'privateInKind', v)} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, color: '#6B7280' }}>
+                    {cur.yearNumber}차 총사업비: <strong style={{ color: '#111827' }}>{fmtComma(cur.government + cur.privateCash + cur.privateInKind)}원</strong>
+                  </span>
+                  {yearBudgets.length > 1 && (
+                    <button type="button" onClick={() => removeYear(activeYearTab)} style={{
+                      display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
+                      background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA',
+                      borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    }}><Trash2 size={12} /> {cur.yearNumber}차 삭제</button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 전체 합계 */}
+            {yearBudgets.length > 1 && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #E5E7EB', fontSize: 13 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, textAlign: 'center' }}>
+                  <div><span style={{ color: '#6B7280' }}>정부출연금</span><br/><strong>{fmtComma(totals.gov)}원</strong></div>
+                  <div><span style={{ color: '#6B7280' }}>현금</span><br/><strong>{fmtComma(totals.cash)}원</strong></div>
+                  <div><span style={{ color: '#6B7280' }}>현물</span><br/><strong>{fmtComma(totals.inKind)}원</strong></div>
+                  <div><span style={{ color: '#6B7280' }}>총합계</span><br/><strong style={{ color: '#3B82F6' }}>{fmtComma(totals.gov + totals.cash + totals.inKind)}원</strong></div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 담당자 */}
@@ -279,7 +457,7 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({ open, onClose }) => {
             <button type="submit" disabled={saving} style={{
               padding: '10px 20px', background: saving ? '#93C5FD' : '#3B82F6', color: '#fff',
               border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer',
-            }}>{saving ? '저장 중...' : '과제 등록'}</button>
+            }}>{saving ? '저장 중...' : isEdit ? '수정 저장' : '과제 등록'}</button>
           </div>
         </form>
       </div>

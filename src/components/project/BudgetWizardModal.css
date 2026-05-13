@@ -1,0 +1,110 @@
+/* ═══ Budget Wizard Modal ═══ */
+.bw-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  backdrop-filter: blur(2px);
+}
+.bw-modal {
+  background: var(--bg-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+  width: 100%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+.bw-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 20px 24px 16px; border-bottom: 1px solid var(--border-default);
+}
+.bw-header h2 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+.bw-subtitle { font-size: 13px; color: var(--text-secondary); }
+.bw-close { background: none; border: none; color: var(--text-hint); cursor: pointer; padding: 4px; border-radius: 4px; }
+.bw-close:hover { color: var(--text-primary); background: var(--bg-main); }
+
+/* Steps */
+.bw-steps {
+  display: flex; align-items: center; justify-content: center; gap: 32px;
+  padding: 16px 24px; border-bottom: 1px solid var(--border-default);
+}
+.bw-step-item { display: flex; align-items: center; gap: 8px; }
+.bw-step-dot {
+  width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; background: var(--bg-main); color: var(--text-hint);
+  transition: all 0.2s;
+}
+.bw-step-item.active .bw-step-dot { background: #DBEAFE; color: var(--accent); }
+.bw-step-item.current .bw-step-dot { background: var(--accent); color: #fff; }
+.bw-step-label { font-size: 13px; color: var(--text-hint); }
+.bw-step-item.active .bw-step-label { color: var(--text-secondary); }
+.bw-step-item.current .bw-step-label { color: var(--text-primary); font-weight: 500; }
+
+/* Body */
+.bw-body { padding: 24px; overflow-y: auto; flex: 1; }
+.bw-instruction { font-size: 14px; color: var(--text-primary); margin: 0 0 16px; font-weight: 500; }
+.bw-hint { font-size: 12px; color: var(--text-hint); margin: 8px 0 0; font-style: italic; }
+
+/* Step 1: Checklist */
+.bw-checklist { display: flex; flex-direction: column; gap: 10px; }
+.bw-check-item {
+  display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-primary);
+  cursor: pointer; padding: 10px 14px; border-radius: var(--radius-md);
+  border: 1px solid var(--border-default); transition: border-color 0.15s;
+}
+.bw-check-item:hover { border-color: var(--accent); }
+.bw-check-item.disabled { opacity: 0.7; cursor: default; background: var(--bg-main); }
+.bw-check-item.disabled:hover { border-color: var(--border-default); }
+.bw-required { font-size: 11px; color: var(--accent); font-weight: 600; margin-left: auto; }
+
+/* Step 2: Activity Sub Items */
+.bw-sub-input-wrap { display: flex; gap: 8px; margin-bottom: 12px; align-items: flex-start; }
+.bw-autocomplete { position: relative; flex: 1; }
+.bw-sub-input { height: 38px; font-size: 14px; }
+.bw-add-btn { height: 38px; white-space: nowrap; }
+
+.bw-suggestions {
+  position: absolute; top: 100%; left: 0; z-index: 10; width: 100%;
+  background: var(--bg-surface); border: 1px solid var(--border-default);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-md);
+  max-height: 200px; overflow-y: auto; margin-top: 2px;
+}
+.bw-suggestion { padding: 10px 14px; font-size: 13px; cursor: pointer; }
+.bw-suggestion:hover { background: var(--bg-main); }
+
+.bw-sub-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.bw-sub-tag {
+  display: flex; align-items: center; gap: 6px; padding: 6px 12px;
+  background: #DBEAFE; color: #1E40AF; border-radius: 999px; font-size: 13px; font-weight: 500;
+}
+.bw-sub-tag button {
+  background: none; border: none; color: #1E40AF; cursor: pointer; padding: 0;
+  display: flex; align-items: center; opacity: 0.6;
+}
+.bw-sub-tag button:hover { opacity: 1; }
+
+/* Step 3: Budget Input */
+.bw-existing-toggle {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 12px 14px; background: var(--bg-main); border-radius: var(--radius-md);
+  margin-bottom: 16px; font-size: 13px;
+}
+.bw-existing-toggle label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500; }
+.bw-existing-info { font-size: 12px; color: var(--text-secondary); margin-left: 24px; }
+
+.bw-budget-table { font-size: 13px; }
+.bw-budget-table td, .bw-budget-table th { padding: 10px 14px; }
+.bw-row-sub td { font-size: 12px; color: var(--text-secondary); }
+.bw-row-item td:first-child { font-weight: 500; }
+.bw-budget-table tfoot td { border-top: 2px solid var(--border-hover); background: var(--bg-main); }
+
+.bw-money-input {
+  width: 100%; height: 32px; text-align: right; font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+.bw-auto-sum {
+  display: block; text-align: right; color: var(--text-hint); font-size: 13px;
+}
+
+/* Actions */
+.bw-actions {
+  display: flex; align-items: center; gap: 8px;
+  padding: 16px 24px; border-top: 1px solid var(--border-default);
+}

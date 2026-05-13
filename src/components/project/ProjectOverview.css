@@ -1,0 +1,624 @@
+/* ═══════════════════════════════════════════
+   ProjectOverview — 수주현황 대시보드
+   ═══════════════════════════════════════════ */
+
+.po-container {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.po-error {
+  padding: 32px;
+  text-align: center;
+  color: var(--danger);
+}
+
+/* ── Summary Cards (3개) ── */
+.po-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.po-summary-cards.three { grid-template-columns: repeat(3, 1fr); }
+.po-summary-cards.four { grid-template-columns: repeat(4, 1fr); }
+
+.po-summary-card {
+  padding: 20px;
+}
+
+.po-summary-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.po-summary-value {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.po-summary-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+.po-summary-note {
+  font-size: 11px;
+  color: var(--text-hint);
+  font-style: italic;
+}
+
+/* ── Payroll Status Bar ── */
+.po-payroll-bar {
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+  background: var(--bg-main); border-radius: var(--radius-md); margin-bottom: 16px;
+  cursor: pointer; transition: background 0.15s; flex-wrap: wrap;
+}
+.po-payroll-bar:hover { background: #EFF6FF; }
+.po-payroll-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; }
+.po-payroll-items { display: flex; gap: 10px; flex: 1; flex-wrap: wrap; }
+.po-payroll-item {
+  display: flex; align-items: center; gap: 3px; font-size: 12px; white-space: nowrap;
+}
+.po-payroll-item.done { color: var(--success); }
+.po-payroll-item.pending { color: var(--danger); }
+.po-payroll-go { color: var(--text-hint); font-size: 14px; }
+
+/* ── Tabs ── */
+.po-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.po-add-project-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+  text-decoration: none;
+}
+
+.po-add-project-btn:hover {
+  background: var(--accent-hover, #2563eb);
+}
+
+.po-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-default);
+  padding-bottom: 0;
+}
+
+.po-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.15s;
+}
+
+.po-tab:hover { color: var(--text-primary); }
+
+.po-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.po-tab-count {
+  font-size: 11px;
+  background: var(--bg-main);
+  color: var(--text-secondary);
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.po-tab.active .po-tab-count {
+  background: #DBEAFE;
+  color: var(--accent);
+}
+
+/* ── Active Projects ── */
+.po-active-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.po-project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Project Card (아코디언) ── */
+.po-project-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.po-project-header {
+  display: grid;
+  grid-template-columns: 120px 1fr 32px;
+  gap: 16px;
+  padding: 18px 20px;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.po-project-card.expanded {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.po-project-header:hover {
+  background: var(--bg-main);
+}
+
+.po-project-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.po-project-shortname {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.po-project-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.po-project-type {
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.po-project-type.primary {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.po-project-type.secondary {
+  background: #F3E8FF;
+  color: #7C3AED;
+}
+
+.po-expand-icon {
+  color: var(--text-hint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Timeline ── */
+.po-project-center {
+  min-width: 0;
+}
+
+.po-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.po-timeline-bar {
+  position: relative;
+  height: 24px;
+  background: var(--bg-main);
+  border-radius: 6px;
+  overflow: visible;
+}
+
+.po-timeline-segment {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+
+.po-timeline-segment:hover { opacity: 1; }
+
+.po-timeline-segment-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.po-timeline-today {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  background: var(--danger);
+  border-radius: 1px;
+  z-index: 2;
+}
+
+.po-timeline-today::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  width: 8px;
+  height: 8px;
+  background: var(--danger);
+  border-radius: 50%;
+}
+
+.po-timeline-dates {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-hint);
+}
+
+/* (removed: po-irregular-badge — no longer used) */
+
+.po-timeline-segment.irregular {
+  outline: 2px dashed var(--warning);
+  outline-offset: -2px;
+}
+
+.po-year-irregular {
+  color: var(--warning);
+  font-size: 14px;
+}
+
+/* ── Budget (below timeline) ── */
+.po-project-budgets {
+  display: flex;
+  gap: 24px;
+  margin-top: 8px;
+}
+
+.po-project-budget {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.po-budget-label {
+  font-size: 11px;
+  color: var(--text-hint);
+  white-space: nowrap;
+}
+
+.po-budget-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Detail Panel (아코디언 펼침) ── */
+.po-detail {
+  border-top: 1px solid var(--border-default);
+  padding: 20px;
+  background: var(--bg-main);
+  animation: detailIn 0.2s ease-out;
+}
+
+@keyframes detailIn {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 600px; }
+}
+
+.po-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 24px;
+  margin-bottom: 20px;
+}
+
+.po-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.po-detail-item.full {
+  grid-column: 1 / -1;
+}
+
+.po-detail-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-hint);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.po-detail-value {
+  font-size: 13.5px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.po-detail-table-wrap {
+  overflow-x: auto;
+}
+
+.po-detail-table {
+  font-size: 13px;
+}
+
+.po-detail-table td,
+.po-detail-table th {
+  padding: 10px 14px;
+}
+
+.po-detail-table tfoot td {
+  background: #E2E8F0;
+  border-top: 2px solid var(--border-default);
+}
+
+.po-nowrap {
+  white-space: nowrap;
+}
+
+/* ── Current Year Card ── */
+.po-current-year {
+  padding: 20px;
+}
+
+.po-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+
+.po-year-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.po-year-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  background: var(--bg-main);
+  border-radius: var(--radius-md);
+}
+
+.po-year-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.po-year-number { font-size: 18px; font-weight: 700; color: var(--accent); }
+.po-year-period { font-size: 12px; color: var(--text-secondary); }
+.po-year-remaining { font-size: 12px; color: var(--text-hint); }
+
+/* ── Closed Projects ── */
+.po-closed {
+  margin-top: 4px;
+}
+
+.po-closed-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.po-search-wrap {
+  position: relative;
+  max-width: 320px;
+  flex-shrink: 0;
+}
+
+.po-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-hint);
+  pointer-events: none;
+}
+
+.po-closed-search {
+  max-width: 320px;
+  height: 36px;
+  font-size: 13px;
+  padding-left: 32px;
+}
+
+.po-closed-count {
+  font-size: 13px;
+  color: var(--text-hint);
+  flex: 1;
+}
+
+.po-excel-btn {
+  height: 36px;
+  font-size: 13px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+.po-closed-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.po-closed-table {
+  min-width: 1100px;
+  font-size: 13px;
+}
+
+.po-closed-table td,
+.po-closed-table th {
+  padding: 10px 12px;
+}
+
+/* Sticky columns */
+.po-sticky-col {
+  position: sticky;
+  left: 0;
+  background: inherit;
+  z-index: 1;
+  width: 40px;
+  min-width: 40px;
+}
+
+.po-sticky-col2 {
+  position: sticky;
+  left: 40px;
+  background: inherit;
+  z-index: 1;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.po-closed-table thead .po-sticky-col,
+.po-closed-table thead .po-sticky-col2 {
+  background: #F1F5F9;
+  z-index: 3;
+}
+
+.po-closed-table tbody tr:nth-child(even) .po-sticky-col,
+.po-closed-table tbody tr:nth-child(even) .po-sticky-col2 {
+  background: var(--bg-zebra);
+}
+
+.po-closed-table tbody tr:nth-child(odd) .po-sticky-col,
+.po-closed-table tbody tr:nth-child(odd) .po-sticky-col2 {
+  background: #fff;
+}
+
+.po-closed-table tbody tr:hover .po-sticky-col,
+.po-closed-table tbody tr:hover .po-sticky-col2 {
+  background: var(--bg-hover-row);
+}
+
+.po-closed-table tfoot .po-sticky-col,
+.po-closed-table tfoot .po-sticky-col2 {
+  background: #F1F5F9;
+}
+
+.po-closed-table tfoot td {
+  background: #F1F5F9;
+  border-top: 2px solid var(--border-default);
+}
+
+.po-closed-projname {
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* (removed: po-placeholder — replaced by BudgetTab) */
+
+/* ── Skeleton ── */
+.po-skeleton {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.po-skeleton-card {
+  height: 88px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-main);
+}
+
+.po-skeleton-block {
+  height: 120px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-main);
+  margin-top: 16px;
+}
+
+@keyframes shimmer {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+.shimmer {
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .po-summary-cards,
+  .po-summary-cards.three,
+  .po-summary-cards.four {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .po-project-header {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .po-project-budgets {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .po-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .po-year-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .po-expand-icon {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .po-container { padding: 16px; }
+  .po-summary-value { font-size: 22px; }
+  .po-year-grid { grid-template-columns: 1fr; }
+  .po-summary-cards.three { grid-template-columns: 1fr; }
+}
