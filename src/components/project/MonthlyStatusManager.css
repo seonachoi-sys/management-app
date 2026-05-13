@@ -1,0 +1,60 @@
+/* ═══ MonthlyStatusManager ═══ */
+.msm-container { margin-bottom: 16px; }
+
+.msm-status-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: var(--bg-main); border-radius: var(--radius-md);
+  flex-wrap: wrap; gap: 8px;
+}
+
+.msm-badge {
+  font-size: 13px; font-weight: 600; padding: 4px 12px; border-radius: 999px;
+}
+.msm-badge.작업중 { background: #F1F5F9; color: var(--text-secondary); }
+.msm-badge.확정 { background: #D1FAE5; color: #065F46; }
+.msm-badge.잠금 { background: #FEE2E2; color: #991B1B; }
+
+.msm-actions { display: flex; gap: 6px; }
+.msm-btn { height: 32px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
+.msm-unlock { border-color: var(--danger); color: var(--danger); }
+.msm-unlock:hover { background: #FEE2E2; }
+
+.msm-lock-warning {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; background: #FEF3C7; border-radius: var(--radius-md);
+  font-size: 13px; color: #92400E; margin-top: 8px;
+}
+
+/* ── Modal ── */
+.msm-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.msm-modal {
+  background: var(--bg-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+  width: 100%; max-width: 480px; overflow: hidden;
+}
+.msm-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px; border-bottom: 1px solid var(--border-default);
+}
+.msm-modal-header h3 { font-size: 16px; margin: 0; }
+.msm-close { background: none; border: none; color: var(--text-hint); cursor: pointer; padding: 4px; border-radius: 4px; }
+
+.msm-modal-body { padding: 20px; }
+.msm-desc { font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }
+
+.msm-checklist { display: flex; flex-direction: column; gap: 8px; }
+.msm-check-item {
+  display: flex; align-items: center; gap: 10px; font-size: 14px;
+  padding: 10px 14px; border-radius: var(--radius-md);
+  border: 1px solid var(--border-default); cursor: pointer; transition: all 0.15s;
+}
+.msm-check-item.checked { border-color: var(--success); background: #F0FDF4; }
+.msm-required { font-size: 11px; color: var(--warning); margin-left: auto; }
+.msm-auto { font-size: 10px; color: var(--success); margin-left: auto; padding: 1px 6px; background: #D1FAE5; border-radius: 999px; }
+
+.msm-modal-actions {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 14px 20px; border-top: 1px solid var(--border-default);
+}

@@ -1,0 +1,49 @@
+/* ═══ Participation Upload Modal ═══ */
+.pu-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 24px; backdrop-filter: blur(2px); }
+.pu-modal { background: var(--bg-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); width: 100%; max-width: 800px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; }
+.pu-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--border-default); }
+.pu-header h2 { font-size: 18px; font-weight: 600; margin: 0; }
+.pu-close { background: none; border: none; color: var(--text-hint); cursor: pointer; padding: 4px; border-radius: 4px; }
+.pu-close:hover { color: var(--text-primary); background: var(--bg-main); }
+
+.pu-steps { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 24px; border-bottom: 1px solid var(--border-default); }
+.pu-step { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; background: var(--bg-main); color: var(--text-hint); }
+.pu-step.active { background: #DBEAFE; color: var(--accent); }
+.pu-step.current { background: var(--accent); color: #fff; }
+
+.pu-body { padding: 24px; overflow-y: auto; flex: 1; }
+.pu-error { display: flex; align-items: center; gap: 8px; padding: 10px 24px; background: #FEE2E2; color: #991B1B; font-size: 13px; }
+
+/* Step 1 */
+.pu-dropzone { border: 2px dashed var(--border-default); border-radius: var(--radius-lg); padding: 40px 24px; text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 16px; }
+.pu-dropzone:hover { border-color: var(--accent); background: #F8FAFF; }
+.pu-upload-icon { color: var(--text-hint); margin-bottom: 12px; }
+.pu-dropzone p { font-size: 15px; color: var(--text-primary); margin: 0 0 6px; }
+.pu-dropzone span { font-size: 12px; color: var(--text-hint); }
+.pu-format-info { background: var(--bg-main); border-radius: var(--radius-md); padding: 14px 16px; font-size: 13px; color: var(--text-secondary); }
+.pu-format-info strong { color: var(--text-primary); }
+.pu-format-info p { margin: 4px 0 0; }
+
+/* Step 2 */
+.pu-info-box { background: var(--bg-main); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 12px; font-size: 13px; }
+.pu-info-box p { margin: 0 0 4px; }
+.pu-warn-box { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #FFFBEB; border-radius: var(--radius-md); font-size: 13px; color: #92400E; margin-bottom: 12px; }
+.pu-preview-wrap { overflow-x: auto; border: 1px solid var(--border-default); border-radius: var(--radius-md); margin-bottom: 16px; max-height: 300px; overflow-y: auto; }
+.pu-preview-table { font-size: 12px; }
+.pu-preview-table td, .pu-preview-table th { padding: 6px 8px; }
+.pu-rate { text-align: center; font-variant-numeric: tabular-nums; }
+.pu-unmatched { background: #FFF5F5; }
+.pu-ok { color: var(--success); }
+.pu-skip { color: var(--warning); }
+.pu-mode-group { margin-bottom: 16px; }
+.pu-mode-group > label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 8px; }
+.pu-radios { display: flex; gap: 16px; }
+.pu-radios label { font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.pu-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* Step 3 */
+.pu-step3 { text-align: center; }
+.pu-success-icon { color: var(--success); margin-bottom: 12px; }
+.pu-step3 h3 { font-size: 18px; margin: 0 0 6px; }
+.pu-step3 > p { color: var(--text-secondary); font-size: 14px; margin: 0 0 8px; }
+.pu-skipped { font-size: 12px; color: var(--text-hint); }

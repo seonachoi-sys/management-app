@@ -1,0 +1,94 @@
+/* ═══ RCMS Upload Modal ═══ */
+.rcms-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  backdrop-filter: blur(2px);
+}
+.rcms-modal {
+  background: var(--bg-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+  width: 100%; max-width: 720px; max-height: 85vh; display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+.rcms-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 24px; border-bottom: 1px solid var(--border-default);
+}
+.rcms-header h2 { font-size: 18px; font-weight: 600; margin: 0; }
+.rcms-close { background: none; border: none; color: var(--text-hint); cursor: pointer; padding: 4px; border-radius: 4px; }
+.rcms-close:hover { color: var(--text-primary); background: var(--bg-main); }
+
+/* Steps */
+.rcms-steps {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding: 16px 24px; border-bottom: 1px solid var(--border-default);
+}
+.rcms-step {
+  width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; background: var(--bg-main); color: var(--text-hint);
+  transition: all 0.2s;
+}
+.rcms-step.active { background: #DBEAFE; color: var(--accent); }
+.rcms-step.current { background: var(--accent); color: #fff; }
+
+/* Body */
+.rcms-body { padding: 24px; overflow-y: auto; flex: 1; }
+
+/* Error */
+.rcms-error {
+  display: flex; align-items: center; gap: 8px; padding: 10px 24px;
+  background: #FEE2E2; color: #991B1B; font-size: 13px;
+}
+
+/* Step 1: Dropzone */
+.rcms-dropzone {
+  border: 2px dashed var(--border-default); border-radius: var(--radius-lg);
+  padding: 48px 24px; text-align: center; cursor: pointer; transition: all 0.15s;
+}
+.rcms-dropzone:hover { border-color: var(--accent); background: #F8FAFF; }
+.rcms-upload-icon { color: var(--text-hint); margin-bottom: 12px; }
+.rcms-dropzone p { font-size: 15px; color: var(--text-primary); margin: 0 0 6px; }
+.rcms-dropzone span { font-size: 12px; color: var(--text-hint); }
+.rcms-loading { text-align: center; padding: 16px; color: var(--text-secondary); font-size: 14px; }
+
+/* Step 2 */
+.rcms-info-box {
+  background: var(--bg-main); border-radius: var(--radius-md); padding: 14px 16px;
+  margin-bottom: 16px; font-size: 13px; color: var(--text-secondary);
+}
+.rcms-info-box p { margin: 0 0 4px; }
+.rcms-info-box p:last-child { margin-bottom: 0; }
+
+.rcms-select-group { margin-bottom: 16px; }
+.rcms-select-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 8px; color: var(--text-primary); }
+.rcms-select-group select { max-width: 360px; }
+.rcms-detected { font-size: 13px; color: var(--accent); margin-top: 8px; font-weight: 500; }
+
+/* Step 3: Match Table */
+.rcms-match-table-wrap { overflow-x: auto; margin-bottom: 16px; border: 1px solid var(--border-default); border-radius: var(--radius-md); }
+.rcms-match-table { font-size: 13px; }
+.rcms-match-table td, .rcms-match-table th { padding: 8px 12px; }
+.rcms-match-ok { display: flex; align-items: center; gap: 4px; color: var(--success); font-size: 12px; }
+.rcms-match-warn { display: flex; align-items: center; gap: 4px; color: var(--warning); font-size: 12px; flex-wrap: wrap; }
+.rcms-match-select {
+  height: 26px; font-size: 11px; border: 1px solid var(--border-default);
+  border-radius: 4px; padding: 0 6px; margin-left: 4px; font-family: inherit;
+}
+
+.rcms-mode-group { margin-bottom: 16px; }
+.rcms-mode-group > label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 8px; }
+.rcms-radios { display: flex; flex-direction: column; gap: 8px; }
+.rcms-radios label { font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; cursor: pointer; }
+
+/* Step 4 */
+.rcms-step4 { text-align: center; }
+.rcms-success-icon { color: var(--success); margin-bottom: 12px; }
+.rcms-step4 h3 { font-size: 18px; margin: 0 0 6px; }
+.rcms-step4 > p { color: var(--text-secondary); font-size: 14px; margin: 0 0 20px; }
+.rcms-changes { text-align: left; background: var(--bg-main); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 20px; }
+.rcms-change-item { display: flex; gap: 8px; font-size: 13px; padding: 4px 0; align-items: baseline; flex-wrap: wrap; }
+.rcms-change-diff { color: var(--accent); font-size: 12px; }
+
+/* Actions */
+.rcms-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }

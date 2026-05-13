@@ -1,0 +1,59 @@
+/* ═══ Employee Detail Panel ═══ */
+.edp-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1000; display: flex; justify-content: flex-end; }
+.edp-panel {
+  width: 400px; max-width: 90vw; background: var(--bg-surface); box-shadow: var(--shadow-lg);
+  display: flex; flex-direction: column; height: 100%; animation: edpSlide 0.2s ease-out;
+}
+@keyframes edpSlide { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+.edp-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 20px; border-bottom: 1px solid var(--border-default);
+}
+.edp-header h3 { font-size: 18px; margin: 0 0 4px; }
+.edp-sub { font-size: 13px; color: var(--text-secondary); }
+.edp-close { background: none; border: none; color: var(--text-hint); cursor: pointer; padding: 4px; border-radius: 4px; }
+.edp-close:hover { color: var(--text-primary); background: var(--bg-main); }
+
+.edp-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.edp-section { margin-bottom: 24px; }
+.edp-section h4 { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin: 0 0 10px; text-transform: uppercase; letter-spacing: 0.02em; }
+.edp-empty { font-size: 13px; color: var(--text-hint); }
+
+/* Badges */
+.edp-badges { display: flex; flex-direction: column; gap: 6px; }
+.edp-badge {
+  font-size: 13px; padding: 8px 12px; border-radius: var(--radius-sm);
+  background: var(--bg-main); color: var(--text-primary);
+}
+.edp-badge.danger { background: #FEE2E2; color: #991B1B; }
+.edp-excl { font-size: 11px; color: var(--text-hint); }
+
+/* Projects */
+.edp-projects { display: flex; flex-direction: column; gap: 6px; }
+.edp-proj-item {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  background: var(--bg-main); border-radius: var(--radius-sm); font-size: 13px;
+}
+.edp-proj-name { font-weight: 500; flex: 1; }
+.edp-proj-role { font-size: 11px; padding: 2px 8px; border-radius: 4px; background: #DBEAFE; color: #1E40AF; }
+.edp-proj-avg { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+/* Chart */
+.edp-chart { display: flex; gap: 4px; align-items: flex-end; height: 120px; }
+.edp-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.edp-bar-value { font-size: 10px; color: var(--text-hint); height: 14px; font-variant-numeric: tabular-nums; }
+.edp-bar-track { flex: 1; width: 100%; background: var(--bg-main); border-radius: 3px; position: relative; min-height: 80px; }
+.edp-bar-fill { position: absolute; bottom: 0; left: 0; right: 0; background: var(--accent); border-radius: 3px; transition: height 0.3s; }
+.edp-bar-fill.warn { background: var(--warning); }
+.edp-bar-fill.over { background: var(--danger); }
+.edp-bar-label { font-size: 10px; color: var(--text-hint); }
+
+/* Memo */
+.edp-memo {
+  width: 100%; border: 1px solid var(--border-default); border-radius: var(--radius-md);
+  padding: 10px; font-size: 13px; font-family: inherit; resize: vertical;
+  outline: none; transition: border-color 0.15s;
+}
+.edp-memo:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15); }
+.edp-memo-save { margin-top: 8px; height: 32px; font-size: 13px; }
