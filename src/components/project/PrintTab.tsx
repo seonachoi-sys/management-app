@@ -117,14 +117,14 @@ function createParticipationSheet(project: Project, laborRows: LaborRow[], yearM
     ['사업기관명', '㈜타이로스코프'],
     [],
     ['2. 인건비 집행'],
-    ['성명', '직책', '참여기간', '월급여', '4대보험기업부담금', '계상률(%)', '현금', '현물', '합계'],
+    ['성명', '직책', '참여기간', '월급여(급여+퇴직금)', '4대보험기업부담금', '계상률(%)', '현금', '현물', '합계'],
   ];
   let sumCash = 0, sumInKind = 0, sumTotal = 0;
   for (const r of laborRows) {
     rows1.push([
       r.emp.name, r.emp.position,
       `${r.periodStart} ~ ${r.periodEnd}`,
-      r.salary, r.totalInsComp, r.rate,
+      r.salary + r.retirement, r.totalInsComp, r.rate,
       r.cash, r.inKind, r.total,
     ]);
     sumCash += r.cash; sumInKind += r.inKind; sumTotal += r.total;
@@ -450,14 +450,14 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
               <div className="pt-table-wrap">
                 <table className="table pt-doc-table pt-doc-table-centered">
                   <thead>
-                    <tr><th>성명</th><th>직책</th><th>참여기간</th><th className="money">월급여</th><th className="money">4대보험</th><th className="money">계상률</th><th className="money">현금</th><th className="money">현물</th><th className="money">합계</th></tr>
+                    <tr><th>성명</th><th>직책</th><th>참여기간</th><th className="money">월급여<br/>(급여+퇴직금)</th><th className="money">4대보험</th><th className="money">계상률</th><th className="money">현금</th><th className="money">현물</th><th className="money">합계</th></tr>
                   </thead>
                   <tbody>
                     {laborRows.map(r => (
                       <tr key={r.emp.employeeNumber}>
                         <td>{r.emp.name}</td><td>{r.emp.position}</td>
                         <td className="pt-nowrap">{r.periodStart}~{r.periodEnd}</td>
-                        <td className="money">{formatWon(r.salary)}</td>
+                        <td className="money">{formatWon(r.salary + r.retirement)}</td>
                         <td className="money">{formatWon(r.totalInsComp)}</td>
                         <td className="money">{r.rate}%</td>
                         <td className="money">

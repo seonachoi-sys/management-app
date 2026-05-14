@@ -193,21 +193,22 @@ export async function parseHealthInsuranceCSV(file: File): Promise<HealthInsuran
   const rows = await readFileAsRows(file);
   const results: HealthInsuranceEntry[] = [];
 
-  // 건강보험공단 EDI 구조: 31개 컬럼, 건강(0~17) + 장기요양(18~30) 나란히
-  // 같은 헤더("산출보험료", "고지보험료" 등)가 두 번씩 나오므로 첫 번째=건강, 두 번째=장기요양
-  // 헤더 텍스트로 첫 두 개의 "고지보험료" 컬럼 인덱스 찾기 (양식 변경에 강건)
+  // 건강보험공단 EDI 양식 (2026 기준):
+  //   col 17: 고지금액            (건강보험 본인=회사 동일)
+  //   col 26: 요양고지보험료      (장기요양)
+  //   col 30: 고지보험료계(건강+요양)   ← 합계 컬럼, 매핑하면 안 됨
+  // "고지보험료" 단어만 찾으면 26/30이 잡혀서 둘 다 잘못 들어감 → 정확한 키워드로 매핑.
   const headers = buildColumnHeaders(rows);
   const nameCol = findCol(headers, ['성명']);
   const ssnCol = findCol(headers, ['주민번호', '주민등록번호']);
 
-  // "고지보험료" 컬럼 모두 찾기
-  const noticeCols: number[] = [];
-  for (let c = 0; c < headers.length; c++) {
-    if (headers[c].includes('고지보험료')) noticeCols.push(c);
-  }
-  // 첫 번째 = 건강, 두 번째 = 장기요양
-  const hiCol = noticeCols[0] ?? 13;
-  const ltcCol = noticeCols[1] ?? 26;
+  // 건강보험 본인 고지액 = "고지금액"(정확한 단독 컬럼), 장기요양 = "요양고지보험료"
+  // findCol은 첫 매칭이므로 합계 컬럼("고지보험료계")보다 단독 컬럼이 먼저 매칭됨
+  let hiCol = findCol(headers, ['고지금액']);
+  let ltcCol = findCol(headers, ['요양고지보험료']);
+  // fallback: 못 찾으면 양식 추정 인덱스
+  if (hiCol < 0) hiCol = 17;
+  if (ltcCol < 0) ltcCol = 26;
 
   for (const row of extractDataRows(rows)) {
     const name = String(row[nameCol >= 0 ? nameCol : 3] || '').trim();
