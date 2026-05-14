@@ -84,14 +84,16 @@ function calcLabor(
 
     const totalCost = salary + retirement + totalInsComp;
     // 정부과제 인건비 집행은 천원 단위 round-down (엑셀 정산서식 관행)
-    const total = Math.floor((totalCost * rate / 100) / 1000) * 1000;
+    const baseTotal = Math.floor((totalCost * rate / 100) / 1000) * 1000;
     // 참여형태: 'inKind' = 100% 현물, 그 외(default 'cash') = 100% 현금
-    const baseCash = part.participationType === 'inKind' ? 0 : total;
-    const baseInKind = total - baseCash;
+    const baseCash = part.participationType === 'inKind' ? 0 : baseTotal;
+    const baseInKind = baseTotal - baseCash;
     // LaborCostTab(인건비 산출)에서 저장한 수동 조정값 우선 적용 — read-only로 그대로 출력
     const adj = monthlyData?.laborAdjustments?.[project.projectId]?.[emp.employeeNumber];
     const cash = adj?.cash ?? baseCash;
     const inKind = adj?.inKind ?? baseInKind;
+    // 합계는 항상 cash + inKind로 — LaborCostTab의 수정값이 합계에도 즉시 반영
+    const total = cash + inKind;
 
     results.push({
       emp, rate, role: part.role, salary, retirement,
