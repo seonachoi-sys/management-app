@@ -59,3 +59,37 @@
   .lct-info-bar { flex-direction: column; align-items: flex-start; }
   .lct-view-tabs { margin-left: 0; }
 }
+
+/* 인라인 편집 셀 (현금/현물) — PrintTab의 pt-edit-cell과 동일 스타일 */
+.lct-edit-cell {
+  width: 100%;
+  border: 1px dashed transparent;
+  background: transparent;
+  font: inherit;
+  text-align: right;
+  padding: 2px 4px;
+  border-radius: 3px;
+  color: var(--text-primary);
+  font-family: var(--mono, monospace);
+}
+.lct-edit-cell:hover {
+  border-color: var(--border-default);
+  background: #fafbff;
+}
+.lct-edit-cell:focus {
+  outline: none;
+  border: 1px solid var(--accent);
+  background: #fffbe6;
+}
+
+/* 단가 상세 표 헤더 우측 — 초기화 버튼 + 안내 */
+.lct-detail-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.lct-reset-btn {
+  font-size: 12px; padding: 4px 10px;
+  border: 1px solid var(--border-default); background: var(--bg-surface);
+  border-radius: 4px; cursor: pointer; color: var(--text-secondary);
+}
+.lct-reset-btn:hover { background: #f5f5f5; }

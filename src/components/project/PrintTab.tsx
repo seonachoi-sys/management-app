@@ -86,8 +86,12 @@ function calcLabor(
     // 정부과제 인건비 집행은 천원 단위 round-down (엑셀 정산서식 관행)
     const total = Math.floor((totalCost * rate / 100) / 1000) * 1000;
     // 참여형태: 'inKind' = 100% 현물, 그 외(default 'cash') = 100% 현금
-    const cash = part.participationType === 'inKind' ? 0 : total;
-    const inKind = total - cash;
+    const baseCash = part.participationType === 'inKind' ? 0 : total;
+    const baseInKind = total - baseCash;
+    // LaborCostTab(인건비 산출)에서 저장한 수동 조정값 우선 적용 — read-only로 그대로 출력
+    const adj = monthlyData?.laborAdjustments?.[project.projectId]?.[emp.employeeNumber];
+    const cash = adj?.cash ?? baseCash;
+    const inKind = adj?.inKind ?? baseInKind;
 
     results.push({
       emp, rate, role: part.role, salary, retirement,
@@ -438,14 +442,9 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
             <div className="pt-doc-section">
               <div className="pt-section-row">
                 <h5 className="pt-doc-section-title">2. 인건비 집행</h5>
-                <button
-                  type="button"
-                  className="pt-reset-btn pt-pdf-hide"
-                  onClick={resetLaborRows}
-                  title="수동 입력한 현금/현물 보정값 초기화"
-                >
-                  ↺ 초기화
-                </button>
+                <span className="pt-pdf-hide" style={{ fontSize: 12, color: 'var(--text-hint)' }}>
+                  ※ 현금/현물 수정은 <strong>인건비 산출 탭</strong>에서
+                </span>
               </div>
               <div className="pt-table-wrap">
                 <table className="table pt-doc-table pt-doc-table-centered">
@@ -460,32 +459,8 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
                         <td className="money">{formatWon(r.salary + r.retirement)}</td>
                         <td className="money">{formatWon(r.totalInsComp)}</td>
                         <td className="money">{r.rate}%</td>
-                        <td className="money">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            className="pt-edit-cell"
-                            value={r.cash.toLocaleString()}
-                            onChange={(e) => {
-                              const num = parseInt(e.target.value.replace(/[^\d-]/g, ''), 10) || 0;
-                              updateRowAmount(r.emp.employeeNumber, 'cash', num);
-                            }}
-                            title="현금 — 클릭하여 수정"
-                          />
-                        </td>
-                        <td className="money">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            className="pt-edit-cell"
-                            value={r.inKind.toLocaleString()}
-                            onChange={(e) => {
-                              const num = parseInt(e.target.value.replace(/[^\d-]/g, ''), 10) || 0;
-                              updateRowAmount(r.emp.employeeNumber, 'inKind', num);
-                            }}
-                            title="현물 — 클릭하여 수정"
-                          />
-                        </td>
+                        <td className="money">{formatWon(r.cash)}</td>
+                        <td className="money">{formatWon(r.inKind)}</td>
                         <td className="money">{formatWon(r.total)}</td>
                       </tr>
                     ))}

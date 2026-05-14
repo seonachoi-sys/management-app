@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { Employee, Project, YearlyParticipation } from '../../types/project';
 import { calcLaborSalary } from '../../services/payrollParserService';
@@ -111,7 +111,8 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
 
       const salary = calcLaborSalary(emp, payrollData);
       const yearsWorked = getYearsSinceHire(emp.hireDate, `${yearMonth}-01`);
-      const retirement = 0; // 퇴직금 추계 미반영
+      // 퇴직금 추계 = 월급여/12 (1년 이상 근로자만) — PrintTab의 calcLabor와 동일 로직
+      const retirement = yearsWorked >= 1 ? Math.round(salary / 12) : 0;
 
       const insurance: MonthlyInsurance = insData || emp.insurance || {
         nationalPension: 0, nationalPensionCompany: 0,
@@ -134,8 +135,12 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
       const total = Math.floor((totalCost * rate / 100) / 1000) * 1000;
 
       // 참여형태: 'inKind' = 100% 현물, 그 외(default 'cash') = 100% 현금
-      const cash = part.participationType === 'inKind' ? 0 : total;
-      const inKind = total - cash;
+      const baseCash = part.participationType === 'inKind' ? 0 : total;
+      const baseInKind = total - baseCash;
+      // 사용자 수동 조정값(firestore에 영구 저장) 우선 적용
+      const adj = monthlyData?.laborAdjustments?.[selectedProjectId]?.[emp.employeeNumber];
+      const cash = adj?.cash ?? baseCash;
+      const inKind = adj?.inKind ?? baseInKind;
 
       results.push({ emp, rate, role: part.role, salary, retirement, insurance, totalCost, cash, inKind, total });
     }
@@ -145,12 +150,17 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
   const totals = useMemo(() => laborData.reduce((acc, d) => ({
     salary: acc.salary + d.salary,
     retirement: acc.retirement + d.retirement,
+    np: acc.np + (d.insurance.nationalPensionCompany || 0),
+    hi: acc.hi + (d.insurance.healthInsuranceCompany || 0),
+    ltc: acc.ltc + (d.insurance.longTermCareCompany || 0),
+    ei: acc.ei + (d.insurance.employmentInsCompany || 0),
+    ia: acc.ia + (d.insurance.industrialAccident || 0),
     companyBurden: acc.companyBurden + (d.insurance.totalCompanyBurden || 0),
     totalCost: acc.totalCost + d.totalCost,
     cash: acc.cash + d.cash,
     inKind: acc.inKind + d.inKind,
     total: acc.total + d.total,
-  }), { salary: 0, retirement: 0, companyBurden: 0, totalCost: 0, cash: 0, inKind: 0, total: 0 }), [laborData]);
+  }), { salary: 0, retirement: 0, np: 0, hi: 0, ltc: 0, ei: 0, ia: 0, companyBurden: 0, totalCost: 0, cash: 0, inKind: 0, total: 0 }), [laborData]);
 
   // 월별 누적 계산
   const monthlyCumulative = useMemo(() => {
@@ -171,7 +181,8 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
 
         const salary = calcLaborSalary(emp);
         const yearsWorked = getYearsSinceHire(emp.hireDate, `${year}-${String(m).padStart(2, '0')}-01`);
-        const ret = 0; // 퇴직금 추계 미반영
+        // 퇴직금 추계 = 월급여/12 (1년 이상 근로자만) — PrintTab과 동일 로직
+        const ret = yearsWorked >= 1 ? Math.round(salary / 12) : 0;
         const ins = emp.insurance?.totalCompanyBurden || 0;
         const cost = salary + ret + ins;
         // 천원 단위 round-down (정부과제 정산서식)
@@ -190,6 +201,35 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
   }, [selectedProjectId, year, participations, employees, project]);
 
   const hasPayrollData = !!monthlyData?.payroll;
+
+  // 현금/현물 수동 조정값 firestore 저장 (LaborCostTab이 데이터 마스터 — PrintTab은 read-only)
+  const saveAdjustment = async (empNumber: string, field: 'cash' | 'inKind', value: number) => {
+    const next = { ...(monthlyData || {}) };
+    next.laborAdjustments = { ...(next.laborAdjustments || {}) };
+    next.laborAdjustments[selectedProjectId] = { ...(next.laborAdjustments[selectedProjectId] || {}) };
+    next.laborAdjustments[selectedProjectId][empNumber] = {
+      ...(next.laborAdjustments[selectedProjectId][empNumber] || {}),
+      [field]: Math.max(0, value || 0),
+    };
+    setMonthlyData(next);
+    try {
+      await setDoc(doc(db, 'monthlyData', yearMonth),
+        { laborAdjustments: next.laborAdjustments }, { merge: true });
+      logAction('update', 'laborAdjustment', selectedProjectId, `${empNumber}.${field}`, null, value, user?.email || '');
+    } catch (e) {
+      console.error('인건비 조정값 저장 실패:', e);
+    }
+  };
+
+  const resetAdjustments = async () => {
+    if (!window.confirm(`${project?.shortName} ${yearMonth} 현금/현물 조정값을 모두 초기화하시겠습니까?`)) return;
+    const next = { ...(monthlyData || {}) };
+    next.laborAdjustments = { ...(next.laborAdjustments || {}) };
+    delete next.laborAdjustments[selectedProjectId];
+    setMonthlyData(next);
+    await setDoc(doc(db, 'monthlyData', yearMonth),
+      { laborAdjustments: next.laborAdjustments }, { merge: true });
+  };
 
   return (
     <div className="lct-container">
@@ -277,18 +317,31 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
 
           {/* 표 2: 인건비 단가 상세 */}
           {view === 'detail' && (
+            <>
+            <div className="lct-detail-header">
+              <span style={{ fontSize: 12, color: 'var(--text-hint)' }}>
+                ※ 현금/현물 셀 클릭하여 직접 수정 — 변경값은 즉시 저장되며 <strong>서류 출력</strong>에도 그대로 반영됩니다
+              </span>
+              <button type="button" className="lct-reset-btn" onClick={resetAdjustments}
+                title="현재 과제·월의 수동 조정값 초기화">↺ 초기화</button>
+            </div>
             <div className="lct-table-wrap">
               <table className="table lct-table">
                 <thead>
                   <tr>
                     <th>성명</th><th>직책</th>
                     <th style={{ textAlign: 'right' }}>월급여(A)</th>
+                    <th style={{ textAlign: 'right' }}>퇴직금(B)</th>
                     <th style={{ textAlign: 'right' }}>국민연금</th>
                     <th style={{ textAlign: 'right' }}>건강보험</th>
                     <th style={{ textAlign: 'right' }}>장기요양</th>
                     <th style={{ textAlign: 'right' }}>고용보험</th>
                     <th style={{ textAlign: 'right' }}>산재보험</th>
-                    <th style={{ textAlign: 'right' }}>합계(A+C)</th>
+                    <th style={{ textAlign: 'right' }}>합계(A+B+C)</th>
+                    <th style={{ textAlign: 'right' }}>참여율</th>
+                    <th style={{ textAlign: 'right' }}>현금</th>
+                    <th style={{ textAlign: 'right' }}>현물</th>
+                    <th style={{ textAlign: 'right' }}>집행액</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -299,12 +352,33 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
                       <td className="lct-name">{d.emp.name}</td>
                       <td>{d.emp.position}</td>
                       <td className="money">{formatWon(d.salary)}</td>
+                      <td className="money">{d.retirement > 0 ? formatWon(d.retirement) : '-'}</td>
                       <td className="money">{formatWon(d.insurance.nationalPensionCompany || 0)}</td>
                       <td className="money">{formatWon(d.insurance.healthInsuranceCompany || 0)}</td>
                       <td className="money">{formatWon(d.insurance.longTermCareCompany || 0)}</td>
                       <td className="money">{isExec ? '-' : formatWon(d.insurance.employmentInsCompany || 0)}</td>
                       <td className="money">{isExec ? '-' : formatWon(d.insurance.industrialAccident || 0)}</td>
                       <td className="money lct-total">{formatWon(d.totalCost)}</td>
+                      <td className="money">{d.rate}%</td>
+                      <td className="money">
+                        <input type="text" inputMode="numeric" className="lct-edit-cell"
+                          value={d.cash.toLocaleString()}
+                          onChange={(e) => {
+                            const num = parseInt(e.target.value.replace(/[^\d-]/g, ''), 10) || 0;
+                            saveAdjustment(d.emp.employeeNumber, 'cash', num);
+                          }}
+                          title="현금 — 클릭하여 수정" />
+                      </td>
+                      <td className="money">
+                        <input type="text" inputMode="numeric" className="lct-edit-cell"
+                          value={d.inKind.toLocaleString()}
+                          onChange={(e) => {
+                            const num = parseInt(e.target.value.replace(/[^\d-]/g, ''), 10) || 0;
+                            saveAdjustment(d.emp.employeeNumber, 'inKind', num);
+                          }}
+                          title="현물 — 클릭하여 수정" />
+                      </td>
+                      <td className="money lct-total">{formatWon(d.cash + d.inKind)}</td>
                     </tr>
                     );
                   })}
@@ -313,12 +387,22 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
                   <tr>
                     <td colSpan={2}><strong>합계</strong></td>
                     <td className="money"><strong>{formatWon(totals.salary)}</strong></td>
-                    <td colSpan={5} />
+                    <td className="money"><strong>{formatWon(totals.retirement)}</strong></td>
+                    <td className="money"><strong>{formatWon(totals.np)}</strong></td>
+                    <td className="money"><strong>{formatWon(totals.hi)}</strong></td>
+                    <td className="money"><strong>{formatWon(totals.ltc)}</strong></td>
+                    <td className="money"><strong>{formatWon(totals.ei)}</strong></td>
+                    <td className="money"><strong>{formatWon(totals.ia)}</strong></td>
                     <td className="money lct-total"><strong>{formatWon(totals.totalCost)}</strong></td>
+                    <td />
+                    <td className="money"><strong>{formatWon(totals.cash)}</strong></td>
+                    <td className="money"><strong>{formatWon(totals.inKind)}</strong></td>
+                    <td className="money lct-total"><strong>{formatWon(totals.total)}</strong></td>
                   </tr>
                 </tfoot>
               </table>
             </div>
+            </>
           )}
 
           {/* 표 3: 월별 누적 */}
