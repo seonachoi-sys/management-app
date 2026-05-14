@@ -593,13 +593,19 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
               acc.longTermCare += pay.longTermCare || r.emp.insurance?.longTermCare || 0;
               acc.incomeTax += pay.incomeTax || 0;
               acc.localTax += pay.localTax || 0;
+              acc.totalDeduction += pay.totalDeduction || 0;
               acc.netPay += pay.netPay || r.emp.netPay || 0;
               return acc;
             }, {
               base: 0, overtime: 0, holiday: 0, night: 0, totalPay: 0,
               nationalPension: 0, healthInsurance: 0, employmentInsurance: 0, longTermCare: 0,
-              incomeTax: 0, localTax: 0, netPay: 0,
+              incomeTax: 0, localTax: 0, totalDeduction: 0, netPay: 0,
             });
+            // 기타 공제 합계 = 공제합계 - (4대보험 + 세금 6개 합)
+            const totalsOther = Math.max(0,
+              totals.totalDeduction - totals.nationalPension - totals.healthInsurance
+              - totals.employmentInsurance - totals.longTermCare - totals.incomeTax - totals.localTax
+            );
 
             return (
               <div className="pt-preview card pt-preview-doc" ref={previewRef}>
@@ -621,12 +627,21 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
                         <th className="money">장기요양</th>
                         <th className="money">소득세</th>
                         <th className="money">지방세</th>
+                        <th className="money">기타</th>
                         <th className="money">실지급액</th>
                       </tr>
                     </thead>
                     <tbody>
                       {laborRows.map((r, i) => {
                         const pay = getPay(r);
+                        // 기타 공제 = 공제합계 - (4대보험 + 소득세 + 지방세)
+                        const np = pay.nationalPension || r.emp.insurance?.nationalPension || 0;
+                        const hi = pay.healthInsurance || r.emp.insurance?.healthInsurance || 0;
+                        const ei = pay.employmentInsurance || r.emp.insurance?.employmentInsurance || 0;
+                        const ltc = pay.longTermCare || r.emp.insurance?.longTermCare || 0;
+                        const it = pay.incomeTax || 0;
+                        const lt = pay.localTax || 0;
+                        const other = Math.max(0, (pay.totalDeduction || 0) - np - hi - ei - ltc - it - lt);
                         return (
                           <tr key={r.emp.employeeNumber}>
                             <td>{i + 1}</td>
@@ -636,12 +651,13 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
                             {showHoliday && <td className="money">{formatWon(pay.holidayWork || 0)}</td>}
                             {showNight && <td className="money">{formatWon(pay.nightWork || 0)}</td>}
                             <td className="money pt-highlight">{formatWon(pay.totalPay || r.emp.salary?.totalPay || 0)}</td>
-                            <td className="money">{formatWon(pay.nationalPension || r.emp.insurance?.nationalPension || 0)}</td>
-                            <td className="money">{formatWon(pay.healthInsurance || r.emp.insurance?.healthInsurance || 0)}</td>
-                            <td className="money">{formatWon(pay.employmentInsurance || r.emp.insurance?.employmentInsurance || 0)}</td>
-                            <td className="money">{formatWon(pay.longTermCare || r.emp.insurance?.longTermCare || 0)}</td>
-                            <td className="money">{formatWon(pay.incomeTax || 0)}</td>
-                            <td className="money">{formatWon(pay.localTax || 0)}</td>
+                            <td className="money">{formatWon(np)}</td>
+                            <td className="money">{formatWon(hi)}</td>
+                            <td className="money">{formatWon(ei)}</td>
+                            <td className="money">{formatWon(ltc)}</td>
+                            <td className="money">{formatWon(it)}</td>
+                            <td className="money">{formatWon(lt)}</td>
+                            <td className="money">{formatWon(other)}</td>
                             <td className="money pt-highlight">{formatWon(pay.netPay || r.emp.netPay || 0)}</td>
                           </tr>
                         );
@@ -661,6 +677,7 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
                         <td className="money"><strong>{formatWon(totals.longTermCare)}</strong></td>
                         <td className="money"><strong>{formatWon(totals.incomeTax)}</strong></td>
                         <td className="money"><strong>{formatWon(totals.localTax)}</strong></td>
+                        <td className="money"><strong>{formatWon(totalsOther)}</strong></td>
                         <td className="money pt-highlight"><strong>{formatWon(totals.netPay)}</strong></td>
                       </tr>
                     </tfoot>
