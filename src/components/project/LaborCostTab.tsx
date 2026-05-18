@@ -218,11 +218,7 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
 
   // 현금/현물 수동 조정값 firestore 저장 (LaborCostTab이 데이터 마스터 — PrintTab은 read-only)
   const saveAdjustment = async (empNumber: string, field: 'cash' | 'inKind' | 'retirement', value: number) => {
-    console.log('[saveAdjustment]', { yearMonth, projectId: selectedProjectId, empNumber, field, value });
-    if (!selectedProjectId) {
-      console.warn('[saveAdjustment] selectedProjectId 비어있음 — 저장 안 함');
-      return;
-    }
+    if (!selectedProjectId) return; // 과제 선택 전 — 무시
     const next = { ...(monthlyData || {}) };
     next.laborAdjustments = { ...(next.laborAdjustments || {}) };
     next.laborAdjustments[selectedProjectId] = { ...(next.laborAdjustments[selectedProjectId] || {}) };
@@ -234,10 +230,9 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
     try {
       await setDoc(doc(db, 'monthlyData', yearMonth),
         { laborAdjustments: next.laborAdjustments }, { merge: true });
-      console.log('[saveAdjustment] firestore 저장 성공');
       logAction('update', 'laborAdjustment', selectedProjectId, `${empNumber}.${field}`, null, value, user?.email || '');
     } catch (e: any) {
-      console.error('[saveAdjustment] firestore 저장 실패:', e);
+      console.error('[인건비 조정값 저장 실패]', e);
       alert('인건비 조정값 저장 실패: ' + (e?.message || e));
     }
   };

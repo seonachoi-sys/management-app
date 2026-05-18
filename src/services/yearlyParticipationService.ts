@@ -46,7 +46,6 @@ export async function saveParticipation(
 
   try {
     await setDoc(docRef, payload);
-    console.log('[참여율 저장 성공]', docId, payload.monthlyRates);
   } catch (e: any) {
     console.error('[참여율 저장 실패]', docId, e, payload);
     alert('참여율 저장 실패: ' + (e?.message || e));

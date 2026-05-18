@@ -268,27 +268,11 @@ const PrintTab: React.FC<Props> = ({ yearMonth, activeProjects, employees, parti
     load();
   }, [yearMonth]);
 
-  const baseLaborRows = useMemo(() => {
+  // 데이터 마스터는 LaborCostTab(인건비 산출) — 여기서는 read-only로 그대로 출력
+  const laborRows = useMemo(() => {
     if (!project) return [];
     return calcLabor(project, employees, participations, year, month, monthlyData);
   }, [project, employees, participations, year, month, monthlyData]);
-
-  // 사용자가 현금/현물 보정 가능 — 의존성 변경 시 base로 리셋
-  const [laborRows, setLaborRows] = useState<LaborRow[]>([]);
-  useEffect(() => {
-    setLaborRows(baseLaborRows);
-  }, [baseLaborRows]);
-
-  const updateRowAmount = (employeeNumber: string, field: 'cash' | 'inKind', value: number) => {
-    setLaborRows((prev) => prev.map((r) => {
-      if (r.emp.employeeNumber !== employeeNumber) return r;
-      const next = { ...r, [field]: Math.max(0, value || 0) };
-      next.total = next.cash + next.inKind;
-      return next;
-    }));
-  };
-
-  const resetLaborRows = () => setLaborRows(baseLaborRows);
 
   const downloadPdf = useCallback(async (type: 'participation' | 'payroll', proj: Project) => {
     if (!previewRef.current) return;

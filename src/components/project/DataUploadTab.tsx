@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Upload, CheckCircle, AlertTriangle, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
@@ -52,14 +52,15 @@ const DataUploadTab: React.FC<Props> = ({ yearMonth, employees, onStatusChange }
   const [changes, setChanges] = useState<ChangeItem[]>([]);
   const [applied, setApplied] = useState<Set<string>>(new Set());
 
-  const empNames = new Set(employees.map(e => e.name));
+  // employees가 바뀔 때만 재생성 — 매 렌더 재생성 시 useCallback 무효화 + 무한 렌더링 위험
+  const empNames = useMemo(() => new Set(employees.map(e => e.name)), [employees]);
 
-  // 전월 yearMonth 계산
-  const prevYM = (() => {
+  // 전월 yearMonth 계산 (메모이즈)
+  const prevYM = useMemo(() => {
     const y = parseInt(yearMonth.slice(0, 4), 10);
     const m = parseInt(yearMonth.slice(5), 10);
     return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
-  })();
+  }, [yearMonth]);
 
   // 파일 처리
   const handleFile = useCallback(async (slotId: string, file: File) => {
