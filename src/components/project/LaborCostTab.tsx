@@ -111,24 +111,36 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
 
       const salary = calcLaborSalary(emp, payrollData);
       const yearsWorked = getYearsSinceHire(emp.hireDate, `${yearMonth}-01`);
-      // 퇴직금 추계 = 월급여/12 (1년 이상 근로자만) — PrintTab의 calcLabor와 동일 로직
-      const retirement = yearsWorked >= 1 ? Math.round(salary / 12) : 0;
+      // 퇴직금 추계 = 월급여/12 (1년 이상 근로자만, 기본 자동값)
+      const autoRetirement = yearsWorked >= 1 ? Math.round(salary / 12) : 0;
+      // 직원별 수동 조정값(adj.retirement) 있으면 우선 적용 — 1년 이상이라도 0으로 빼거나 임의 값으로 강제 가능
+      const retirementAdj = monthlyData?.laborAdjustments?.[selectedProjectId]?.[emp.employeeNumber]?.retirement;
+      const retirement = retirementAdj ?? autoRetirement;
 
-      const insurance: MonthlyInsurance = insData || emp.insurance || {
-        nationalPension: 0, nationalPensionCompany: 0,
-        healthInsurance: 0, healthInsuranceCompany: 0,
-        longTermCare: 0, longTermCareCompany: 0,
-        employmentInsurance: 0, employmentInsCompany: 0,
-        industrialAccident: 0, totalCompanyBurden: 0,
+      // 보험별 fallback: 일부 보험만 업로드된 경우 나머지는 직원 마스터(emp.insurance)에서 보충
+      // — 4대보험 중 한 종이라도 EDI 누락되어도 0으로 빠지지 않도록
+      const m: any = insData || {};
+      const ie: any = emp.insurance || {};
+      const insurance: MonthlyInsurance = {
+        nationalPension: m.nationalPension ?? ie.nationalPension ?? 0,
+        nationalPensionCompany: m.nationalPensionCompany ?? ie.nationalPensionCompany ?? 0,
+        healthInsurance: m.healthInsurance ?? ie.healthInsurance ?? 0,
+        healthInsuranceCompany: m.healthInsuranceCompany ?? ie.healthInsuranceCompany ?? 0,
+        longTermCare: m.longTermCare ?? ie.longTermCare ?? 0,
+        longTermCareCompany: m.longTermCareCompany ?? ie.longTermCareCompany ?? 0,
+        employmentInsurance: m.employmentInsurance ?? ie.employmentInsurance ?? 0,
+        employmentInsCompany: m.employmentInsCompany ?? ie.employmentInsCompany ?? 0,
+        industrialAccident: m.industrialAccident ?? ie.industrialAccident ?? 0,
+        totalCompanyBurden: 0,
       };
 
-      const companyBurden = insurance.totalCompanyBurden || (
+      const companyBurden =
         (insurance.nationalPensionCompany || 0) +
         (insurance.healthInsuranceCompany || 0) +
         (insurance.longTermCareCompany || 0) +
         (insurance.employmentInsCompany || 0) +
-        (insurance.industrialAccident || 0)
-      );
+        (insurance.industrialAccident || 0);
+      insurance.totalCompanyBurden = companyBurden;
 
       const totalCost = salary + retirement + companyBurden;
       // 정부과제 인건비 집행은 천원 단위 round-down (엑셀 정산서식 관행)
@@ -205,7 +217,12 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
   const hasPayrollData = !!monthlyData?.payroll;
 
   // 현금/현물 수동 조정값 firestore 저장 (LaborCostTab이 데이터 마스터 — PrintTab은 read-only)
-  const saveAdjustment = async (empNumber: string, field: 'cash' | 'inKind', value: number) => {
+  const saveAdjustment = async (empNumber: string, field: 'cash' | 'inKind' | 'retirement', value: number) => {
+    console.log('[saveAdjustment]', { yearMonth, projectId: selectedProjectId, empNumber, field, value });
+    if (!selectedProjectId) {
+      console.warn('[saveAdjustment] selectedProjectId 비어있음 — 저장 안 함');
+      return;
+    }
     const next = { ...(monthlyData || {}) };
     next.laborAdjustments = { ...(next.laborAdjustments || {}) };
     next.laborAdjustments[selectedProjectId] = { ...(next.laborAdjustments[selectedProjectId] || {}) };
@@ -217,9 +234,11 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
     try {
       await setDoc(doc(db, 'monthlyData', yearMonth),
         { laborAdjustments: next.laborAdjustments }, { merge: true });
+      console.log('[saveAdjustment] firestore 저장 성공');
       logAction('update', 'laborAdjustment', selectedProjectId, `${empNumber}.${field}`, null, value, user?.email || '');
-    } catch (e) {
-      console.error('인건비 조정값 저장 실패:', e);
+    } catch (e: any) {
+      console.error('[saveAdjustment] firestore 저장 실패:', e);
+      alert('인건비 조정값 저장 실패: ' + (e?.message || e));
     }
   };
 
@@ -354,7 +373,15 @@ const LaborCostTab: React.FC<Props> = ({ yearMonth, employees, activeProjects, p
                       <td className="lct-name">{d.emp.name}</td>
                       <td>{d.emp.position}</td>
                       <td className="money">{formatWon(d.salary)}</td>
-                      <td className="money">{d.retirement > 0 ? formatWon(d.retirement) : '-'}</td>
+                      <td className="money">
+                        <input type="text" inputMode="numeric" className="lct-edit-cell"
+                          value={d.retirement.toLocaleString()}
+                          onChange={(e) => {
+                            const num = parseInt(e.target.value.replace(/[^\d-]/g, ''), 10) || 0;
+                            saveAdjustment(d.emp.employeeNumber, 'retirement', num);
+                          }}
+                          title="퇴직금 — 클릭하여 수정 (0 입력 시 미산정)" />
+                      </td>
                       <td className="money">{formatWon(d.insurance.nationalPensionCompany || 0)}</td>
                       <td className="money">{formatWon(d.insurance.healthInsuranceCompany || 0)}</td>
                       <td className="money">{formatWon(d.insurance.longTermCareCompany || 0)}</td>

@@ -193,22 +193,26 @@ export async function parseHealthInsuranceCSV(file: File): Promise<HealthInsuran
   const rows = await readFileAsRows(file);
   const results: HealthInsuranceEntry[] = [];
 
-  // 건강보험공단 EDI 양식 (2026 기준):
-  //   col 17: 고지금액            (건강보험 본인=회사 동일)
-  //   col 26: 요양고지보험료      (장기요양)
-  //   col 30: 고지보험료계(건강+요양)   ← 합계 컬럼, 매핑하면 안 됨
-  // "고지보험료" 단어만 찾으면 26/30이 잡혀서 둘 다 잘못 들어감 → 정확한 키워드로 매핑.
+  // 건강보험공단 EDI 두 가지 양식 지원:
+  //   [양식 A — 통합형] col 17: 고지금액(건강) | col 26: 요양고지보험료 | col 30: 고지보험료계(합)
+  //   [양식 B — 분리형] col 3: 성명 | col 13: 고지보험료(건강) | col 26: 고지보험료(요양) | 헤더 앞 빈줄
   const headers = buildColumnHeaders(rows);
   const nameCol = findCol(headers, ['성명']);
   const ssnCol = findCol(headers, ['주민번호', '주민등록번호']);
 
-  // 건강보험 본인 고지액 = "고지금액"(정확한 단독 컬럼), 장기요양 = "요양고지보험료"
-  // findCol은 첫 매칭이므로 합계 컬럼("고지보험료계")보다 단독 컬럼이 먼저 매칭됨
+  // 1차: 양식 A 정확 키워드 매칭
   let hiCol = findCol(headers, ['고지금액']);
   let ltcCol = findCol(headers, ['요양고지보험료']);
-  // fallback: 못 찾으면 양식 추정 인덱스
-  if (hiCol < 0) hiCol = 17;
-  if (ltcCol < 0) ltcCol = 26;
+  // 2차: 양식 B fallback — "고지보험료"가 두 번 나오는데 "보험료계"(합산) 제외
+  if (hiCol < 0 || ltcCol < 0) {
+    const noticeCols: number[] = [];
+    for (let c = 0; c < headers.length; c++) {
+      const h = headers[c];
+      if (h.includes('고지보험료') && !h.includes('보험료계')) noticeCols.push(c);
+    }
+    if (hiCol < 0) hiCol = noticeCols[0] ?? 13;
+    if (ltcCol < 0) ltcCol = noticeCols[1] ?? 26;
+  }
 
   for (const row of extractDataRows(rows)) {
     const name = String(row[nameCol >= 0 ? nameCol : 3] || '').trim();

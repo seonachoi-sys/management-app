@@ -71,15 +71,20 @@ function calcLabor(
 
     const salary = calcLaborSalary(emp, payData);
     const yrs = getYearsSinceHire(emp.hireDate, `${year}-${String(month).padStart(2, '0')}-01`);
-    // 퇴직금 추계 = 월급여/12 (1년 미만 근로자 제외)
-    const retirement = yrs >= 1 ? Math.round(salary / 12) : 0;
+    // 퇴직금 추계 = 월급여/12 (1년 미만 근로자 제외, 기본 자동값)
+    const autoRetirement = yrs >= 1 ? Math.round(salary / 12) : 0;
+    // LaborCostTab(인건비 산출)에서 저장한 직원별 수동 조정값 우선 적용
+    const retirementAdj = monthlyData?.laborAdjustments?.[project.projectId]?.[emp.employeeNumber]?.retirement;
+    const retirement = retirementAdj ?? autoRetirement;
 
-    const ins = insData || emp.insurance || {} as any;
-    const npComp = ins.nationalPensionCompany || 0;
-    const hiComp = ins.healthInsuranceCompany || 0;
-    const ltcComp = ins.longTermCareCompany || 0;
-    const eiComp = ins.employmentInsCompany || 0;
-    const iaComp = ins.industrialAccident || 0;
+    // 보험별 fallback: 일부 보험만 업로드된 경우 나머지는 직원 마스터(emp.insurance)에서 보충
+    const m: any = insData || {};
+    const ie: any = emp.insurance || {};
+    const npComp = m.nationalPensionCompany ?? ie.nationalPensionCompany ?? 0;
+    const hiComp = m.healthInsuranceCompany ?? ie.healthInsuranceCompany ?? 0;
+    const ltcComp = m.longTermCareCompany ?? ie.longTermCareCompany ?? 0;
+    const eiComp = m.employmentInsCompany ?? ie.employmentInsCompany ?? 0;
+    const iaComp = m.industrialAccident ?? ie.industrialAccident ?? 0;
     const totalInsComp = npComp + hiComp + ltcComp + eiComp + iaComp;
 
     const totalCost = salary + retirement + totalInsComp;

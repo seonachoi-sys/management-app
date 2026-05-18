@@ -32,15 +32,26 @@ export async function saveParticipation(
   const rates = Object.values(data.monthlyRates).filter(v => v > 0);
   const averageRate = rates.length > 0 ? Math.round(rates.reduce((a, b) => a + b, 0) / rates.length) : 0;
 
-  const payload = {
+  const payload: any = {
     ...data,
     id: docId,
     averageRate,
     updatedAt: Timestamp.now(),
     updatedBy: userEmail,
   };
+  // Firestore는 undefined를 거부 → 저장 직전 제거 (silent fail 방지)
+  Object.keys(payload).forEach(k => {
+    if (payload[k] === undefined) delete payload[k];
+  });
 
-  await setDoc(docRef, payload);
+  try {
+    await setDoc(docRef, payload);
+    console.log('[참여율 저장 성공]', docId, payload.monthlyRates);
+  } catch (e: any) {
+    console.error('[참여율 저장 실패]', docId, e, payload);
+    alert('참여율 저장 실패: ' + (e?.message || e));
+    throw e;
+  }
   return payload;
 }
 
