@@ -706,6 +706,69 @@
 .tm-btn-obsidian:hover { opacity: 0.85; }
 .tm-btn-obsidian:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.tm-btn-save-report {
+  padding: 5px 14px; background: var(--c-accent); color: #fff;
+  border: none; border-radius: var(--radius);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: var(--font); transition: opacity 0.1s;
+}
+
+.tm-btn-save-report:hover { opacity: 0.85; }
+.tm-btn-save-report:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ─── 저장된 리포트 불러오기 바 ─── */
+.rpt-saved-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--c-bg-sub);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  flex-wrap: wrap;
+}
+
+.rpt-saved-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-text-3);
+}
+
+.rpt-saved-select {
+  padding: 6px 10px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-family: var(--font);
+  color: var(--c-text);
+  background: var(--c-bg);
+  min-width: 220px;
+}
+
+.rpt-saved-delete {
+  padding: 5px 12px;
+  background: var(--c-bg);
+  color: var(--c-red);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font);
+}
+
+.rpt-saved-delete:hover { background: var(--c-red-bg); }
+
+.rpt-loaded-banner {
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: var(--c-accent-light);
+  color: var(--c-accent);
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .tm-report-content {
   background: var(--c-bg); border: 1px solid var(--c-line);
   border-radius: var(--radius-lg); padding: 28px;

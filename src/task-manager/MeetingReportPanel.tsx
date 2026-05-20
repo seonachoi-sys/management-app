@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import {
   format,
@@ -15,6 +15,13 @@ import {
 import type { Task, MeetingType } from '../types';
 import { fetchAllTasks } from '../services/taskService';
 import { saveReportToObsidian, formatReportMarkdown } from '../services/obsidianService';
+import {
+  subscribeSavedReports,
+  saveReport,
+  updateSavedReport,
+  deleteSavedReport,
+  type SavedReportRecord,
+} from '../services/meetingReportService';
 
 /* ─── 아코디언 블록 ─── */
 function Block({
@@ -212,14 +219,24 @@ function renderAssigneeCategoryBlocks(tasks: Task[], renderFn: (tasks: Task[]) =
 /* ─── 메인 컴포넌트 ─── */
 interface Props {
   ceoMeetingDates?: string[];
+  userId?: string;
+  userName?: string;
 }
 
-export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
+export default function MeetingReportPanel({ ceoMeetingDates = [], userId = '', userName = '' }: Props) {
   const [reportType, setReportType] = useState<MeetingType>('주간');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [generated, setGenerated] = useState(false);
+
+  /* ─── 저장된 리포트 ─── */
+  const [savedReports, setSavedReports] = useState<SavedReportRecord[]>([]);
+  const [currentReportId, setCurrentReportId] = useState<string | null>(null);
+  const [currentReportTitle, setCurrentReportTitle] = useState('');
+  const [savingReport, setSavingReport] = useState(false);
+  // 저장된 리포트 불러올 때 기간 자동 리셋 effect를 1회 건너뛰기 위한 플래그
+  const skipResetRef = useRef(false);
 
   // 업무 비고 (회의 중 입력)
   const [taskNotes, setTaskNotes] = useState<Record<string, string>>({});
@@ -299,8 +316,25 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     };
   }, [selectedCeoDate]);
 
+  /* ─── 저장된 리포트 실시간 구독 ─── */
+  useEffect(() => {
+    const unsub = subscribeSavedReports(
+      (records) => setSavedReports(records),
+      (err) => setError(err.message),
+    );
+    return unsub;
+  }, []);
+
   /* ─── 탭 변경 시 기간 자동 설정 ─── */
   useEffect(() => {
+    // 저장된 리포트를 불러오는 중이면 기간 리셋 1회 건너뛴다
+    if (skipResetRef.current) {
+      skipResetRef.current = false;
+      return;
+    }
+    // 탭/기간을 사용자가 직접 바꾸면 더 이상 저장된 리포트와 연결되지 않음
+    setCurrentReportId(null);
+    setCurrentReportTitle('');
     const today = new Date();
     if (reportType === '주간') {
       setStartDate(format(startOfWeek(today, { weekStartsOn: 1 }), 'yyyy-MM-dd'));
@@ -331,6 +365,46 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
       setError(err instanceof Error ? err.message : '리포트 생성에 실패했습니다.');
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  /* ─── 저장된 리포트 불러오기 ─── */
+  // 설정만 복원하고 업무는 새로 불러온다 → 저장 후 업무가 수정돼도 자동 반영
+  const loadSavedReport = useCallback(async (rec: SavedReportRecord) => {
+    skipResetRef.current = true;
+    setReportType(rec.reportType);
+    if (rec.selectedCeoDate) setSelectedCeoDate(rec.selectedCeoDate);
+    if (rec.selectedMonth) setSelectedMonth(rec.selectedMonth);
+    setStartDate(rec.startDate);
+    setEndDate(rec.endDate);
+    setTaskNotes(rec.taskNotes || {});
+    setHiddenTaskIds(new Set(rec.hiddenTaskIds || []));
+    setCurrentReportId(rec.id);
+    setCurrentReportTitle(rec.title);
+    setLoading(true);
+    setError(null);
+    try {
+      const tasks = await fetchAllTasks();
+      setAllTasks(tasks);
+      setGenerated(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : '리포트를 불러오지 못했습니다.');
+    } finally {
+      setLoading(false);
+      // 리셋 effect가 dep 변화 없이 실행되지 않은 경우를 대비해 플래그 정리
+      skipResetRef.current = false;
+    }
+  }, []);
+
+  /* ─── 저장된 리포트 삭제 ─── */
+  const handleDeleteSavedReport = useCallback(async (id: string) => {
+    if (!window.confirm('이 저장된 리포트를 삭제할까요?')) return;
+    try {
+      await deleteSavedReport(id);
+      setCurrentReportId((prev) => (prev === id ? null : prev));
+      setCurrentReportTitle('');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : '삭제에 실패했습니다.');
     }
   }, []);
 
@@ -532,6 +606,47 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
     const rangeEnd = localDate(endDate);
     return `${format(rangeStart, 'yyyy.MM.dd')} ~ ${format(rangeEnd, 'yyyy.MM.dd')}`;
   }, [reportType, startDate, endDate, biweeklyPeriod, monthlyPeriod]);
+
+  /* ─── 리포트 저장 / 수정 저장 ─── */
+  const handleSaveReport = useCallback(async () => {
+    if (!generated) return;
+    setSavingReport(true);
+    try {
+      const payload = {
+        reportType,
+        selectedCeoDate,
+        selectedMonth,
+        startDate,
+        endDate,
+        taskNotes,
+        hiddenTaskIds: Array.from(hiddenTaskIds),
+      };
+      if (currentReportId) {
+        await updateSavedReport(currentReportId, payload, userId, userName);
+        alert('리포트가 수정 저장되었습니다.');
+      } else {
+        const input = window.prompt('리포트 이름을 입력하세요.', periodLabel);
+        if (input === null) return;
+        const title = input.trim() || periodLabel;
+        const id = await saveReport({
+          ...payload,
+          title,
+          createdBy: userId,
+          createdByName: userName,
+        });
+        setCurrentReportId(id);
+        setCurrentReportTitle(title);
+        alert('리포트가 저장되었습니다.');
+      }
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : '리포트 저장에 실패했습니다.');
+    } finally {
+      setSavingReport(false);
+    }
+  }, [
+    generated, currentReportId, reportType, selectedCeoDate, selectedMonth,
+    startDate, endDate, taskNotes, hiddenTaskIds, periodLabel, userId, userName,
+  ]);
 
   /* ─── 카테고리 그룹 (클립보드/Obsidian 용) ─── */
   const completedTasks = useMemo(() => {
@@ -1054,6 +1169,37 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
         ))}
       </div>
 
+      {/* 저장된 리포트 불러오기 */}
+      {savedReports.length > 0 && (
+        <div className="rpt-saved-bar">
+          <span className="rpt-saved-label">저장된 리포트</span>
+          <select
+            className="rpt-saved-select"
+            value={currentReportId || ''}
+            onChange={(e) => {
+              const rec = savedReports.find((r) => r.id === e.target.value);
+              if (rec) loadSavedReport(rec);
+            }}
+          >
+            <option value="">불러올 리포트 선택</option>
+            {savedReports.map((r) => (
+              <option key={r.id} value={r.id}>
+                [{r.reportType}] {r.title}
+              </option>
+            ))}
+          </select>
+          {currentReportId && (
+            <button
+              type="button"
+              className="rpt-saved-delete"
+              onClick={() => handleDeleteSavedReport(currentReportId)}
+            >
+              삭제
+            </button>
+          )}
+        </div>
+      )}
+
       {/* 날짜 선택 + 생성 */}
       <div className="rpt-date-bar">
         {reportType === '격주' ? (
@@ -1104,6 +1250,13 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
             <button className="tm-btn-copy" onClick={copyToClipboard}>복사</button>
             <button className="tm-btn-print" onClick={() => window.print()}>인쇄</button>
             <button
+              className="tm-btn-save-report"
+              onClick={handleSaveReport}
+              disabled={savingReport}
+            >
+              {savingReport ? '저장 중...' : currentReportId ? '수정 저장' : '리포트 저장'}
+            </button>
+            <button
               className="tm-btn-obsidian"
               onClick={handleSaveToObsidian}
               disabled={savingObsidian}
@@ -1118,6 +1271,11 @@ export default function MeetingReportPanel({ ceoMeetingDates = [] }: Props) {
 
       {generated && (
         <div className="tm-report-content">
+          {currentReportId && (
+            <div className="rpt-loaded-banner">
+              저장된 리포트 「{currentReportTitle}」 — 업무 내용은 항상 최신 상태로 표시됩니다.
+            </div>
+          )}
           <h2 className="tm-report-title">{periodLabel}</h2>
 
           {/* 요약 카드 */}

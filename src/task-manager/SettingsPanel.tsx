@@ -85,7 +85,7 @@ function CategoryEditor({
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {list.map((item, idx) => (
-          <div key={idx} style={{
+          <div key={item} style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '6px 12px', background: 'var(--tm-surface-inset)',
             borderRadius: 'var(--tm-radius-sm)', fontSize: 13,

@@ -38,7 +38,7 @@ function todayStr(): string {
 }
 
 function buildPeriodLabel(meetingType: MeetingType, meetingDate: string): string {
-  const d = meetingDate ? new Date(meetingDate) : new Date();
+  const d = meetingDate ? new Date(meetingDate + 'T00:00:00') : new Date();
   if (meetingType === '월간') return format(d, 'yyyy년 M월 회의');
   if (meetingType === '격주') return format(d, 'yyyy.MM.dd 격주 회의', { locale: ko });
   return format(d, 'yyyy.MM.dd 주간 회의', { locale: ko });
@@ -440,7 +440,7 @@ export default function MeetingNotesPanel() {
                       </span>
                       <span className="tm-meeting-log-date">
                         {log.meetingDate
-                          ? format(new Date(log.meetingDate), 'yyyy.MM.dd (EEE)', { locale: ko })
+                          ? format(new Date(log.meetingDate + 'T00:00:00'), 'yyyy.MM.dd (EEE)', { locale: ko })
                           : log.periodLabel}
                       </span>
                       {log.attendees && log.attendees.length > 0 && (
@@ -479,7 +479,7 @@ export default function MeetingNotesPanel() {
                   {viewingLog.meetingType}
                 </span>
                 {viewingLog.meetingDate
-                  ? format(new Date(viewingLog.meetingDate), 'yyyy.MM.dd (EEE)', { locale: ko })
+                  ? format(new Date(viewingLog.meetingDate + 'T00:00:00'), 'yyyy.MM.dd (EEE)', { locale: ko })
                   : viewingLog.periodLabel}
               </h2>
               <button className="tm-modal-close" onClick={() => setViewingLog(null)}>×</button>

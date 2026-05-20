@@ -572,7 +572,7 @@ export default function TaskDashboard() {
         alert(err instanceof Error ? err.message : '저장에 실패했습니다.');
       }
     },
-    [user, create, update],
+    [user, userName, create, update, addToast],
   );
 
   const handleStatusChange = useCallback(
@@ -851,7 +851,7 @@ export default function TaskDashboard() {
       {/* Google Tasks 동기화 바 */}
       <div className="tm-sync-bar">
         <button className="tm-sync-btn" onClick={handleSync} disabled={syncing}>
-          {syncing ? '동기화 중...' : '&#x21BB; Google Tasks 동기화'}
+          {syncing ? '동기화 중...' : '↻ Google Tasks 동기화'}
         </button>
         <span>
           {lastSync
@@ -1086,7 +1086,13 @@ export default function TaskDashboard() {
         </div>
       )}
 
-      {view === 'report' && <MeetingReportPanel ceoMeetingDates={ceoMeetingDates} />}
+      {view === 'report' && (
+        <MeetingReportPanel
+          ceoMeetingDates={ceoMeetingDates}
+          userId={user?.uid}
+          userName={userName}
+        />
+      )}
 
       {view === 'meeting' && <MeetingNotesPanel />}
 

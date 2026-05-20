@@ -72,7 +72,9 @@ export async function updateKpi(kpiId: string, data: Partial<Kpi>, userEmail?: s
   };
   // 값 변경 시 달성률/상태 재계산 (기존 문서 값과 병합)
   if (data.currentValue !== undefined || data.targetValue !== undefined) {
-    const existing = (await getDoc(doc(db, KPIS, kpiId))).data() as Kpi;
+    const snap = await getDoc(doc(db, KPIS, kpiId));
+    if (!snap.exists()) throw new Error('KPI를 찾을 수 없습니다.');
+    const existing = snap.data() as Kpi;
     const rate = calcAchievementRate(
       data.currentValue ?? existing.currentValue,
       data.targetValue ?? existing.targetValue,

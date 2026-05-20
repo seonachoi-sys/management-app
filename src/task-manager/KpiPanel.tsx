@@ -850,5 +850,9 @@ function KpiFormModal({
 function tsToStr(ts: Timestamp | null | undefined): string {
   if (!ts) return '';
   const d = ts instanceof Timestamp ? ts.toDate() : new Date(ts as unknown as string);
-  return d.toISOString().slice(0, 10);
+  // 로컬 날짜 기준 (toISOString는 UTC라 KST에서 하루 밀림)
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
